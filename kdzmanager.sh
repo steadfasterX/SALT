@@ -103,20 +103,19 @@ done
 if [ $EXTRACT -eq 1 ];then
     [ -z $KDZDIR ] && KDZDIR="$(echo ~/Downloads)"
     echo -e "\nWill extract all files to: $KDZDIR"
-exit
     echo -e "\n\n***********\nWARNING:\n***********\nKDZ files contain the userdata image which can be very big (e.g. 23 GB on a LG G4)\nEnsure you have enough free disk space before continuing!\nYou can continue even when you have not enough free space but the result will be incomplete (still enough maybe)\n"
     [ "$BATCH" -eq 0 ] && read -p "I understood and want to continue (press ENTER)" DUMMY
 
     if [ $TESTMODE -eq 0 ];then
-        python2 ${KDZTOOLS}/unkdz -f "$FULLKDZ" -x -d extractedkdz
-        python2 ${KDZTOOLS}/undz -s -f extractedkdz/*.dz -d extracteddz
+        python2 ${KDZTOOLS}/unkdz -f "$FULLKDZ" -x -d ${KDZDIR}/extractedkdz
+        python2 ${KDZTOOLS}/undz -s -f extractedkdz/*.dz -d ${KDZDIR}/extracteddz
     else
         echo "TESTMODE only:"
-        echo "CMD: python2 ${KDZTOOLS}/unkdz -f $FULLKDZ -x -d extractedkdz"
-        echo "CMD: python2 ${KDZTOOLS}/undz -s -f extractedkdz/*.dz -d extracteddz"
+        echo "CMD: python2 ${KDZTOOLS}/unkdz -f $FULLKDZ -x -d ${KDZDIR}/extractedkdz"
+        echo "CMD: python2 ${KDZTOOLS}/undz -s -f ${KDZDIR}/extractedkdz/*.dz -d ${KDZDIR}/extracteddz"
     fi
 
-    echo -e "\n\nALL FINISHED! Your extracted files are in: $(pwd)/extracteddz\n"
+    echo -e "\n\nALL FINISHED! Your extracted files are in: ${KDZDIR}/extracteddz\n"
 fi
 
 # flash partitions
