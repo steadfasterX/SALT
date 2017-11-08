@@ -6,8 +6,17 @@
 # 
 # LICENSE: LGPLv2 (https://www.gnu.org/licenses/old-licenses/lgpl-2.0.txt)
 ##########################################################################################
-LAFPATH=~/programs/lglafng
-KDZTOOLS=~/programs/kdztools
+
+# the vars for the lgup-ng
+VARS=lgup-ng.vars
+source $VARS
+[ $? -ne 0 ] && "ERROR: Missing requirement <$VARS>." && exit 3
+
+# the functions for the lglaf GUI
+FUNCS=lgup-ng.func
+source $FUNCS 
+[ $? -ne 0 ] && "ERROR: Missing requirement <$FUNCS>." && exit 3
+
 
 F_HELP(){
     echo -e "\nCopyright (C) 2017: steadfasterX <steadfastX | boun.cr>"
@@ -42,6 +51,7 @@ EXTRACT=0
 TESTMODE=0
 UDATA=0
 BATCH=0
+WCACHE=0
 
 # check the args!
 while [ ! -z $1 ];do
@@ -49,15 +59,19 @@ while [ ! -z $1 ];do
         --with-userdata)
         UDATA=1
         shift
-        ;; 
+        ;;
+         --with-cache)
+        WCACHE=1
+        shift
+        ;;
         --flash)
         IMGPATH="$2"
         [ -z "$IMGPATH" ] && echo -e "\nextracting requires the full path to your extracted KDZ/DZ! e.g. $0 full/path/to/extracted/" && F_HELP && exit
         [ ! -d "$IMGPATH" ] && echo -e "\nERROR!! $IMGPATH DOES NOT EXISTS!?" && F_HELP && exit
         if [ ! -d "$LAFPATH" ];then
             echo -e "\nERROR: Expected LG LAF NG here: $LAFPATH" 
-            read -p "Should I download it for you? (y/N) " DLLAF
-            if [ "$DLLAF" == "y" ];then 
+            [ "$BATCH" -eq 0 ] && read -p "Should I download it for you? (y/N) " DLLAF
+            if [ "$DLLAF" == "y" ]||[ "$BATCH" -eq 1 ];then 
                 git clone https://github.com/steadfasterX/lglaf.git $LAFPATH
             else
                 exit
@@ -72,8 +86,8 @@ while [ ! -z $1 ];do
         [ ! -f "$FULLKDZ" ] && echo -e "\nERROR!! $FULLKDZ DOES NOT EXISTS!?" && F_HELP && exit
         if [ ! -d "$KDZTOOLS" ];then
             echo -e "\nERROR: Expected kdztools here: $KDZTOOLS" 
-            read -p "Should I download it for you? (y/N) " DLKDZ
-            if [ "$DLKDZ" == "y" ];then 
+            [ "$BATCH" -eq 0 ] && read -p "Should I download it for you? (y/N) " DLKDZ
+            if [ "$DLKDZ" == "y" ]||[ "$BATCH" -eq 1 ];then 
                 git clone https://github.com/steadfasterX/kdztools.git $KDZTOOLS
             else
                 exit
@@ -90,7 +104,7 @@ while [ ! -z $1 ];do
         TESTMODE=1
         shift
         ;;
-        -b|--batch) BATCH=1 ;;
+        -b|--batch) BATCH=1 ; shift ;;
         *)
         F_HELP
         exit
@@ -108,7 +122,13 @@ if [ $EXTRACT -eq 1 ];then
 
     if [ $TESTMODE -eq 0 ];then
         python2 ${KDZTOOLS}/unkdz -f "$FULLKDZ" -x -d ${KDZDIR}/extractedkdz
-        python2 ${KDZTOOLS}/undz -s -f extractedkdz/*.dz -d ${KDZDIR}/extracteddz
+        python2 ${KDZTOOLS}/undz -s -f ${KDZDIR}/extractedkdz/*.dz -d ${KDZDIR}/extracteddz
+        # delete unneeded parse files
+        rm -rvf ${KDZDIR}/extracteddz/*.params
+        # delete userdata partition when not needed
+        [ "$UDATA" -eq 0 ] && echo "You have selected to delete userdata partition" && rm -rfv ${KDZDIR}/extracteddz/userdata*
+        # delete cache partition when not needed
+        [ "$WCACHE" -eq 0 ] && echo "You have selected to delete cache partition" && rm -rfv ${KDZDIR}/extracteddz/cache*
     else
         echo "TESTMODE only:"
         echo "CMD: python2 ${KDZTOOLS}/unkdz -f $FULLKDZ -x -d ${KDZDIR}/extractedkdz"

@@ -6,7 +6,7 @@
 #
 # Copyright (C): 2017, steadfasterX <steadfastX|boun.cr>
 ##########################################################################
-VARS=lglafgui.vars
+VARS=lgup-ng.vars
 
 source $VARS 
 [ $? -ne 0 ]&& echo "ERROR: including $VARS" && exit 3
@@ -88,12 +88,15 @@ F_EXTRACTKDZ(){
     #
     #   1 => KDZ file name (full path)
     #   2 => Target directory
+    #   3 => extract userdata
+    #   4 => extract cache
     LGKDZ="$1"
     LGTARGET="$2"
+    [ "$3" == "TRUE" ] && EARGS="--with-userdata"
+    [ "$4" == "TRUE" ] && EARGS="$EARGS --with-cache"
 
     [ -z "$LGKDZ" -o ! -f "$LGKDZ" ] && F_ERR $FUNCNAME 3 "Internal error: empty LGKDZ or file not found"
     [ -z "$LGTARGET" -o ! -d "$LGTARGET" ] && F_ERR $FUNCNAME 3 "Internal error: empty LGTARGET or directory not found"
 
-    F_ELOG "placeholder $FUNCNAME"
-    $KDZMGR -x $LGKDZ -d $LGTARGET
+    ($KDZMGR --batch -x $LGKDZ -d $LGTARGET $EARGS 2>&1)  | $FYAD --title="$YTITLE - EXTRACT" --text-info "Extracting KDZ..." --listen --tail --height=600 --width=800 --wrap --fore=blue
 }
