@@ -20,6 +20,15 @@ F_ECHOLOG(){
   # TODO: write log..
 }
 
+# print a message
+F_MSG(){
+    # takes 2 arguments
+    #   
+    #  1 => box width
+    #  2 => message to show
+    $YAD --center --width=$1 --title="$YTITLE" --text "$2"
+}
+
 # check errorcode + exit when not errorcode not as expected
 F_ERR(){
   # takes 3 arguments
