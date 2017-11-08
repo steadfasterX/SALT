@@ -18,10 +18,40 @@ source $FUNCS
 [ $? -ne 0 ] && "ERROR: Missing requirement <$FUNCS>." && exit 3
 
 # check requirements:
-[ ! -x $YAD ]&& F_ECHOLOG "ERROR: Missing requirement <yad>." && F_EXIT yad-missing 3
+[ ! -x $YAD ]&& F_ECHOLOG "ERROR: Missing requirement <yad>. Install YAD and try again!" && F_EXIT yad-missing 3
 
+# check root:
+ME=$(id -u)
+if [ "$ME" -ne 0 ];then
+    echo -e '\nI need more POWER! Press ENTER to restart with root perms (or CTRL+C to abort)' 
+    read DUMMY
 
-$YAD --center --width=600 --title="$YTITLE" --text "\n  LGUP NG is a replacement for the windows software LGUP\n  and brought to you by <b>steadfasterX</b> and the awesome LGLAF code by Peter Wu!\n\n  LGLAF origin: <a href='https://github.com/Lekensteyn/lglaf'>Source</a>\n  LGLAF NG: <a href='https://github.com/steadfasterX/lglaf'>Source</a> and <a href='https://tinyurl.com/lgupsfx'>Support thread</a>\n\n" \
+    sudo $0 & >> /dev/null 2>&1
+    F_EXIT restarted-as-root
+fi
+
+DEVINF=$(F_GETINFO)
+for i in $DEVINF;do
+    case ${i/:*/} in
+        battery_level) LGBATT=${i/*:/};;
+        model_name) LGMODEL=${i/*:/};;
+        device_sw_version) LGSWV=${i/*:/};;
+        secure_device) LGSEC=${i/*:/};;
+        device_factory_version) LGFACV=${i/*:/};;
+        target_country) LGCOUNTRY=${i/*:/};;
+        *) F_ELOG "unknown parameter: $i" ;;
+    esac
+done        
+
+$YAD --center --width=600 --title="$YTITLE" --text "\n  LGUP NG is a replacement for the windows software LGUP\n  and brought to you by <b>steadfasterX</b> and the awesome LGLAF code by Peter Wu!\n\n  LGLAF origin: <a href='https://github.com/Lekensteyn/lglaf'>Source</a>\n  LGLAF NG: <a href='https://github.com/steadfasterX/lglaf'>Source</a> and <a href='https://tinyurl.com/lgupsfx'>Support thread</a>\n\n  The following comes directly from your device:" \
+    --form \
+    --field="  Device model":RO $LGMODEL \
+    --field="  Firmware":RO $LGSWV \
+    --field="  Full firmware":RO $LGFACV \
+    --field="  Country":RO $LGCOUNTRY \
+    --field="  Secure device":RO $LGSEC \
+    --field="  Battery level":RO $LGBATT \
+    --field=:LBL true \
     --buttons-layout=spread \
     --button="Extract KDZ file":1 \
     --button="Flash KDZ file":2
