@@ -4,7 +4,7 @@
 # include this with:
 # source lglafguid.func
 #
-# brought to you by: steadfasterX <steadfastX|boun.cr>
+# Copyright (C): 2017, steadfasterX <steadfastX|boun.cr>
 ##########################################################################
 VARS=lglafgui.vars
 
@@ -31,15 +31,19 @@ F_MSG(){
 
 # check errorcode + exit when not errorcode not as expected
 F_ERR(){
-  # takes 3 arguments
+  # takes 2-4 arguments
+  #
   # mandantory:
   #   1 => the process initiating this function
   #   2 => the errorcode (usually $? in your call)
-  # optional:
-  #   3 => the expected error code (if missing we expect 0)
+  # optional (4 requires at least an empty 3):
+  #   3 => the message to show
+  #   4 => the expected error code (if missing we expect 0)
   CALLER=$1
   ERRCODE=$2
-  EXPECTED=$3
+  MSG="$3"
+  EXPECTED=$4
+
   [ -z "$EXPECTED" ] && EXPECTED=0
   
   if [ -z "$CALLER" ]||[ -z "$ERRCODE" ];then
@@ -48,6 +52,7 @@ F_ERR(){
   fi
   if [ "$ERRCODE" != "$EXPECTED" ];then
     F_ELOG "ERROR: $ERRCODE occurred in $CALLER (expected $EXPECTED, got $ERRCODE)"
+    [ ! -z "$MSG" ] && F_MSG 400 "$MSG"
     F_EXIT "${CALLER}->${FUNCNAME}" 4
   else
     echo "OK: $CALLER"
