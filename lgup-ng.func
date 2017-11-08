@@ -126,7 +126,6 @@ F_FLASHKDZ(){
         ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info "FLASHING KDZ..." --listen --tail --height=600 --width=800 --wrap --fore=blue
         FYAD --text "\n  TEST run finished\n\nDo you want to continue to FLASH in REAL now?" --button=FLASH:1 --button=Cancel=0
         [ $? -ne 1 ] && echo canceling.. && F_EXIT $FUNCNAME $?
-    fi
     else
         FYAD --text "\n  NOW I'M READY!\n\nDo you want to continue to FLASH now?" --button=FLASH:1 --button=Cancel=0
         [ $? -ne 1 ] && echo canceling.. && F_EXIT $FUNCNAME $?
