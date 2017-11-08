@@ -12,7 +12,7 @@ source $VARS
 [ $? -ne 0 ]&& echo "ERROR: including $VARS" && exit 3
 
 # echo output and save it in a log as well
-F_ECHOLOG(){
+F_ELOG(){
   # takes 1 argument
   # 1 => Message to log/echo (can handle \t and \n)
   
@@ -47,7 +47,7 @@ F_ERR(){
     F_EXIT $FUNCNAME 3
   fi
   if [ "$ERRCODE" != "$EXPECTED" ];then
-    echo "ERROR: $ERRCODE occurred in $CALLER (expected $EXPECTED, got $ERRCODE)"
+    F_ELOG "ERROR: $ERRCODE occurred in $CALLER (expected $EXPECTED, got $ERRCODE)"
     F_EXIT "${CALLER}->${FUNCNAME}" 4
   else
     echo "OK: $CALLER"
@@ -62,7 +62,7 @@ F_EXIT(){
   EREASON=$1
   ECODE=$2
   
-  F_ECHOLOG "EXIT: $EREASON with code $ECODE"
+  F_ELOG "EXIT: $EREASON with code $ECODE"
   
   # TODO (optional): do any other actions
   exit $ECODE
