@@ -95,4 +95,5 @@ F_EXTRACTKDZ(){
     [ -z "$LGTARGET" -o ! -d "$LGTARGET" ] && F_ERR $FUNCNAME 3 "Internal error: empty LGTARGET or directory not found"
 
     F_ELOG "placeholder $FUNCNAME"
+    $KDZMGR -x $LGKDZ -d $LGTARGET
 }
