@@ -73,3 +73,9 @@ F_EXIT(){
   exit $ECODE
 }
 
+# get current phone data
+F_GETINFO(){
+    python2 lglaf.py -c '!INFO GPRO \x08\x0b\0\0' \
+    | python2 scripts/parse-props.py - \
+    | egrep "(device_sw_version|model_name|secure_device|laf_sw_version|device_factory_version|target_country|battery_level)" | tr "\n" " " | tr -d "'"
+}
