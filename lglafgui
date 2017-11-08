@@ -1,12 +1,11 @@
 #!/bin/bash
 ################################################################
 #
-# GUI wrapper for lglaf by
-# steadfasterX <steadfastX|boun.cr>
+# GUI wrapper for lglaf
+# Copyright (C): 2017, steadfasterX <steadfastX|boun.cr>
 #
 ################################################################
 
-YAD=/usr/bin/yad
 
 # the vars for the lglaf GUI
 VARS=lglafgui.vars
@@ -22,6 +21,42 @@ source $FUNCS
 [ ! -x $YAD ]&& F_ECHOLOG "ERROR: Missing requirement <yad>." && F_EXIT yad-missing 3
 
 
-F_YAD 400 --text "test yes"
+$YAD --center --width=600 --title="$YTITLE" --text "\n  LGUP NG is a replacement for the windows software LGUP\n  and brought to you by <b>steadfasterX</b> and the awesome LGLAF code by Peter Wu!\n\n  LGLAF origin: <a href='https://github.com/Lekensteyn/lglaf'>Source</a>\n  LGLAF NG: <a href='https://github.com/steadfasterX/lglaf'>Source</a> and <a href='https://tinyurl.com/lgupsfx'>Support thread</a>\n\n" \
+    --buttons-layout=spread \
+    --button="Extract KDZ file":1 \
+    --button="Flash KDZ file":2
+UMODE=$?
+
+if [ $UMODE -eq 1 ];then
+    EXCHOICES=$($YAD --center --width=800 --title="$YTITLE - EXTRACT" --form \
+        --field="KDZ file":FL --file-filter="KDZ files (*.kdz)| *.kdz *.KDZ"\
+        --field="Target directory":DIR)
+    F_ELOG "$EXCHOICES"
+    KDZFILE=$(echo "$EXCHOICES" | cut -d '|' -f 1)
+    TARGDIR=$(echo "$EXCHOICES" | cut -d '|' -f 2)
+    
+    F_ELOG F_EXTRACTKDZ "$KDZFILE" "$TARGDIR"
+
+    [ ! -f "$KDZFILE" ] && F_ERR "EXTRACTKDZ" 3 "$KDZFILE does not exists or is not readable!"
+    [ ! -z "$TARGDIR" ] && [ ! -d "$TARGDIR" ] && echo mkdir -p $TARGDIR
+
+    F_EXTRACTKDZ "$KDZFILE" "$TARGDIR"
+
+fi
+
+if [ $UMODE -eq 2 ];then
+    $YAD --center --width=800 --title="$YTITLE" --text "\n  When proceeding you accept that there is no guarantee for nothing - nowhere.\n  I do my best to avoid problems but we all are humans right?\n  You do this on your own responsibility and own risk no matter what.\n\nSelect a KDZ file to flash:" --form \
+        --field="":FL " " \
+        --field="\n":LBL \
+        --field="Factory Reset\t(if unchecked may result in bootloop)":CHK \
+        --field="Model Check\t(if unchecked may result in HARD BRICK)":CHK \
+        --field="ARB Check\t(if unchecked may result in HARD BRICK)":CHK \
+        true true true true \
+        --button="Agree &amp; Continue":0 \
+        --button="Cancel":1
+    F_KDZFLASH
+fi
+
+echo all done
 
 
