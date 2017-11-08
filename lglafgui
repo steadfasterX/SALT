@@ -58,14 +58,14 @@ $YAD --center --width=600 --title="$YTITLE" --text "\n  LGUP NG is a replacement
 UMODE=$?
 
 if [ $UMODE -eq 1 ];then
-    EXCHOICES=$($YAD --center --width=800 --title="$YTITLE - EXTRACT" --form \
+    EXCHOICES=$($YAD --center --width=800 --title="$YTITLE - EXTRACT" --always-print-result --form \
         --field="KDZ file":FL --file-filter="KDZ files (*.kdz)| *.kdz *.KDZ"\
         --field="Target directory":DIR)
-    F_ELOG "$EXCHOICES"
+    F_ELOG "returned: $EXCHOICES"
     KDZFILE=$(echo "$EXCHOICES" | cut -d '|' -f 1)
     TARGDIR=$(echo "$EXCHOICES" | cut -d '|' -f 2)
     
-    F_ELOG F_EXTRACTKDZ "$KDZFILE" "$TARGDIR"
+    F_ELOG "KDZFILE = $KDZFILE, TARGDIR = $TARGDIR"
 
     [ ! -f "$KDZFILE" ] && F_ERR "EXTRACTKDZ" 3 "$KDZFILE does not exists or is not readable!"
     [ ! -z "$TARGDIR" ] && [ ! -d "$TARGDIR" ] && echo mkdir -p $TARGDIR

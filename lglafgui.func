@@ -75,7 +75,24 @@ F_EXIT(){
 
 # get current phone data
 F_GETINFO(){
+    # takes no arguments
+
     python2 lglaf.py -c '!INFO GPRO \x08\x0b\0\0' \
     | python2 scripts/parse-props.py - \
     | egrep "(device_sw_version|model_name|secure_device|laf_sw_version|device_factory_version|target_country|battery_level)" | tr "\n" " " | tr -d "'"
+}
+
+# extract a KDZ
+F_EXTRACTKDZ(){
+    # takes XXXX arguments
+    #
+    #   1 => KDZ file name (full path)
+    #   2 => Target directory
+    LGKDZ="$1"
+    LGTARGET="$2"
+
+    [ -z "$LGKDZ" -o ! -f "$LGKDZ" ] && F_ERR $FUNCNAME 3 "Internal error: empty LGKDZ or file not found"
+    [ -z "$LGTARGET" -o ! -d "$LGTARGET" ] && F_ERR $FUNCNAME 3 "Internal error: empty LGTARGET or directory not found"
+
+    F_ELOG "placeholder $FUNCNAME"
 }
