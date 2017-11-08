@@ -68,15 +68,3 @@ F_EXIT(){
   exit $ECODE
 }
 
-# standard yad dialog with all 
-F_YAD(){
-    # takes 2 arguments
-    # mandantory:
-    # 1 => width of the yad popup
-    # 2 => all other args (e.g. --text foo --no-buttons ...)
-
-    WIDTH="$1"
-    ARGS="${@/$WIDTH/}"
-
-    $YAD --center --width=$WIDTH --title="$YTITLE" $ARGS
-}
