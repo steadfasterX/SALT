@@ -88,7 +88,7 @@ if [ $UMODE -eq 2 ];then
         --field="Model Check\t(if  *unchecked*  may result in HARD BRICK)":CHK \
         --field="ARB Check\t(if  *unchecked*  may result in HARD BRICK)":CHK \
         --field=:LBL \
-        --field="TEST run (will  *not*  flash anything)":CHK \
+        --field="TEST run\t\t(will  *not*  flash anything)":CHK \
         undef true true true true true true\
         --button="Agree &amp; Continue":0 \
         --button="Cancel":1 \
