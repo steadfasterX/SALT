@@ -15,8 +15,9 @@ F_HELP(){
     echo -e "\nUsage:\n----------------------------\n"
     echo -e "\tactions (one or both):"
     echo -e "\t-x | --extract [KDZ FILENAME]    extract a kdz file plus the resulting dz file"
-    echo -e "\t                                 note: the current dir will be used as target dir"
+    echo -e "\t                                 note: the current dir will be used as target dir by default"
     echo -e "\t                                       extractedkdz/ and extracteddz/ will be created here"
+    echo -e "\t-d | --extractdir <target dir>   if you want to specify another target dir for the KDZ"
     echo
     echo -e "\t--flash [PATH TO IMAGE FILES]    will flash all image files of that directory (except userdata)"
     echo -e "\t[--with-userdata --flash ...]    will flash all image files including userdata (like a factory reset)"
@@ -24,6 +25,7 @@ F_HELP(){
     echo -e "\n\tgeneral:"
     echo -e "\t-h | --help                        this output"
     echo -e "\t-t | --test                      test mode: will not extract/flash but print what would be done"
+    echo -e "\t-b | --batch                     batch mode: no questions - DANGEROUS!"
     echo -e "\n"
     echo -e "\n\tExamples:\n"
     echo -e "\tkdzmanager.sh -x ~/Downloads/h815v20p.kdz  (extract only)"
@@ -39,6 +41,7 @@ FLASHING=0
 EXTRACT=0
 TESTMODE=0
 UDATA=0
+BATCH=0
 
 # check the args!
 while [ ! -z $1 ];do
@@ -79,10 +82,15 @@ while [ ! -z $1 ];do
         shift 2
         EXTRACT=1
         ;;
+        -d|--extractdir) 
+        KDZDIR="$2"
+        shift 2
+        ;;
         -t|--test)
         TESTMODE=1
         shift
         ;;
+        -b|--batch) BATCH=1 ;;
         *)
         F_HELP
         exit
@@ -93,9 +101,11 @@ done
 
 # extract KDZ and DZ
 if [ $EXTRACT -eq 1 ];then
-    echo -e "\nWill extract all files to: $(pwd)"
-    echo -e "\n\n***********\nWARNING:\n***********\nKDZ files contain the userdata image which can be very big (e.g. 23 GB on a LG G4)\nEnsure you have enough free disk space before continuing!\nYou can continue even when you have not enough free space but the result will be incomplete (still useful maybe)\n"
-    read -p "I understood and want to continue (press ENTER)" DUMMY
+    [ -z $KDZDIR ] && KDZDIR="$(echo ~/Downloads)"
+    echo -e "\nWill extract all files to: $KDZDIR"
+exit
+    echo -e "\n\n***********\nWARNING:\n***********\nKDZ files contain the userdata image which can be very big (e.g. 23 GB on a LG G4)\nEnsure you have enough free disk space before continuing!\nYou can continue even when you have not enough free space but the result will be incomplete (still enough maybe)\n"
+    [ "$BATCH" -eq 0 ] && read -p "I understood and want to continue (press ENTER)" DUMMY
 
     if [ $TESTMODE -eq 0 ];then
         python2 ${KDZTOOLS}/unkdz -f "$FULLKDZ" -x -d extractedkdz
