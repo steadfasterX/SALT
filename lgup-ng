@@ -42,7 +42,7 @@ for i in $DEVINF;do
     esac
 done        
 
-$FYAD --title="$YTITLE" --width=600 --text "\n  LGUP NG is a replacement for the windows software LGUP\n  and brought to you by <b>steadfasterX</b> and the awesome LGLAF code by Peter Wu!\n\n  LGLAF origin: <a href='https://github.com/Lekensteyn/lglaf'>Source</a>\n  LGLAF NG: <a href='https://github.com/steadfasterX/lglaf'>Source</a> and <a href='https://tinyurl.com/lgupsfx'>Support thread</a>\n\n  The following comes directly from your device (empty values if not connected):" \
+$FYAD --title="$YTITLE" --width=600 --text "\n  LGUP NG is a replacement for the windows software LGUP\n  and brought to you by <b>steadfasterX</b> and the awesome LGLAF code by Peter Wu!\n\n  LGLAF origin: <a href='https://github.com/Lekensteyn/lglaf'>Source</a>\n  LGLAF NG: <a href='https://github.com/steadfasterX/lglaf'>Source</a> and <a href='https://tinyurl.com/lgupsfx'>Support thread</a>\n\n  The following comes directly from your device:\n  (empty values if no device connected)" \
     --form \
     --field="  Device model":RO $LGMODEL \
     --field="  Firmware":RO $LGSWV \
@@ -57,7 +57,7 @@ $FYAD --title="$YTITLE" --width=600 --text "\n  LGUP NG is a replacement for the
 UMODE=$?
 
 if [ $UMODE -eq 1 ];then
-    EXCHOICES=$($FYAD --title="$YTITLE" --width=800 --always-print-result --form \
+    EXCHOICES=$($FYAD --title="$YTITLE - EXTRACT" --width=800 --always-print-result --form \
         --field="KDZ file":FL --file-filter="KDZ files (*.kdz)| *.kdz *.KDZ"\
         --field="Target directory":DIR \
         --field=:LBL \
@@ -81,17 +81,33 @@ if [ $UMODE -eq 1 ];then
 fi
 
 if [ $UMODE -eq 2 ];then
-    $FYAD --title="$YTITLE" --width=800 --text "\n  When proceeding you accept that there is no guarantee for nothing - nowhere.\n  I do my best to avoid problems but we all are humans right?\n  You do this on your own responsibility and own risk no matter what.\n\nSelect a KDZ file to flash:" --form \
-        --field="":FL " " \
+    FLCHOICES=$($FYAD --title="$YTITLE - FLASH" --always-print-result --width=800 --text "\n  When proceeding you accept that there is no guarantee for nothing - nowhere.\n  I do my best to avoid problems but we all are humans right?\n  You do this on your own responsibility and own risk no matter what.\n\nSelect a KDZ file to flash:" --form \
+        --field="":FL --file-filter="KDZ files (*.kdz)| *.kdz *.KDZ" \
         --field="\n":LBL \
-        --field="Factory Reset\t(if unchecked may result in bootloop)":CHK \
-        --field="Model Check\t(if unchecked may result in HARD BRICK)":CHK \
-        --field="ARB Check\t(if unchecked may result in HARD BRICK)":CHK \
-        true true true true \
+        --field="Factory Reset\t(if  *unchecked*  may result in bootloop)":CHK \
+        --field="Model Check\t(if  *unchecked*  may result in HARD BRICK)":CHK \
+        --field="ARB Check\t(if  *unchecked*  may result in HARD BRICK)":CHK \
+        --field=:LBL \
+        --field="TEST run (will  *not*  flash anything)":CHK \
+        undef true true true true true true\
         --button="Agree &amp; Continue":0 \
-        --button="Cancel":1
+        --button="Cancel":1 \
+        )
+    FLERR=$?
+    [ $FLERR -ne 0 ] && F_EXIT flashing-select $FLERR 
+ 
+    LGKDZ=$(echo "$FLCHOICES" | cut -d '|' -f 1)
+    LGFR=$(echo "$FLCHOICES" | cut -d '|' -f 3)
+    LGCHKMOD=$(echo "$FLCHOICES" | cut -d '|' -f 4)
+    LGARB=$(echo "$FLCHOICES" | cut -d '|' -f 5)
+    LGDRY=$(echo "$FLCHOICES" | cut -d '|' -f 7)
+
+    F_ELOG "LGKDZ = $LGKDZ, LGFR = $LGFR, LGCHKMOD = $LGCHKMOD, LGARB = $LGARB, LGDRY = $LGDRY"
+
+    [ ! -f "$LGKDZ" ] && F_EXIT flashing-kdz-invalid 3
+
     F_MSG 400 "\n  THIS IS NOT READY YET!\n"
-    #F_KDZFLASH
+    #F_KDZFLASH $LGKDZ $LGFR $LGCHKMOD $LGARB $LGDRY
 fi
 
 echo all done

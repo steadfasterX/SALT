@@ -100,3 +100,41 @@ F_EXTRACTKDZ(){
 
     ($KDZMGR --batch -x $LGKDZ -d $LGTARGET $EARGS 2>&1)  | $FYAD --title="$YTITLE - EXTRACT" --text-info "Extracting KDZ..." --listen --tail --height=600 --width=800 --wrap --fore=blue
 }
+
+# flash a KDZ
+F_FLASHKDZ(){
+    # takes XXXX arguments
+    #
+    #   1 => KDZ filename
+    #   2 => Factory reset
+    #   3 => Model check
+    #   4 => ARB check
+    #   5 => test mode
+
+    LGKDZ="$1"
+    LGFR="$2"
+    LGCHKMOD="$3"
+    LGARB="$4"
+    LGDRY="$5"
+
+    KDZTMP=/tmp
+    # autoextract kdz without userdata and cache
+    F_EXTRACTKDZ $LGKDZ $KDZTMP FALSE FALSE
+
+    # test mode?
+    if [ "$LGDRY" != "FALSE" ];then
+        ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info "FLASHING KDZ..." --listen --tail --height=600 --width=800 --wrap --fore=blue
+        FYAD --text "\n  TEST run finished\n\nDo you want to continue to FLASH in REAL now?" --button=FLASH:1 --button=Cancel=0
+        [ $? -ne 1 ] && echo canceling.. && F_EXIT $FUNCNAME $?
+    fi
+    else
+        FYAD --text "\n  NOW I'M READY!\n\nDo you want to continue to FLASH now?" --button=FLASH:1 --button=Cancel=0
+        [ $? -ne 1 ] && echo canceling.. && F_EXIT $FUNCNAME $?
+    fi
+    
+    # check device connection
+    F_CHKDEVCON
+
+    # FLASH
+    ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info "FLASHING KDZ..." --listen --tail --height=600 --width=800 --wrap --fore=blue
+}
