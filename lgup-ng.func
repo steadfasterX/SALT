@@ -26,7 +26,9 @@ F_MSG(){
     #   
     #  1 => box width
     #  2 => message to show
-    $YAD --center --width=$1 --title="$YTITLE" --text "$2"
+    # optional:
+    #  3 => free args
+    $YAD --center --width=$1 --title="$YTITLE" --text "$2" $3
 }
 
 # check errorcode + exit when not errorcode not as expected
@@ -52,7 +54,7 @@ F_ERR(){
   fi
   if [ "$ERRCODE" != "$EXPECTED" ];then
     F_ELOG "ERROR: $ERRCODE occurred in $CALLER (expected $EXPECTED, got $ERRCODE)"
-    [ ! -z "$MSG" ] && F_MSG 400 "$MSG"
+    [ ! -z "$MSG" ] && F_MSG 400 "$MSG" '--button=Exit:0'
     F_EXIT "${CALLER}->${FUNCNAME}" 4
   else
     echo "OK: $CALLER"
