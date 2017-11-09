@@ -104,10 +104,10 @@ if [ $UMODE -eq 2 ];then
 
     F_ELOG "LGKDZ = $LGKDZ, LGFR = $LGFR, LGCHKMOD = $LGCHKMOD, LGARB = $LGARB, LGDRY = $LGDRY"
 
-    [ ! -f "$LGKDZ" ] && F_EXIT flashing-kdz-invalid 3
+    [ ! -f "$LGKDZ" ] && F_ERR flashing-kdz-invalid 3 "\n  <b>ERROR</b>\n\n  The file\n  $LGKDZ\n  does not exist!\n"
 
     F_MSG 400 "\n  THIS IS NOT READY YET!\n"
-    #F_KDZFLASH $LGKDZ $LGFR $LGCHKMOD $LGARB $LGDRY
+    F_FLASHKDZ "$LGKDZ" "$LGFR" "$LGCHKMOD" "$LGARB" "$LGDRY"
 fi
 
 echo all done
