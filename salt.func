@@ -1,12 +1,16 @@
 ##########################################################################
-# global functions for the lglafgui
 #
-# include this with:
-# source lglafguid.func
+# SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
 #
 # Copyright (C): 2017, steadfasterX <steadfastX|boun.cr>
+#
+# global functions for SALT
+#
+# include this with:
+# source salt.func
+#
 ##########################################################################
-VARS=lgup-ng.vars
+VARS=salt.vars
 
 source $VARS 
 [ $? -ne 0 ]&& echo "ERROR: including $VARS" && exit 3
@@ -100,7 +104,9 @@ F_EXTRACTKDZ(){
     [ -z "$LGKDZ" -o ! -f "$LGKDZ" ] && F_ERR $FUNCNAME 3 "Internal error: empty LGKDZ or file not found"
     [ -z "$LGTARGET" -o ! -d "$LGTARGET" ] && F_ERR $FUNCNAME 3 "Internal error: empty LGTARGET or directory not found"
 
-    ($KDZMGR --batch -x $LGKDZ -d $LGTARGET $EARGS 2>&1)  | $FYAD --title="$YTITLE - EXTRACT" --text-info "Extracting KDZ..." --listen --tail --height=600 --width=800 --wrap --fore=blue
+    ($KDZMGR --batch -x $LGKDZ -d $LGTARGET $EARGS 2>&1)  | $FYAD --title="$YTITLE - EXTRACT" --text-info --text "\n  <b><span color='#ff0000'>BE PATIENT! THE SCREEN REFRESHES EVERY MINUTE FIRST!\n  WAIT until you see the message: All done</span></b>\n" --listen --tail --height=600 --width=800 --wrap --fore=blue --button="Continue (wait until you see ALL DONE)":0
+    EXERR=$?
+    [ $EXERR -ne 0 ] && F_ERR $FUNCNAME $EXERR "ERROR occured or aborted by user!"
 }
 
 # flash a KDZ
@@ -125,11 +131,11 @@ F_FLASHKDZ(){
 
     # test mode?
     if [ "$LGDRY" != "FALSE" ];then
-        ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info "FLASHING KDZ..." --listen --tail --height=600 --width=800 --pulsate --auto-kill
+        ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info --text "\n  <b><span color='#009900'>FLASHING KDZ (TEST)...</span></b>" --listen --tail --height=600 --width=900 --wrap --fore=blue --button="Next":0
         $FYAD --text "\n  TEST run finished\n\nDo you want to continue to FLASH in REAL now?" --button=FLASH:1 --button=Cancel=0
         [ $? -ne 1 ] && echo canceling.. && F_EXIT $FUNCNAME $?
     else
-        $FYAD --text "\n  NOW I'M READY!\n\nDo you want to continue to FLASH now?" --button=FLASH:1 --button=Cancel=0
+        $FYAD --text "\n  NOW I'M READY!\n\nDo you want to continue to FLASH now?" --button=FLASH:1 --button=Cancel:0
         [ $? -ne 1 ] && echo canceling.. && F_EXIT $FUNCNAME $?
     fi
 
@@ -141,10 +147,24 @@ F_FLASHKDZ(){
 
     # check device model
     # TODO
+    F_CHKMODEL
     
     # check ARB
     # TODO 
+    F_CHKARB
 
     # If all the above is fine: FLASH
-    ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info "FLASHING KDZ..." --listen --tail --height=600 --width=800 --wrap --fore=blue
+    ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info --text "\n  <b><span color='#ff0000'>FLASHING KDZ (REAL)...</span></b>" --listen --tail --height=600 --width=900 --wrap --fore=blue --button="Close":0
+}
+
+# authenticate device
+F_AUTH(){
+    python2 $LAFPATH/auth.py
+}
+
+# check/ensure device is connected
+F_CHKDEVCON(){
+    # takes no argument
+    F_AUTH
+    python2 $LAFPATH/lglaf.py --skip-hello -c '!EXEC  uname -m\0'
 }

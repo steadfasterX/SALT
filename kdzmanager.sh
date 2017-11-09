@@ -1,19 +1,21 @@
 #!/bin/bash
 ##########################################################################################
 #
+# SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
+#
+# Copyright (C): 2017, steadfasterX <steadfastX|boun.cr>
+#
 # LG KDZ MANAGER 
-# Copyright (C) 2017: steadfasterX <steadfastX | boun.cr>
 # 
-# LICENSE: LGPLv2 (https://www.gnu.org/licenses/old-licenses/lgpl-2.0.txt)
 ##########################################################################################
 
 # the vars for the lgup-ng
-VARS=lgup-ng.vars
+VARS=salt.vars
 source $VARS
 [ $? -ne 0 ] && "ERROR: Missing requirement <$VARS>." && exit 3
 
 # the functions for the lglaf GUI
-FUNCS=lgup-ng.func
+FUNCS=salt.func
 source $FUNCS 
 [ $? -ne 0 ] && "ERROR: Missing requirement <$FUNCS>." && exit 3
 

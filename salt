@@ -1,19 +1,21 @@
 #!/bin/bash
 ################################################################
 #
-# GUI wrapper for lglaf
+# SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
+#
 # Copyright (C): 2017, steadfasterX <steadfastX|boun.cr>
+#
+# Main program for SALT
 #
 ################################################################
 
-
-# the vars for the lgup-ng
-VARS="lgup-ng.vars"
+# the vars for SALT
+VARS="salt.vars"
 source $VARS
 [ $? -ne 0 ] && "ERROR: Missing requirement <$VARS>." && exit 3
 
 # the functions for the lglaf GUI
-FUNCS="lgup-ng.func"
+FUNCS="salt.func"
 source $FUNCS 
 [ $? -ne 0 ] && "ERROR: Missing requirement <$FUNCS>." && exit 3
 
@@ -29,6 +31,8 @@ if [ "$ME" -ne 0 ];then
     F_EXIT no-root-end-here
 fi
 
+# main func
+F_MAIN(){
 DEVINF=$(F_GETINFO)
 for i in $DEVINF;do
     case ${i/:*/} in
@@ -42,7 +46,7 @@ for i in $DEVINF;do
     esac
 done        
 
-$FYAD --title="$YTITLE" --width=600 --text "\n  LGUP NG is a replacement for the windows software LGUP\n  and brought to you by <b>steadfasterX</b> and the awesome LGLAF code by Peter Wu!\n\n  LGLAF origin: <a href='https://github.com/Lekensteyn/lglaf'>Source</a>\n  LGLAF NG: <a href='https://github.com/steadfasterX/lglaf'>Source</a> and <a href='https://tinyurl.com/lgupsfx'>Support thread</a>\n\n  The following comes directly from your device:\n  (empty values if no device connected)" \
+$FYAD --title="$YTITLE" --width=600 --text "\n  <b>$TFULLNAME</b>\n  is a replacement for the windows software LGUP (plus MANY more features!!)\n  and brought to you by <b>steadfasterX</b>.\n\n  $TNAME is based on:\n\t- the awesome <a href='https://github.com/Lekensteyn/lglaf'>LGLAF</a> code by Peter Wu\n\t- <a href='https://github.com/ehem/kdztools'>kdztools</a> by Elliott Mitchell\n\t- <b>MANY</b> enhancements by steadfasterX (including this GUI)\n\n  ${TNAME} sources: <a href='https://github.com/steadfasterX/salt'>$TNAME</a> | <a href='https://github.com/steadfasterX/lglaf'>Patched LGLAF</a> | <a href='https://github.com/steadfasterX/salt'>Patched kdztools</a>\n  $TNAME support: <a href='https://tinyurl.com/salty'>XDA thread</a>\n\n  The following comes directly from your device:\n  (no_device_found if no device connected)" \
     --form \
     --field="  Device model":RO $LGMODEL \
     --field="  Firmware":RO $LGSWV \
@@ -50,14 +54,21 @@ $FYAD --title="$YTITLE" --width=600 --text "\n  LGUP NG is a replacement for the
     --field="  Country":RO $LGCOUNTRY \
     --field="  Secure device":RO $LGSEC \
     --field="  Battery level":RO $LGBATT \
-    --field=:LBL true \
+    no_device_found no_device_found no_device_found no_device_found no_device_found no_device_found \
     --buttons-layout=spread \
+    --button="Open a shell":3 \
     --button="Extract KDZ file":1 \
     --button="Flash KDZ file":2
 UMODE=$?
+} 
 
+F_MAIN
+
+# extract a kdz
 if [ $UMODE -eq 1 ];then
-    EXCHOICES=$($FYAD --title="$YTITLE - EXTRACT" --width=800 --always-print-result --form \
+    EXCHOICES=$($FYAD --title="$YTITLE - EXTRACT" --width=800 --always-print-result --text \
+        "\n  This will extract any KDZ file for you with just a click\n" \
+        --form \
         --field="KDZ file":FL --file-filter="KDZ files (*.kdz)| *.kdz *.KDZ"\
         --field="Target directory":DIR \
         --field=:LBL \
@@ -78,10 +89,13 @@ if [ $UMODE -eq 1 ];then
 
     F_EXTRACTKDZ "$KDZFILE" "$TARGDIR" $UDATA $KCACHE
 
+    # go back to main window
+    #F_MAIN
 fi
 
+# flash a kdz
 if [ $UMODE -eq 2 ];then
-    FLCHOICES=$($FYAD --title="$YTITLE - FLASH" --always-print-result --width=800 --text "\n  When proceeding you accept that there is no guarantee for nothing - nowhere.\n  I do my best to avoid problems but we all are humans right?\n  You do this on your own responsibility and own risk no matter what.\n\nSelect a KDZ file to flash:" --form \
+    FLCHOICES=$($FYAD --title="$YTITLE - FLASH" --always-print-result --width=800 --text "\n  When proceeding you accept that there is no guarantee for nothing - nowhere.\n  I do my best to avoid problems but we all are humans right?\n  You do this on your own responsibility and own risk no matter what.\n\n  Select a KDZ file to flash:" --form \
         --field="":FL --file-filter="KDZ files (*.kdz)| *.kdz *.KDZ" \
         --field="\n":LBL \
         --field="Factory Reset\t(if  *unchecked*  may result in bootloop)":CHK \
@@ -106,10 +120,29 @@ if [ $UMODE -eq 2 ];then
 
     [ ! -f "$LGKDZ" ] && F_ERR flashing-kdz-invalid 3 "\n  <b>ERROR</b>\n\n  The file\n  $LGKDZ\n  does not exist!\n"
 
-    F_MSG 400 "\n  THIS IS NOT READY YET!\n"
-    F_FLASHKDZ "$LGKDZ" "$LGFR" "$LGCHKMOD" "$LGARB" "$LGDRY"
+    F_MSG 400 "\n  THIS IS NOT READY YET!!!\n"
+    F_CHKDEVCON
+    if [ $? -eq 0 ];then
+        F_ELOG "device connected... going on!"
+        F_FLASHKDZ "$LGKDZ" "$LGFR" "$LGCHKMOD" "$LGARB" "$LGDRY"
+    else
+        F_MSG 600 "\n  ERROR!\n\n  NO DEVICE CONNECTED?\n If you have connected your device ensure that it is in DOWNLOAD mode\n(not fastboot, not recovery, not booted Android)" "--button=Return:0"
+    fi
+    #[ $? -ne 0 ]&& F_MSG 400 "\n  Do you want to try to flash again?" "--button=Yes:0 --button=No:2"
 fi
 
-echo all done
+# open a shell
+if [ $UMODE -eq 3 ];then
+    F_CHKDEVCON
+    if [ $? -eq 0 ];then
+        F_ELOG "device connected... Opening shell now!"
+         xterm -e "cd $LAFPATH && echo -e '\n*****************\nTYPE the word exit TO CLOSE THIS WINDOW\n*********************\n\n'; python2 auth.py; python2 lglaf.py"
+    else
+        F_MSG 600 "\n  ERROR!\n\n  NO DEVICE CONNECTED?\n If you have connected your device ensure that it is in DOWNLOAD mode\n(not fastboot, not recovery, not booted Android)" "--button=Return:0"
+    fi
+    #F_MAIN
+fi
+
+F_ELOG "all done"
 
 
