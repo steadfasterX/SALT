@@ -159,10 +159,10 @@ F_FLASHKDZ(){
     # test mode?
     if [ "$LGDRY" != "FALSE" ];then
         ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info --text "\n  <b><span color='#009900'>FLASHING KDZ (TEST)...</span></b>\n" --listen --tail --height=600 --width=900 --wrap --fore=blue --button="Next":0
-        $FYAD --text "\n  TEST run finished\n\nDo you want to continue to FLASH in REAL now?" --button=FLASH:1 --button=Cancel:0
+        $FYAD --title="$YTITLE - FLASH" --text "\n  TEST run finished\n\n  Do you want to continue to FLASH in REAL now?" --button=FLASH:1 --button=Cancel:0
         [ $? -ne 1 ] && echo canceling.. && F_EXIT $FUNCNAME $?
     else
-        $FYAD --text "\n  NOW I'M READY!\n\nDo you want to continue to FLASH now?" --button=FLASH:1 --button=Cancel:0
+        $FYAD --title="$YTITLE - FLASH" --text "\n  NOW I'M READY!\n\n  Do you want to continue to FLASH now?" --button=FLASH:1 --button=Cancel:0
         [ $? -ne 1 ] && echo canceling.. && F_EXIT $FUNCNAME $?
     fi
 
@@ -179,12 +179,19 @@ F_FLASHKDZ(){
     # check ARB
     # TODO 
     ARBOK=0
-    KARB=$(F_CKARB $KDZTMP)
+    KARB=$(F_CKARB $KDZTMP/extracteddz)
     DARB=$(F_CDARB)
-    F_ELOG "KARB: $KARB, DARB = $DARB"
+    F_ELOG "KARB: $KARB, DARB: $DARB"
+    # verify the internal functions do not generate crap
     [ -z "$KARB" -o -z "$DARB" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  Device ARB or KDZ ARB cannot be checked! ABORTED!!"
+    # verify ARB compat
     [ "$KARB" -ge "$DARB" ] && F_ELOG "Device and KDZ ARB are compatible" && ARBOK=1
+    # a bulletproof method to avoid issues with any of the above (e.g. when KARB or DARB are not digits etc)
     [ "$ARBOK" -ne 1 ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  ARB is NOT compatible with your device! ABORTED!"
+    # manual verification by the user
+    $FYAD --title="$YTITLE - ARB" --text "\n  Your device <b>seems</b> to be compatible with the KDZ file\n  Device:\t$DARB\n  KDZ:\t$KARB\n\n  You can doublecheck <a href='http://tinyurl.com/antirollg4'>here</a>\n\n  Do you really want to continue and so FLASH now?" --button="Flash (on your own risk)":0 --button=Cancel:1
+    # abort when needed
+    [ $? -ne 0 ] && F_ERR $FUNCNAME 3 "Aborted on ARB info"
 
     # If all the above is fine: FLASH
     ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info --text "\n  <b><span color='#ff0000'>FLASHING KDZ (REAL)...</span></b>\n" --listen --tail --height=600 --width=900 --wrap --fore=blue --button="Close":0
