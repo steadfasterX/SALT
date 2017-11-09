@@ -109,6 +109,33 @@ F_EXTRACTKDZ(){
     [ $EXERR -ne 0 ] && F_ERR $FUNCNAME $EXERR "ERROR occured or aborted by user!"
 }
 
+# check device for for antirollback bullshit (I'm still pissed off how a vendor is doing this! I mean HARDBRICK a phone ?? wtf LG?)
+F_CDARB(){
+    # takes no arguments
+    #
+    
+    DEVARB=$(python2 $LAFPATH/partitions.py --skip-hello --dump - sbl1 | strings | grep "0 SW_ID" |cut -d " " -f 2 |tr -d "0")
+    [ -z "$DEVARB" ] && DEVARB=0
+    echo $DEVARB
+}
+
+# check local file for antirollback bullshit (I'm still pissed off how a vendor is doing this! I mean HARDBRICK a phone ?? wtf LG?)
+F_CKARB(){
+    # takes 1 argument
+    #  
+    # 1 => path to the sbl1 file to check
+
+    KDZDIR=$1
+    ARBFILE="$KDZDIR/sbl1.image"
+
+    [ ! -f "$ARBFILE" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\nMissing required file to check for ARB\n  (checked for: $ARBFILE)!"
+
+    KDZARB=$(strings "$ARBFILE" | grep "0 SW_ID" |cut -d " " -f 2 |tr -d "0")
+    [ -z "$KDZARB" ] && KDZARB=0
+    echo $KDZARB
+}
+
+
 # flash a KDZ
 F_FLASHKDZ(){
     # takes XXXX arguments
@@ -131,8 +158,8 @@ F_FLASHKDZ(){
 
     # test mode?
     if [ "$LGDRY" != "FALSE" ];then
-        ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info --text "\n  <b><span color='#009900'>FLASHING KDZ (TEST)...</span></b>" --listen --tail --height=600 --width=900 --wrap --fore=blue --button="Next":0
-        $FYAD --text "\n  TEST run finished\n\nDo you want to continue to FLASH in REAL now?" --button=FLASH:1 --button=Cancel=0
+        ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info --text "\n  <b><span color='#009900'>FLASHING KDZ (TEST)...</span></b>\n" --listen --tail --height=600 --width=900 --wrap --fore=blue --button="Next":0
+        $FYAD --text "\n  TEST run finished\n\nDo you want to continue to FLASH in REAL now?" --button=FLASH:1 --button=Cancel:0
         [ $? -ne 1 ] && echo canceling.. && F_EXIT $FUNCNAME $?
     else
         $FYAD --text "\n  NOW I'M READY!\n\nDo you want to continue to FLASH now?" --button=FLASH:1 --button=Cancel:0
@@ -151,10 +178,16 @@ F_FLASHKDZ(){
     
     # check ARB
     # TODO 
-    F_CHKARB
+    ARBOK=0
+    KARB=$(F_CKARB $KDZTMP)
+    DARB=$(F_CDARB)
+    F_ELOG "KARB: $KARB, DARB = $DARB"
+    [ -z "$KARB" -o -z "$DARB" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  Device ARB or KDZ ARB cannot be checked! ABORTED!!"
+    [ "$KARB" -ge "$DARB" ] && F_ELOG "Device and KDZ ARB are compatible" && ARBOK=1
+    [ "$ARBOK" -ne 1 ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  ARB is NOT compatible with your device! ABORTED!"
 
     # If all the above is fine: FLASH
-    ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info --text "\n  <b><span color='#ff0000'>FLASHING KDZ (REAL)...</span></b>" --listen --tail --height=600 --width=900 --wrap --fore=blue --button="Close":0
+    ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info --text "\n  <b><span color='#ff0000'>FLASHING KDZ (REAL)...</span></b>\n" --listen --tail --height=600 --width=900 --wrap --fore=blue --button="Close":0
 }
 
 # authenticate device
