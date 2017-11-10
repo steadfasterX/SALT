@@ -22,7 +22,8 @@ F_ELOG(){
   
   echo -e "$1"
   # TODO: write log..
-}
+
+}; export -f F_ELOG
 
 # print a message
 F_MSG(){
@@ -33,7 +34,7 @@ F_MSG(){
     # optional:
     #  3 => free args
     $YAD --center --width=$1 --title="$YTITLE" --text "$2" $3
-}
+}; export -f F_MSG
 
 # check errorcode + exit when not errorcode not as expected
 F_ERR(){
@@ -63,7 +64,7 @@ F_ERR(){
   else
     echo "OK: $CALLER"
   fi
-}
+}; export -f F_ERR
 
 # exit properly
 F_EXIT(){
@@ -77,7 +78,7 @@ F_EXIT(){
   
   # TODO (optional): do any other actions
   exit $ECODE
-}
+}; export -f F_EXIT
 
 # get current phone data
 F_GETINFO(){
@@ -86,7 +87,7 @@ F_GETINFO(){
     python2 lglaf.py -c '!INFO GPRO \x08\x0b\0\0' \
     | python2 scripts/parse-props.py - \
     | egrep "(device_sw_version|model_name|secure_device|laf_sw_version|device_factory_version|target_country|battery_level)" | tr "\n" " " | tr -d "'"
-}
+}; export -f F_GETINFO
 
 # extract a KDZ
 F_EXTRACTKDZ(){
@@ -107,7 +108,7 @@ F_EXTRACTKDZ(){
     ($KDZMGR --batch -x $LGKDZ -d $LGTARGET $EARGS 2>&1)  | $FYAD --title="$YTITLE - EXTRACT" --text-info --text "\n  <b><span color='#ff0000'>BE PATIENT! THE SCREEN REFRESHES EVERY MINUTE FIRST!\n  WAIT until you see the message: All done</span></b>\n" --listen --tail --height=600 --width=800 --wrap --fore=blue --button="Continue (wait until you see ALL DONE)":0
     EXERR=$?
     [ $EXERR -ne 0 ] && F_ERR $FUNCNAME $EXERR "ERROR occured or aborted by user!"
-}
+}; export -f F_EXTRACTKDZ
 
 # check device for for antirollback bullshit (I'm still pissed off how a vendor is doing this! I mean HARDBRICK a phone ?? wtf LG?)
 F_CDARB(){
@@ -117,7 +118,7 @@ F_CDARB(){
     DEVARB=$(python2 $LAFPATH/partitions.py --skip-hello --dump - sbl1 | strings | grep "0 SW_ID" |cut -d " " -f 2 |tr -d "0")
     [ -z "$DEVARB" ] && DEVARB=0
     echo $DEVARB
-}
+}; export -f F_CDARB
 
 # check local file for antirollback bullshit (I'm still pissed off how a vendor is doing this! I mean HARDBRICK a phone ?? wtf LG?)
 F_CKARB(){
@@ -133,7 +134,7 @@ F_CKARB(){
     KDZARB=$(strings "$ARBFILE" | grep "0 SW_ID" |cut -d " " -f 2 |tr -d "0")
     [ -z "$KDZARB" ] && KDZARB=0
     echo $KDZARB
-}
+}; export -f F_CKARB
 
 
 # flash a KDZ
@@ -200,7 +201,7 @@ F_FLASHKDZ(){
 # authenticate device
 F_AUTH(){
     python2 $LAFPATH/auth.py
-}
+}; export -f F_AUTH
 
 # check/ensure device is connected
 F_CHKDEVCON(){
