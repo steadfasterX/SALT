@@ -31,6 +31,40 @@ if [ "$ME" -ne 0 ];then
     F_EXIT no-root-end-here
 fi
 
+# check the base:
+if [ ! -d "$LAFPATH" ];then
+    echo -e "\nERROR: Expected LG LAF NG here: $LAFPATH"
+    F_MSG 400 "\n  ERROR!\n\n  Expected lglaf here:\n  ${LAFPATH}\n\n  but it is missing..\n\n  Should I download it for you now?" "--button=Yes:0 --button=Abort:1" 
+    DLLAF=$?
+    if [ "$DLLAF" -eq 0 ];then
+        git clone $LAFGIT $LAFPATH
+    else
+        F_EXIT
+    fi
+else
+    F_MSG 400 "\n  LGLAF found in:\n\n${LAFPATH}\n\n  Should I update it for you now (recommended)?" "--button=Yes:0 --button=Skip:1"
+    UPDLAF=$?
+    if [ "$UPDLAF" -eq 0 ];then
+        (cd $LAFPATH && git pull && echo 100) | $FYAD --title="$YTITLE - syncing" --width=400 --progress --progress-text "syncing..." --pulsate --auto-close --auto-kill --button=Abort:1
+    fi
+fi
+if [ ! -d "$KDZTOOLS" ];then
+    F_MSG 400 "\n  ERROR!\n\n  Expected kdztools here:\n  ${KDZTOOLS}\n\n  but it is missing..\n\n  Should I download it for you now?" "--button=Yes:0 --button=Abort:1"
+    DLKDZ=$?
+    if [ "$DLKDZ" -eq 0 ];then
+        git clone $KDZGIT $KDZTOOLS
+    else
+        F_EXIT
+    fi
+else
+    F_MSG 400 "\n  KDZTOOLS found in:\n\n${KDZTOOLS}\n\n  Should I update it for you now (recommended)?" "--button=Yes:0 --button=Skip:1"
+    UPDKDZ=$?
+    if [ "$UPDKDZ" -eq 0 ];then
+        (cd $KDZTOOLS && git pull && echo 100) || echo 100 | $FYAD --title="$YTITLE - syncing" --width=400 --progress --progress-text "syncing..." --pulsate --auto-close --auto-kill --button=Abort:0
+    fi
+fi
+
+
 # main func
 F_MAIN(){
 DEVINF=$(F_GETINFO)
