@@ -198,7 +198,43 @@ F_FLASHKDZ(){
 
     # If all the above is fine: FLASH
     ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info --text "\n  <b><span color='#ff0000'>FLASHING KDZ (REAL)...</span></b>\n" --listen --tail --height=600 --width=900 --wrap --fore=blue --button="Close":0
-}
+}; export -f F_FLASHKDZ
+
+# choose and flash partitions from a backup or extracted KDZ
+F_FLASHPART(){
+    # takes no arguments
+    #
+
+    AIMGDIR=$($FYAD --width=600 --title="$YTITLE - FOLDER" --form \
+        --field="  Select the source folder":DIR \
+        $HOME)
+
+    IMGDIR=$(echo $AIMGDIR|cut -d '|' -f1)
+
+    [ ! -d "$IMGDIR" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n Folder \n\n  $IMGDIR\n\n  does not exists?!"
+    
+    # create a list of *.image files and let the user choose
+    IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name *.bin -or -name *.img -or -name *.image | tr " " "_");do echo "${ifile##*/}";done | tr "\n" " ")
+
+    F_ELOG "($FUNCNAME) image files: $IMGFILES"
+    CHOOSENP=$(for files in $IMGFILES;do echo -e "true\n$files\n$(echo $files | sed 's/\.image//g;s/\.img//g;s/\.bin//g')";done \
+                | $FYAD --height=800 --width=600 --title="$YTITLE - FOLDER" --text "\n  Select the partitions you want to flash\n" --list --checklist \
+                        --column="Flash":CHK --column="Image File":TXT --column="Target partition" --listen --no-selection \
+                        --button=FLASH:0 --button=Abort:1 |cut -d "|" -f2-3 | tr "|" ":" )
+    [ $? -ne 0 ] && F_ERR $FUNCNAME 0 "No partition?"
+
+    F_ELOG "choosen partitions: $CHOOSENP"
+
+    # FLASH
+    for img in $CHOOSENP; do
+        FFILE="$IMGDIR/${img/:*}"
+        FPART=${img/*:}
+        F_ELOG "flashing: $FFILE to $FPART"
+        (python2 $LAFPATH/partitions.py --restore "$FFILE" $FPART && echo 100) || echo 100 | $FYAD --title="$YTITLE - FLASHING" --width=400 --progress --progress-text "flashing $FPART ..." --pulsate --auto-close --auto-kill --button=Abort:1
+        [ $? -ne 0 ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  while flashing $FPART! DO NOT REBOOT YOUR DEVICE!!!! Ask in IRC or support thread what to do now!"
+    done
+
+}; export -f F_FLASHPART
 
 # authenticate device
 F_AUTH(){
