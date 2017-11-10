@@ -246,4 +246,52 @@ F_CHKDEVCON(){
     # takes no argument
     F_AUTH
     python2 $LAFPATH/lglaf.py --skip-hello -c '!EXEC  uname -m\0'
-}
+}; export -f F_CHKDEVCON
+
+# open a shell
+F_SHELL(){
+    # takes no arguments
+    
+    F_ELOG $FUNCNAME started
+
+    F_CHKDEVCON
+    if [ $? -eq 0 ];then
+        F_ELOG "device connected... Opening shell now!"
+         xterm -e "cd $LAFPATH && echo -e '\n*****************\nTYPE the word exit TO CLOSE THIS WINDOW\n*********************\n\n'; python2 $LAFPATH/auth.py; python2 $LAFPATH/lglaf.py"
+    else
+        F_MSG 600 "\n  ERROR!\n\n  NO DEVICE CONNECTED?\n If you have connected your device ensure that it is in DOWNLOAD mode\n(not fastboot, not recovery, not booted Android)" "--button=Return:0"
+    fi
+    F_ELOG $FUNCNAME ended
+}; export -f F_SHELL
+
+# start dialog for kdz extract
+F_STARTKDZ(){
+    # takes no arguments
+    F_ELOG $FUNCNAME started
+
+    EXCHOICES=$($FYAD --title="$YTITLE - EXTRACT" --width=800 --always-print-result --text \
+        "\n  This will extract any KDZ file for you with just a click\n" \
+        --form \
+        --field="KDZ file":FL --file-filter="KDZ files (*.kdz)| *.kdz *.KDZ"\
+        --field="Target directory":DIR \
+        --field=:LBL \
+        --field="Extract useless userdata partition (leave unchecked if unsure)":CHK \
+        --field="Extract useless cache partition (leave unchecked if unsure)":CHK \
+        undef undef true false false\
+        )
+    F_ELOG "returned: $EXCHOICES"
+    KDZFILE=$(echo "$EXCHOICES" | cut -d '|' -f 1)
+    TARGDIR=$(echo "$EXCHOICES" | cut -d '|' -f 2)
+    UDATA=$(echo "$EXCHOICES" | cut -d '|' -f 4)
+    KCACHE=$(echo "$EXCHOICES" | cut -d '|' -f 5)
+    
+    F_ELOG "KDZFILE = $KDZFILE, TARGDIR = $TARGDIR, UDATA = $UDATA, KCACHE = $KCACHE"
+
+    [ ! -f "$KDZFILE" ] && F_ERR "EXTRACTKDZ" 3 "$KDZFILE does not exists or is not readable!"
+    [ ! -z "$TARGDIR" ] && [ ! -d "$TARGDIR" ] && echo mkdir -p $TARGDIR
+
+    F_EXTRACTKDZ "$KDZFILE" "$TARGDIR" $UDATA $KCACHE
+
+    F_ELOG $FUNCNAME ended
+};export -f F_STARTKDZ
+

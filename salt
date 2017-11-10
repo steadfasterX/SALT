@@ -82,7 +82,7 @@ for i in $DEVINF;do
     esac
 done        
 
-$FYAD --title="$YTITLE" --width=600 --text "\n  <b>$TFULLNAME</b>\n  is a replacement for the windows software LGUP (plus MANY more features!!)\n  and brought to you by <b>steadfasterX</b>.\n\n  $TNAME is based on:\n\t- the awesome <a href='https://github.com/Lekensteyn/lglaf'>LGLAF</a> code by Peter Wu\n\t- <a href='https://github.com/ehem/kdztools'>kdztools</a> by Elliott Mitchell\n\t- <b>MANY</b> enhancements by steadfasterX (including this GUI)\n\n  ${TNAME} sources: <a href='https://github.com/steadfasterX/salt'>$TNAME</a> | <a href='https://github.com/steadfasterX/lglaf'>Patched LGLAF</a> | <a href='https://github.com/steadfasterX/salt'>Patched kdztools</a>\n  $TNAME support: <a href='https://tinyurl.com/salty'>XDA thread</a>\n\n  The following comes directly from your device:\n  (no_device_found if no device connected)" \
+$FYAD --title="$YTITLE" --width=600 --text "\n  <b>$TFULLNAME</b>\n  is a replacement for the windows software LGUP (plus MANY more features!!)\n  and brought to you by <b>steadfasterX</b>.\n\n  $TNAME is based on:\n\t- the awesome <a href='https://github.com/Lekensteyn/lglaf'>LGLAF</a> code by Peter Wu\n\t- <a href='https://github.com/ehem/kdztools'>kdztools</a> by Elliott Mitchell\n\t- <b>MANY</b> enhancements by steadfasterX (including this GUI)\n\n  ${TNAME} sources: <a href='https://github.com/steadfasterX/salt'>$TNAME</a> | <a href='https://github.com/steadfasterX/lglaf'>Patched LGLAF</a> | <a href='https://github.com/steadfasterX/salt'>Patched kdztools</a>\n  $TNAME support: <a href='https://tinyurl.com/salty'>XDA thread</a>\n\n  The following comes directly from your device:\n  (<i>\"no_device_found\"</i> if no device connected)" \
     --form \
     --field="  Device model":RO $LGMODEL \
     --field="  Firmware":RO $LGSWV \
@@ -92,44 +92,16 @@ $FYAD --title="$YTITLE" --width=600 --text "\n  <b>$TFULLNAME</b>\n  is a replac
     --field="  Battery level":RO $LGBATT \
     --field="  AntiRollback":RO $DEVARB \
     --field="  \nChoose your tool:":LBL \
-    no_device_found no_device_found no_device_found no_device_found no_device_found no_device_found \
+    no_device_found no_device_found no_device_found no_device_found no_device_found no_device_found no_device_found true \
     --buttons-layout=spread \
-    --button="Open a shell":3 \
-    --button="Extract KDZ file":1 \
-    --button="Flash KDZ file":2
+    --button="Shell!$SICONS/terminal_60x60.png!Open an adb like shell while in download mode":"bash -c F_SHELL" \
+    --button="Extract KDZ!$SICONS/archive_60x60.png!Extract a KDZ file. If you want to flash choose Extract+Flash instead":"bash -c F_STARTKDZ" \
+    --button="Flash (folder)!$SICONS/flash_60x60.jpg!This will flash one or multiple partitions from any folder":"bash -c F_FLASHPART "\
+    --button="Extract+Flash (KDZ)!$SICONS/kdzflash_60x60.png!Extract and Flash like LGUP would do":2 
 UMODE=$?
 } 
 
 F_MAIN
-
-# extract a kdz
-if [ $UMODE -eq 1 ];then
-    EXCHOICES=$($FYAD --title="$YTITLE - EXTRACT" --width=800 --always-print-result --text \
-        "\n  This will extract any KDZ file for you with just a click\n" \
-        --form \
-        --field="KDZ file":FL --file-filter="KDZ files (*.kdz)| *.kdz *.KDZ"\
-        --field="Target directory":DIR \
-        --field=:LBL \
-        --field="Extract useless userdata partition (leave unchecked if unsure)":CHK \
-        --field="Extract useless cache partition (leave unchecked if unsure)":CHK \
-        undef undef true false false\
-        )
-    F_ELOG "returned: $EXCHOICES"
-    KDZFILE=$(echo "$EXCHOICES" | cut -d '|' -f 1)
-    TARGDIR=$(echo "$EXCHOICES" | cut -d '|' -f 2)
-    UDATA=$(echo "$EXCHOICES" | cut -d '|' -f 4)
-    KCACHE=$(echo "$EXCHOICES" | cut -d '|' -f 5)
-    
-    F_ELOG "KDZFILE = $KDZFILE, TARGDIR = $TARGDIR, UDATA = $UDATA, KCACHE = $KCACHE"
-
-    [ ! -f "$KDZFILE" ] && F_ERR "EXTRACTKDZ" 3 "$KDZFILE does not exists or is not readable!"
-    [ ! -z "$TARGDIR" ] && [ ! -d "$TARGDIR" ] && echo mkdir -p $TARGDIR
-
-    F_EXTRACTKDZ "$KDZFILE" "$TARGDIR" $UDATA $KCACHE
-
-    # go back to main window
-    #F_MAIN
-fi
 
 # flash a kdz
 if [ $UMODE -eq 2 ];then
@@ -169,18 +141,4 @@ if [ $UMODE -eq 2 ];then
     #[ $? -ne 0 ]&& F_MSG 400 "\n  Do you want to try to flash again?" "--button=Yes:0 --button=No:2"
 fi
 
-# open a shell
-if [ $UMODE -eq 3 ];then
-    F_CHKDEVCON
-    if [ $? -eq 0 ];then
-        F_ELOG "device connected... Opening shell now!"
-         xterm -e "cd $LAFPATH && echo -e '\n*****************\nTYPE the word exit TO CLOSE THIS WINDOW\n*********************\n\n'; python2 auth.py; python2 lglaf.py"
-    else
-        F_MSG 600 "\n  ERROR!\n\n  NO DEVICE CONNECTED?\n If you have connected your device ensure that it is in DOWNLOAD mode\n(not fastboot, not recovery, not booted Android)" "--button=Return:0"
-    fi
-    #F_MAIN
-fi
-
 F_ELOG "all done"
-
-
