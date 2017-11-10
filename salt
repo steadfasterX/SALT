@@ -69,7 +69,9 @@ fi
 F_MAIN(){
 DEVINF=$(F_GETINFO)
 for i in $DEVINF;do
+    F_ELOG "parsing $i"
     case ${i/:*/} in
+        arb) DEVARB=${i/*:/};;
         battery_level) LGBATT=${i/*:/};;
         model_name) LGMODEL=${i/*:/};;
         device_sw_version) LGSWV=${i/*:/};;
@@ -88,6 +90,8 @@ $FYAD --title="$YTITLE" --width=600 --text "\n  <b>$TFULLNAME</b>\n  is a replac
     --field="  Country":RO $LGCOUNTRY \
     --field="  Secure device":RO $LGSEC \
     --field="  Battery level":RO $LGBATT \
+    --field="  AntiRollback":RO $DEVARB \
+    --field="  \nChoose your tool:":LBL \
     no_device_found no_device_found no_device_found no_device_found no_device_found no_device_found \
     --buttons-layout=spread \
     --button="Open a shell":3 \
