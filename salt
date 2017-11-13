@@ -41,12 +41,6 @@ if [ ! -d "$LAFPATH" ];then
     else
         F_EXIT
     fi
-else
-    F_MSG 400 "\n  LGLAF found in:\n\n${LAFPATH}\n\n  Should I update it for you now (recommended)?" "--button=Yes:0 --button=Skip:1"
-    UPDLAF=$?
-    if [ "$UPDLAF" -eq 0 ];then
-        (cd $LAFPATH && git pull && echo 100) | $FYAD --title="$YTITLE - syncing" --width=400 --progress --progress-text "syncing..." --pulsate --auto-close --auto-kill --button=Abort:1
-    fi
 fi
 if [ ! -d "$KDZTOOLS" ];then
     F_MSG 400 "\n  ERROR!\n\n  Expected kdztools here:\n  ${KDZTOOLS}\n\n  but it is missing..\n\n  Should I download it for you now?" "--button=Yes:0 --button=Abort:1"
@@ -55,12 +49,6 @@ if [ ! -d "$KDZTOOLS" ];then
         git clone $KDZGIT $KDZTOOLS
     else
         F_EXIT
-    fi
-else
-    F_MSG 400 "\n  KDZTOOLS found in:\n\n${KDZTOOLS}\n\n  Should I update it for you now (recommended)?" "--button=Yes:0 --button=Skip:1"
-    UPDKDZ=$?
-    if [ "$UPDKDZ" -eq 0 ];then
-        (cd $KDZTOOLS && git pull && echo 100) || echo 100 | $FYAD --title="$YTITLE - syncing" --width=400 --progress --progress-text "syncing..." --pulsate --auto-close --auto-kill --button=Abort:0
     fi
 fi
 
@@ -99,13 +87,12 @@ $FYAD --title="$YTITLE" --width=600 --text "\n  <b>$TFULLNAME</b>\n  is a replac
     --field="  Secure device":RO $LGSEC \
     --field="  Battery level":RO $LGBATT \
     --field="  AntiRollback":RO $DEVARB \
-    --field="  \nChoose your tool:":LBL \
-    true \
     --buttons-layout=spread \
-    --button="Shell!$SICONS/terminal_60x60.png!Open an adb like shell while in download mode":"bash -c F_SHELL" \
-    --button="Extract KDZ!$SICONS/archive_60x60.png!Extract a KDZ file. If you want to flash choose Extract+Flash instead":"bash -c F_STARTKDZ" \
-    --button="Flash (folder)!$SICONS/flash_60x60.jpg!This will flash one or multiple partitions from any folder":"bash -c F_FLASHPART "\
-    --button="Extract+Flash (KDZ)!$SICONS/kdzflash_60x60.png!Extract and Flash like LGUP would do":2 
+    --button="!$SICONS/update_48x48.png!Updating SALT (kdztools, lglaf, SALT)":"bash -c F_UPDATE" \
+    --button="Shell!$SICONS/terminal_48x48.png!Open an adb like shell while in download mode":"bash -c F_SHELL" \
+    --button="Extract KDZ!$SICONS/archive_48x48.png!Extract a KDZ file. If you want to flash choose Extract+Flash instead":"bash -c F_STARTKDZ" \
+    --button="Flash (folder)!$SICONS/flash_48x48.jpg!This will flash one or multiple partitions from any folder":"bash -c F_FLASHPART "\
+    --button="Flash (KDZ)!$SICONS/kdzflash_48x48.png!Extract and Flash like LGUP would do":2 
 UMODE=$?
 } 
 
