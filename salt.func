@@ -261,24 +261,24 @@ F_FLASHPART(){
         AVIMG="${f/:*}"
         APART=$(echo "${f/*:}" | sed 's/\.image//g;s/\.img//g;s/\.bin//g')
         case $APART in
-            cache|userdata|modemst1|modemst2|persist|persistent|drm)
+            grow|cache|userdata|modemst1|modemst2|persist|persistent|drm)
               if [ -z "$IRES" ];then IRES="false\n${AVIMG}\n${APART}\nunneeded"; else IRES="$IRES false\n${AVIMG}\n${APART}\nunneeded" ;fi
             ;;
-            rpm|rpmbak|tz|tzbak|sdi|sdibak|aboot|abootbak|pmic|pmicbak|hyp|sbl1|sbl1bak)
-              if [ -z "$IRES" ];then IRES="false\n${AVIMG}\n${APART}\nbootloader"; else IRES="$IRES false\n${AVIMG}\n${APART}\nbootloader" ;fi
+            rpm|rpmbak|tz|tzbak|sdi|sdibak|aboot|abootbak|pmic|pmicbak|hyp|hypbak|sbl1|sbl1bak)
+              if [ -z "$IRES" ];then IRES="true\n${AVIMG}\n${APART}\nbootloader"; else IRES="$IRES true\n${AVIMG}\n${APART}\nbootloader" ;fi
             ;;
             misc|devinfo)
               if [ -z "$IRES" ];then 
-                IRES="false\n<span\tcolor='#ff0000'>${AVIMG}</span>\n<span\tcolor='#ff0000'>${APART}</span>\n<span\tcolor='#ff0000'>dangerous</span>"
+                IRES="false\n${AVIMG}\n${APART}</span>\n<span\tcolor='#ff0000'>dangerous</span>"
               else 
-                IRES="$IRES false\n<span\tcolor='#ff0000'>${AVIMG}</span>\n<span\tcolor='#ff0000'>${APART}</span>\n<span\tcolor='#ff0000'>dangerous</span>"
+                IRES="$IRES false\n${AVIMG}\n${APART}\n<span\tcolor='#ff0000'>dangerous</span>"
               fi
             ;;
             *)
             if [ -z "$IRES" ];then
-                IRES="true\n<span\tcolor='#558000'>${AVIMG}</span>\n<span\tcolor='#558000'>${APART}</span>\n<span\tcolor='#558000'>safe</span>"
+                IRES="true\n${AVIMG}\n${APART}\n<span\tcolor='#558000'>safe</span>"
             else
-                IRES="$IRES true\n<span\tcolor='#558000'>${AVIMG}</span>\n<span\tcolor='#558000'>${APART}</span>\n<span\tcolor='#558000'>safe</span>"
+                IRES="$IRES true\n${AVIMG}\n${APART}\n<span\tcolor='#558000'>safe</span>"
             fi
             ;;
         esac
@@ -294,14 +294,51 @@ F_FLASHPART(){
 
     F_ELOG "choosen partitions: $CHOOSENP"
 
+    # create progress bars dynamically
+    for bar in $CHOOSENP; do
+        BARNAME="${bar/*:}":NORM
+	if [ -z "$YADBARS" ];then
+        	YADBARS="--bar $BARNAME"
+	else
+		YADBARS="$YADBARS --bar=$BARNAME"
+	fi
+    done
+ 
     # FLASH
+    CNT=0
     for img in $CHOOSENP; do
         FFILE="$IMGDIR/${img/:*}"
         FPART=${img/*:}
         F_ELOG "flashing: $FFILE to $FPART"
-        (python2 $LAFPATH/partitions.py --restore "$FFILE" $FPART && echo 100) || echo 100 | $FYAD --title="$YTITLE - FLASHING" --width=400 --progress --progress-text "flashing $FPART ..." --pulsate --auto-close --auto-kill --button=Abort:1
-        [ $? -ne 0 ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  while flashing $FPART! DO NOT REBOOT YOUR DEVICE!!!! Ask in IRC or support thread what to do now!"
-    done
+
+        CNT=$((CNT+1))
+        #echo "${CNT}:5"
+        #echo "${CNT}:10"
+	#python2 $LAFPATH/partitions.py --restore "$FFILE" $FPART 2>&1 | sed "s/^/${CNT}:#/g"
+        #test ${PIPESTATUS[0]} -eq 0 && echo "${CNT}:100"
+       	echo "5"
+	# fake the progress bar as lglaf do not have it
+	PBAR=10
+	
+	while [ $PBAR -le 100 ];do echo "$PBAR"; PBAR=$((PBAR+3)); sleep 5s ;done &
+	PBLOOP=$!
+        python2 $LAFPATH/partitions.py --restore "$FFILE" $FPART 2>&1 | sed "s/^/#$FPART: /g"
+	FLASHERR=$?
+	if [ $FLASHERR -eq 0 ];then
+		kill $PBLOOP && echo "100"
+	else
+		echo "# $FPART: FAILED"
+		kill $PBLOOP && F_ERR $FUNCNAME 4 "\n  ERROR!\n\n  DO NOT REBOOT YOUR DEVICE!\n  FLASHING PROBLEM OCCURED!!!\n  while flashing:\n\n  <b>$FPART</b>" 
+	fi
+    done | $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if the progress bar does NOT get up to 100%: DO NOT REBOOT THE DEVICE!)\n\n" --width 900 --progress $YADBARS --button='Close (WAIT until all is flashed)':1 --auto-kill
+
+#| $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if the progress bar do NOT get to 100% DO NOT REBOOT THE DEVICE!)\n\n" --width 900 --progress $YADBARS --button="Abort (DANGEROUS!)" --auto-kill
+ 
+# | $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if a progress bar do NOT get to 100% DO NOT REBOOT THE DEVICE!)\n\n" --width 1000 --multi-progress $YADBARS --button=Close
+
+        #(python2 $LAFPATH/partitions.py --restore "$FFILE" $FPART && echo 100) || echo 100 | $FYAD --title="$YTITLE - FLASHING" --width=400 --progress --progress-text "flashing $FPART ..." --pulsate --auto-close --auto-kill --button=Abort:1
+        #[ $? -ne 0 ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  while flashing $FPART! DO NOT REBOOT YOUR DEVICE!!!! Ask in IRC or support thread what to do now!"
+    #done
 
 }; export -f F_FLASHPART
 
