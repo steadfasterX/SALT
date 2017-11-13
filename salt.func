@@ -327,3 +327,19 @@ F_STARTKDZ(){
     F_ELOG $FUNCNAME ended
 };export -f F_STARTKDZ
 
+# Update everything!
+F_UPDATE(){
+    # takes no arguments
+    #
+
+    CNT=0
+    for u in $KDZTOOLS $LAFPATH $SALTPATH; do 
+        CNT=$((CNT+1))
+        echo "${CNT}:5"
+        cd $u 
+        echo "${CNT}:10"
+        git pull 2>&1 | sed "s/^/${CNT}:#/g"
+        test ${PIPESTATUS[0]} -eq 0 && echo "${CNT}:100"
+    done | $FYAD --title="$YTITLE - UPDATING" --text="\n  <b>Be patient while SALT freshen up...</b>\n  (if a progress bar do NOT get to 100% a manual update is required)\n\n" --width 800 --multi-progress --bar="SALT codebase":norm --bar="LGLAF codebase":norm --bar="kdztools codebase":norm --button=Close
+}; export -f F_UPDATE
+
