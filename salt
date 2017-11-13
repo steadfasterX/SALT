@@ -89,11 +89,13 @@ $FYAD --title="$YTITLE" --width=600 --text "\n  <b>$TFULLNAME</b>\n  is a replac
     --field="  Secure device":RO $LGSEC \
     --field="  Battery level":RO $LGBATT \
     --field="  AntiRollback":RO $DEVARB \
+    --field="\n  <b><span color='#ff0000'>Mouse-Over a button to get more details!</span></b>":LBL \
+    true \
     --buttons-layout=spread \
     --button="!$SICONS/update_48x48.png!Updating SALT (kdztools, lglaf, SALT)":"bash -c F_UPDATE" \
     --button="Shell!$SICONS/terminal_48x48.png!Open an adb like shell while in download mode":"bash -c F_SHELL" \
     --button="Extract KDZ!$SICONS/archive_48x48.png!Extract a KDZ file. If you want to flash choose Extract+Flash instead":"bash -c F_STARTKDZ" \
-    --button="Flash (folder)!$SICONS/flash_48x48.jpg!This will flash one or multiple partitions from any folder":"bash -c F_FLASHPART "\
+    --button="Flash (folder)!$SICONS/flash_48x48.png!This will flash one or multiple partitions from any folder":"bash -c F_FLASHPART "\
     --button="Flash (KDZ)!$SICONS/kdzflash_48x48.png!Extract and Flash like LGUP would do":2 
 UMODE=$?
 } 
