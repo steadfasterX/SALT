@@ -22,6 +22,8 @@ source $FUNCS
 # check requirements:
 [ ! -x $YAD ]&& F_ECHOLOG "ERROR: Missing requirement <yad>. Install YAD and try again!" && F_EXIT yad-missing 3
 
+[ ! -x $LAFTERM ] && F_ERR no-lafterminal 3 "\n  ERROR!\n\n  Missing Terminal (usually xterm).\n  Check salt.vars file."
+
 # check root:
 ME=$(id -u)
 if [ "$ME" -ne 0 ];then
