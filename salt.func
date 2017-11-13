@@ -138,6 +138,35 @@ F_CKARB(){
     echo $KDZARB
 }; export -f F_CKARB
 
+# check device model
+F_CHKMODEL(){
+    # takes 1 argument
+    #
+    # 1 => KDZFILE to compare
+
+    KFILE="$1"
+    [ -z "$KFILE" -o ! -f "$KFILE" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  KFILE missing for compare!"
+
+    DEVINF=$(F_GETINFO)
+    for i in $DEVINF;do
+        case ${i/:*/} in
+           model_name) LGMODEL=${i/*:/};;
+        esac
+    done
+    KDZMODEL=$(dd if=$KFILE bs=512 count=10000 2>&1| strings | egrep -m1 'LG-[L|H|V]')
+    if [ -z "$KDZMODEL" ] ;then
+        #F_MSG 400 "\n  ERROR!\n\n  Cannot determine model in KDZ file.."
+        RES="${LGMODEL}:unknown"
+    else
+        #F_MSG 400 "\n   Check completed.\n\n\tDevice model:\t$LGMODEL\n\tKDZ is for:\t$KDZMODEL\n"
+        #if [ "$KDZMODEL" != "$LGMODEL" ];then
+        #    F_MSG 400 "\n  Device and KDZ file seems to be <b>NOT</b> compatible!\n  If you continue this can result in a HARD BRICK!" "--button='I know what 9008 mode is':0 --button='ABORT':1"
+        #    [ $? -ne 0 ] && F_ERR $FUNCNAME 3 "Aborted by user"
+        #fi
+        RES="${LGMODEL}:${KDZMODEL}"
+    fi
+    echo $RES
+} ; export -f F_CHKMODEL
 
 # flash a KDZ
 F_FLASHKDZ(){
@@ -164,9 +193,9 @@ F_FLASHKDZ(){
         ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info --text "\n  <b><span color='#009900'>FLASHING KDZ (TEST)...</span></b>\n" --listen --tail --height=600 --width=900 --wrap --fore=blue --button="Next":0
         $FYAD --title="$YTITLE - FLASH" --text "\n  TEST run finished\n\n  Do you want to continue to FLASH in REAL now?" --button=FLASH:1 --button=Cancel:0
         [ $? -ne 1 ] && echo canceling.. && F_EXIT $FUNCNAME $?
-    else
-        $FYAD --title="$YTITLE - FLASH" --text "\n  NOW I'M READY!\n\n  Do you want to continue to FLASH now?" --button=FLASH:1 --button=Cancel:0
-        [ $? -ne 1 ] && echo canceling.. && F_EXIT $FUNCNAME $?
+    #else
+    #    $FYAD --title="$YTITLE - FLASH" --text "\n  NOW I'M READY!\n\n  Do you want to continue to FLASH now?" --button=FLASH:1 --button=Cancel:0
+    #    [ $? -ne 1 ] && echo canceling.. && F_EXIT $FUNCNAME $?
     fi
 
     # check device connection
@@ -176,11 +205,9 @@ F_FLASHKDZ(){
     # TODO
 
     # check device model
-    # TODO
-    F_CHKMODEL
+    CHKMRES=$(F_CHKMODEL "$LGKDZ")
     
     # check ARB
-    # TODO 
     ARBOK=0
     KARB=$(F_CKARB $KDZTMP/extracteddz)
     DARB=$(F_CDARB)
@@ -191,10 +218,15 @@ F_FLASHKDZ(){
     [ "$KARB" -ge "$DARB" ] && F_ELOG "Device and KDZ ARB are compatible" && ARBOK=1
     # a bulletproof method to avoid issues with any of the above (e.g. when KARB or DARB are not digits etc)
     [ "$ARBOK" -ne 1 ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  ARB is NOT compatible with your device! ABORTED!"
+
     # manual verification by the user
-    $FYAD --title="$YTITLE - ARB" --text "\n  Your device <b>seems</b> to be compatible with the KDZ file\n  Device:\t$DARB\n  KDZ:\t$KARB\n\n  You can doublecheck <a href='http://tinyurl.com/antirollg4'>here</a>\n\n  Do you really want to continue and so FLASH now?" --button="Flash (on your own risk)":0 --button=Cancel:1
+    if [ -z "${CHKMRES/*:}" ] || [ -z "${CHKMRES/:*}" ]|| [ "${CHKMRES/:*}" == "unknown" ] || [ "${CHKMRES/*:}" != "${CHKMRES/:*}" ];then
+        FYAD --title="$YTITLE - CHECKUP" --text "\n  WARNING: <b><span color='#ff0000'>KDZ file and device information does not match!</span></b>\n  Device model:\t${CHKMRES/*:}\n  KDZ is for:\t\t${CHKMRES/:*}\n\n  ARB of your device <b>seems</b> to be compatible with the KDZ file\n  Device:\t$DARB\n  KDZ:\t$KARB\n\n  You can doublecheck <a href='http://tinyurl.com/antirollg4'>here</a>\n\n  Do you really want to continue and so FLASH now?" --button="Flash (may HARD BRICK)":0 --button=Cancel:1
+    else
+        $FYAD --title="$YTITLE - CHECKUP" --text "\n  KDZ <b>file and device</b> information match\n  Device model:\t${CHKMRES/*:}\n  KDZ is for:\t\t${CHKMRES/:*}\n\n  ARB of your device <b>seems</b> to be compatible with the KDZ file\n  Device:\t$DARB\n  KDZ:\t$KARB\n  You can doublecheck ARB <a href='http://tinyurl.com/antirollg4'>here</a>\n\n  Do you really want to continue and so FLASH now?" --button="Flash (on your own risk)":0 --button=Cancel:1
+    fi
     # abort when needed
-    [ $? -ne 0 ] && F_ERR $FUNCNAME 3 "Aborted on ARB info"
+    [ $? -ne 0 ] && F_ERR $FUNCNAME 3 "\n  Aborted on user check verification"
 
     # If all the above is fine: FLASH
     ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info --text "\n  <b><span color='#ff0000'>FLASHING KDZ (REAL)...</span></b>\n" --listen --tail --height=600 --width=900 --wrap --fore=blue --button="Close":0
