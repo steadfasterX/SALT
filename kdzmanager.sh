@@ -127,6 +127,8 @@ if [ $EXTRACT -eq 1 ];then
         python2 ${KDZTOOLS}/undz -s -f ${KDZDIR}/extractedkdz/*.dz -d ${KDZDIR}/extracteddz
         # delete unneeded parse files
         rm -rvf ${KDZDIR}/extracteddz/*.params
+        # rename GPT files to ensure they will not flashed by accident
+        for gpt in $(find ${KDZDIR}/extracteddz/ -type f |grep -i GPT);do mv -v "$gpt" "${gpt/\.image/.gpt}";done
         # delete userdata partition when not needed
         [ "$UDATA" -eq 0 ] && echo "You have selected to delete userdata partition" && rm -rfv ${KDZDIR}/extracteddz/userdata*
         # delete cache partition when not needed
