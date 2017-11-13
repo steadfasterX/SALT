@@ -311,16 +311,13 @@ F_FLASHPART(){
         FPART=${img/*:}
         F_ELOG "flashing: $FFILE to $FPART"
 
-        CNT=$((CNT+1))
-        #echo "${CNT}:5"
-        #echo "${CNT}:10"
-	#python2 $LAFPATH/partitions.py --restore "$FFILE" $FPART 2>&1 | sed "s/^/${CNT}:#/g"
-        #test ${PIPESTATUS[0]} -eq 0 && echo "${CNT}:100"
        	echo "5"
-	# fake the progress bar as lglaf do not have it
 	PBAR=10
-	
-	while [ $PBAR -le 100 ];do echo "$PBAR"; PBAR=$((PBAR+3)); sleep 5s ;done &
+	# inform yad which partition we flash
+	echo "#flashing: $FPART"
+
+	# fake the progress bar as lglaf do not have it
+	while [ $PBAR -le 90 ];do echo "$PBAR"; PBAR=$((PBAR+1)); sleep 5s ;done &
 	PBLOOP=$!
         python2 $LAFPATH/partitions.py --restore "$FFILE" $FPART 2>&1 | sed "s/^/#$FPART: /g"
 	FLASHERR=$?
@@ -331,15 +328,6 @@ F_FLASHPART(){
 		kill $PBLOOP && F_ERR $FUNCNAME 4 "\n  ERROR!\n\n  DO NOT REBOOT YOUR DEVICE!\n  FLASHING PROBLEM OCCURED!!!\n  while flashing:\n\n  <b>$FPART</b>" 
 	fi
     done | $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if the progress bar does NOT get up to 100%: DO NOT REBOOT THE DEVICE!)\n\n" --width 900 --progress $YADBARS --button='Close (WAIT until all is flashed)':1 --auto-kill
-
-#| $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if the progress bar do NOT get to 100% DO NOT REBOOT THE DEVICE!)\n\n" --width 900 --progress $YADBARS --button="Abort (DANGEROUS!)" --auto-kill
- 
-# | $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if a progress bar do NOT get to 100% DO NOT REBOOT THE DEVICE!)\n\n" --width 1000 --multi-progress $YADBARS --button=Close
-
-        #(python2 $LAFPATH/partitions.py --restore "$FFILE" $FPART && echo 100) || echo 100 | $FYAD --title="$YTITLE - FLASHING" --width=400 --progress --progress-text "flashing $FPART ..." --pulsate --auto-close --auto-kill --button=Abort:1
-        #[ $? -ne 0 ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  while flashing $FPART! DO NOT REBOOT YOUR DEVICE!!!! Ask in IRC or support thread what to do now!"
-    #done
-
 }; export -f F_FLASHPART
 
 # authenticate device
