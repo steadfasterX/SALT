@@ -229,19 +229,24 @@ F_FLASHKDZ(){
     [ $? -ne 0 ] && F_ERR $FUNCNAME 3 "\n  Aborted on user check verification"
 
     # If all the above is fine: FLASH
-    ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info --text "\n  <b><span color='#ff0000'>FLASHING KDZ (REAL)...</span></b>\n" --listen --tail --height=600 --width=900 --wrap --fore=blue --button="Close":0
+    F_FLASHPART "$KDZTMP/extracteddz"
+    #($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info --text "\n  <b><span color='#ff0000'>FLASHING KDZ (REAL)...</span></b>\n" --listen --tail --height=600 --width=900 --wrap --fore=blue --button="Close":0
 }; export -f F_FLASHKDZ
 
 # choose and flash partitions from a backup or extracted KDZ
 F_FLASHPART(){
-    # takes no arguments
+    # takes 1 optional argument
     #
+    # 1 => image files path
 
-    AIMGDIR=$($FYAD --width=600 --title="$YTITLE - FOLDER" --form \
-        --field="  Select the source folder":DIR \
-        $HOME)
-
-    IMGDIR=$(echo $AIMGDIR|cut -d '|' -f1)
+    if [ -z "$1" ];then
+        AIMGDIR=$($FYAD --width=600 --title="$YTITLE - FOLDER" --form \
+                    --field="  Select the source folder":DIR \
+                  $HOME)
+        IMGDIR=$(echo $AIMGDIR|cut -d '|' -f1)
+    else
+        IMGDIR="$1"
+    fi
 
     [ ! -d "$IMGDIR" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n Folder \n\n  $IMGDIR\n\n  does not exists?!"
     
@@ -249,9 +254,41 @@ F_FLASHPART(){
     IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name *.bin -or -name *.img -or -name *.image | tr " " "_");do echo "${ifile##*/}";done | tr "\n" " ")
 
     F_ELOG "($FUNCNAME) image files: $IMGFILES"
-    CHOOSENP=$(for files in $IMGFILES;do echo -e "true\n$files\n$(echo $files | sed 's/\.image//g;s/\.img//g;s/\.bin//g')";done \
-                | $FYAD --height=800 --width=600 --title="$YTITLE - FOLDER" --text "\n  Select the partitions you want to flash\n" --list --checklist \
-                        --column="Flash":CHK --column="Image File":TXT --column="Target partition" --listen --no-selection \
+
+    # give proper default choice for what to flash and what not
+    unset IRES
+    for f in $IMGFILES;do
+        AVIMG="${f/:*}"
+        APART=$(echo "${f/*:}" | sed 's/\.image//g;s/\.img//g;s/\.bin//g')
+        case $APART in
+            cache|userdata|modemst1|modemst2|persist|persistent|drm)
+              if [ -z "$IRES" ];then IRES="false\n${AVIMG}\n${APART}\nunneeded"; else IRES="$IRES false\n${AVIMG}\n${APART}\nunneeded" ;fi
+            ;;
+            rpm|rpmbak|tz|tzbak|sdi|sdibak|aboot|abootbak|pmic|pmicbak|hyp|sbl1|sbl1bak)
+              if [ -z "$IRES" ];then IRES="false\n${AVIMG}\n${APART}\nbootloader"; else IRES="$IRES false\n${AVIMG}\n${APART}\nbootloader" ;fi
+            ;;
+            misc|devinfo)
+              if [ -z "$IRES" ];then 
+                IRES="false\n<span\tcolor='#ff0000'>${AVIMG}</span>\n<span\tcolor='#ff0000'>${APART}</span>\n<span\tcolor='#ff0000'>dangerous</span>"
+              else 
+                IRES="$IRES false\n<span\tcolor='#ff0000'>${AVIMG}</span>\n<span\tcolor='#ff0000'>${APART}</span>\n<span\tcolor='#ff0000'>dangerous</span>"
+              fi
+            ;;
+            *)
+            if [ -z "$IRES" ];then
+                IRES="true\n<span\tcolor='#558000'>${AVIMG}</span>\n<span\tcolor='#558000'>${APART}</span>\n<span\tcolor='#558000'>safe</span>"
+            else
+                IRES="$IRES true\n<span\tcolor='#558000'>${AVIMG}</span>\n<span\tcolor='#558000'>${APART}</span>\n<span\tcolor='#558000'>safe</span>"
+            fi
+            ;;
+        esac
+    done
+
+    F_ELOG "($FUNCNAME) created yad list: $IRES"
+
+    CHOOSENP=$(for files in $IRES;do echo -e "$files" ;done \
+                | $FYAD --height=800 --width=600 --title="$YTITLE - FOLDER" --text "\n  Select the partitions you want to flash\n  (the RECOMMENDED partitions to flash are CHECKED already!)\n" --list --checklist \
+                        --column="Flash":CHK --column="Image File":TXT --column="Target partition" --column="Type" --listen --no-selection \
                         --button=FLASH:0 --button=Abort:1 |cut -d "|" -f2-3 | tr "|" ":" )
     [ $? -ne 0 ] && F_ERR $FUNCNAME 0 "No partition?"
 
