@@ -28,8 +28,7 @@ F_ELOG(){
   # takes 1 argument
   # 1 => Message to log/echo (can handle \t and \n)
   
-  echo -e "$1"
-  # TODO: write log..
+  echo -e "$(date '+%F %T'): $1" | tee -a $LOG
 
 }; export -f F_ELOG
 
