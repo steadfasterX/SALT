@@ -89,6 +89,7 @@ $FYAD --title="$YTITLE" --width=600 --text "\n  <b>$TFULLNAME</b>\n  is a replac
     --field="  Secure device":RO $LGSEC \
     --field="  Battery level":RO $LGBATT \
     --field="  AntiRollback":RO $DEVARB \
+    --field="  SALT debug log!$SICONS/log_16x16.png":FBTN "$FYAD --title=\"$YTITLE - DEBUGLOG\" --width=800 --height=800 --wrap --text-info --filename=$LOG --button=Close:0" \
     --field="\n  <b><span color='#ff0000'>Mouse-Over a button to get more details!</span></b>":LBL \
     true \
     --buttons-layout=spread \
