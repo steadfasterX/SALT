@@ -77,7 +77,7 @@ F_ERR(){
   [ -z "$EXPECTED" ] && EXPECTED=0
   
   if [ -z "$CALLER" ]||[ -z "$ERRCODE" ];then
-    F_ECHOLOG "Required argument missing in $FUNCNAME!"
+    F_ELOG "Required argument missing in $FUNCNAME!"
     F_EXIT $FUNCNAME 3
   fi
   if [ "$ERRCODE" != "$EXPECTED" ];then
