@@ -33,14 +33,15 @@ F_ELOG(){
 }; export -f F_ELOG
 
 # print a message
-F_MSG(){
+F_MSG(){ F_LOG "$FUNCNAME: started"
     # takes 2 arguments
     #   
     #  1 => box width
     #  2 => message to show
     # optional:
     #  3 => free args
-    $YAD --center --width=$1 --title="$YTITLE" --text "$2" $3
+    $FYAD --width=$1 --title="$YTITLE" --text "$2" $3
+    F_LOG "$FUNCNAME: ended"
 }; export -f F_MSG
 
 # print an error message
@@ -60,7 +61,7 @@ F_MSGE(){ F_LOG "$FUNCNAME: started"
 }; export -f F_MSGE
 
 # check errorcode + exit when not errorcode not as expected
-F_ERR(){
+F_ERR(){ F_LOG "$FUNCNAME: started"
   # takes 2-4 arguments
   #
   # mandantory:
@@ -90,7 +91,7 @@ F_ERR(){
 }; export -f F_ERR
 
 # exit properly
-F_EXIT(){
+F_EXIT(){ F_LOG "$FUNCNAME: started"
   # takes 2 arguments (mandantory)
   # 1 => the function or reason who calls the exit function
   # 2 => the exitcode to be used
@@ -101,21 +102,23 @@ F_EXIT(){
   
   # TODO (optional): do any other actions
   exit $ECODE
+    F_LOG "$FUNCNAME: ended"
 }; export -f F_EXIT
 
 # get current phone data
-F_GETINFO(){
+F_GETINFO(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
 
     IARB=$(F_CDARB)
     echo "arb:$IARB" \
     && python2 $LAFPATH/lglaf.py -c '!INFO GPRO \x08\x0b\0\0' \
        | python2 $LAFPATH/scripts/parse-props.py - \
-       | egrep "(device_sw_version|model_name|secure_device|laf_sw_version|device_factory_version|target_country|battery_level)" | tr "\n" " " | tr -d "'"
+       | egrep "(device_sw_version|model_name|secure_device|laf_sw_version|device_factory_version|target_country|battery_level)" | tr "\n" " " | tr -d "'" | tee -a $LOG
+    F_LOG "$FUNCNAME: ended"
 }; export -f F_GETINFO
 
 # extract a KDZ
-F_EXTRACTKDZ(){
+F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started"
     # takes XXXX arguments
     #
     #   1 => KDZ file name (full path)
@@ -130,23 +133,26 @@ F_EXTRACTKDZ(){
     [ -z "$LGKDZ" -o ! -f "$LGKDZ" ] && F_ERR $FUNCNAME 3 "Internal error: empty LGKDZ or file not found"
     [ -z "$LGTARGET" -o ! -d "$LGTARGET" ] && F_ERR $FUNCNAME 3 "Internal error: empty LGTARGET or directory not found"
 
-    ($KDZMGR --batch -x $LGKDZ -d $LGTARGET $EARGS 2>&1)  | $FYAD --title="$YTITLE - EXTRACT" --text-info --text "\n  <b><span color='#ff0000'>BE PATIENT! THE SCREEN REFRESHES EVERY MINUTE FIRST!\n  WAIT until you see the message: All done</span></b>\n" --listen --tail --height=600 --width=800 --wrap --fore=blue --button="Continue (wait until you see ALL DONE)":0
+    ($KDZMGR --batch -x $LGKDZ -d $LGTARGET $EARGS 2>&1) | tee -a $LOG | $FYAD --title="$YTITLE - EXTRACT" --text-info --text "\n  <b><span color='#ff0000'>BE PATIENT! THE SCREEN REFRESHES EVERY MINUTE FIRST!\n  WAIT until you see the message: All done</span></b>\n" --listen --tail --height=600 --width=800 --wrap --fore=blue --button="Continue (wait until you see ALL DONE)":0
     EXERR=$?
     [ $EXERR -ne 0 ] && F_ERR $FUNCNAME $EXERR "ERROR occured or aborted by user!"
+    F_LOG "$FUNCNAME: ended"
 }; export -f F_EXTRACTKDZ
 
 # check device for for antirollback bullshit (I'm still pissed off how a vendor is doing this! I mean HARDBRICK a phone ?? wtf LG?)
-F_CDARB(){
+F_CDARB(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
     #
     
     DEVARB=$(python2 $LAFPATH/partitions.py --skip-hello --dump - sbl1 | strings | grep "0 SW_ID" |cut -d " " -f 2 |tr -d "0")
     [ -z "$DEVARB" ] && DEVARB=0
+    F_LOG "$FUNCNAME: DEVARB=$DEVARB"
     echo $DEVARB
+    F_LOG "$FUNCNAME: ended"
 }; export -f F_CDARB
 
 # check local file for antirollback bullshit (I'm still pissed off how a vendor is doing this! I mean HARDBRICK a phone ?? wtf LG?)
-F_CKARB(){
+F_CKARB(){ F_LOG "$FUNCNAME: started"
     # takes 1 argument
     #  
     # 1 => path to the sbl1 file to check
@@ -158,11 +164,13 @@ F_CKARB(){
 
     KDZARB=$(strings "$ARBFILE" | grep "0 SW_ID" |cut -d " " -f 2 |tr -d "0")
     [ -z "$KDZARB" ] && KDZARB=0
+    F_LOG "KDZARB=$KDZARB"
     echo $KDZARB
+    F_LOG "$FUNCNAME: ended"
 }; export -f F_CKARB
 
 # check device model
-F_CHKMODEL(){
+F_CHKMODEL(){ F_LOG "$FUNCNAME: started"
     # takes 1 argument
     #
     # 1 => KDZFILE to compare
@@ -178,21 +186,17 @@ F_CHKMODEL(){
     done
     KDZMODEL=$(dd if=$KFILE bs=512 count=10000 2>&1| strings | egrep -m1 'LG-[L|H|V]')
     if [ -z "$KDZMODEL" ] ;then
-        #F_MSG 400 "\n  ERROR!\n\n  Cannot determine model in KDZ file.."
         RES="${LGMODEL}:unknown"
     else
-        #F_MSG 400 "\n   Check completed.\n\n\tDevice model:\t$LGMODEL\n\tKDZ is for:\t$KDZMODEL\n"
-        #if [ "$KDZMODEL" != "$LGMODEL" ];then
-        #    F_MSG 400 "\n  Device and KDZ file seems to be <b>NOT</b> compatible!\n  If you continue this can result in a HARD BRICK!" "--button='I know what 9008 mode is':0 --button='ABORT':1"
-        #    [ $? -ne 0 ] && F_ERR $FUNCNAME 3 "Aborted by user"
-        #fi
         RES="${LGMODEL}:${KDZMODEL}"
     fi
+    F_LOG "$FUNCNAME: $RES"
     echo $RES
+    F_LOG "$FUNCNAME: ended"
 } ; export -f F_CHKMODEL
 
 # flash a KDZ
-F_FLASHKDZ(){
+F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
     # takes XXXX arguments
     #
     #   1 => KDZ filename
@@ -213,12 +217,9 @@ F_FLASHKDZ(){
 
     # test mode?
     if [ "$LGDRY" != "FALSE" ];then
-        ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info --text "\n  <b><span color='#009900'>FLASHING KDZ (TEST)...</span></b>\n" --listen --tail --height=600 --width=900 --wrap --fore=blue --button="Next":0
+        ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1) | tee -a $LOG | $FYAD --title="$YTITLE - FLASH" --text-info --text "\n  <b><span color='#009900'>FLASHING KDZ (TEST)...</span></b>\n" --listen --tail --height=600 --width=900 --wrap --fore=blue --button="Next":0
         $FYAD --title="$YTITLE - FLASH" --text "\n  TEST run finished\n\n  Do you want to continue to FLASH in REAL now?" --button=FLASH:1 --button=Cancel:0
         [ $? -ne 1 ] && echo canceling.. && F_EXIT $FUNCNAME $?
-    #else
-    #    $FYAD --title="$YTITLE - FLASH" --text "\n  NOW I'M READY!\n\n  Do you want to continue to FLASH now?" --button=FLASH:1 --button=Cancel:0
-    #    [ $? -ne 1 ] && echo canceling.. && F_EXIT $FUNCNAME $?
     fi
 
     # check device connection
@@ -254,10 +255,11 @@ F_FLASHKDZ(){
     # If all the above is fine: FLASH
     F_FLASHPART "$KDZTMP/extracteddz"
     #($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info --text "\n  <b><span color='#ff0000'>FLASHING KDZ (REAL)...</span></b>\n" --listen --tail --height=600 --width=900 --wrap --fore=blue --button="Close":0
+    F_LOG "$FUNCNAME: ended"
 }; export -f F_FLASHKDZ
 
 # choose and flash partitions from a backup or extracted KDZ
-F_FLASHPART(){
+F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     # takes 1 optional argument
     #
     # 1 => image files path
@@ -270,6 +272,8 @@ F_FLASHPART(){
     else
         IMGDIR="$1"
     fi
+
+    F_LOG "$FUNCNAME: IMGDIR=$IMGDIR"
 
     [ ! -d "$IMGDIR" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n Folder \n\n  $IMGDIR\n\n  does not exists?!"
     
@@ -299,9 +303,9 @@ F_FLASHPART(){
             ;;
             *)
             if [ -z "$IRES" ];then
-                IRES="true\n${AVIMG}\n${APART}\n<span\tcolor='#558000'>safe</span>"
+                IRES="true\n${AVIMG}\n${APART}\n<span\tcolor='#558000'>safe-to-flash</span>"
             else
-                IRES="$IRES true\n${AVIMG}\n${APART}\n<span\tcolor='#558000'>safe</span>"
+                IRES="$IRES true\n${AVIMG}\n${APART}\n<span\tcolor='#558000'>safe-to-flash</span>"
             fi
             ;;
         esac
@@ -342,27 +346,32 @@ F_FLASHPART(){
 	# fake the progress bar as lglaf do not have it
 	while [ $PBAR -le 90 ];do echo "$PBAR"; PBAR=$((PBAR+1)); sleep 5s ;done &
 	PBLOOP=$!
-        python2 $LAFPATH/partitions.py --restore "$FFILE" $FPART 2>&1 | sed "s/^/#$FPART: /g"
+        F_LOG "$FUNCNAME: $FPART starting"
+        python2 $LAFPATH/partitions.py --restore "$FFILE" $FPART 2>&1 | tee -a $LOG | sed "s/^/#$FPART: /g"
 	FLASHERR=$?
 	if [ $FLASHERR -eq 0 ];then
 		kill $PBLOOP && echo "100"
+                F_LOG "$FUNCNAME: $FPART finished"
 	else
+                F_LOG "$FUNCNAME: $FPART FAILED with $FLASHERR"
 		echo "# $FPART: FAILED"
 		kill $PBLOOP && F_ERR $FUNCNAME 4 "\n  ERROR!\n\n  DO NOT REBOOT YOUR DEVICE!\n  FLASHING PROBLEM OCCURED!!!\n  while flashing:\n\n  <b>$FPART</b>" 
 	fi
     done | $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if the progress bar does NOT get up to 100%: DO NOT REBOOT THE DEVICE!)\n\n" --width 900 --progress $YADBARS --button='Close (WAIT until all is flashed)':1 --auto-kill
+    F_LOG "$FUNCNAME: ended"
 }; export -f F_FLASHPART
 
 # authenticate device
-F_AUTH(){
+F_AUTH(){ F_LOG "$FUNCNAME: started"
     python2 $LAFPATH/auth.py
+    F_LOG "$FUNCNAME: ended"
 }; export -f F_AUTH
 
 # check/ensure device is connected
-F_CHKDEVCON(){
+F_CHKDEVCON(){ F_LOG "$FUNCNAME: started"
     # takes no argument
     F_AUTH
-    python2 $LAFPATH/lglaf.py --skip-hello -c '!EXEC  uname -m\0'
+    python2 $LAFPATH/lglaf.py --skip-hello -c '!EXEC  uname -m\0' | tee -a $LOG
     RET=$?
     if [ $RET -ne 0 ];then
         RES=$(F_MSGE 700 "\n  ERROR!\n\n  NO DEVICE CONNECTED???\n  If you have connected your device ensure that it is in DOWNLOAD mode\n  (<u>not</u> fastboot, <u>not</u> recovery, <u>not</u> booted Android)" "--button=Example-Picture:99")
@@ -377,7 +386,7 @@ F_CHKDEVCON(){
 }; export -f F_CHKDEVCON
 
 # open a shell
-F_SHELL(){
+F_SHELL(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
     
     F_ELOG $FUNCNAME started
@@ -385,15 +394,13 @@ F_SHELL(){
     F_CHKDEVCON
     if [ $? -eq 0 ];then
         F_ELOG "device connected... Opening shell now!"
-         xterm -e "cd $LAFPATH && echo -e '\n*****************\nTYPE the word exit TO CLOSE THIS WINDOW\n*********************\n\n'; python2 $LAFPATH/auth.py; python2 $LAFPATH/lglaf.py"
-    else
-        F_MSG 600 "\n  ERROR!\n\n  NO DEVICE CONNECTED?\n If you have connected your device ensure that it is in DOWNLOAD mode\n(not fastboot, not recovery, not booted Android)" "--button=Return:0"
+        xterm -e "cd $LAFPATH && echo -e '\n*****************\nTYPE the word exit TO CLOSE THIS WINDOW\n*********************\n\n'; python2 $LAFPATH/auth.py; python2 $LAFPATH/lglaf.py"
     fi
-    F_ELOG $FUNCNAME ended
+    F_LOG "$FUNCNAME: ended"
 }; export -f F_SHELL
 
 # start dialog for kdz extract
-F_STARTKDZ(){
+F_STARTKDZ(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
     F_ELOG $FUNCNAME started
 
@@ -424,18 +431,20 @@ F_STARTKDZ(){
 };export -f F_STARTKDZ
 
 # Update everything!
-F_UPDATE(){
+F_UPDATE(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
     #
 
     CNT=0
     for u in $KDZTOOLS $LAFPATH $SALTPATH; do 
         CNT=$((CNT+1))
+        F_LOG "$FUNCNAME: updating $u ..."
         echo "${CNT}:5"
         cd $u 
         echo "${CNT}:10"
-        git pull 2>&1 | sed "s/^/${CNT}:#/g"
+        git pull 2>&1 | tee -a $LOG | sed "s/^/${CNT}:#/g"
         test ${PIPESTATUS[0]} -eq 0 && echo "${CNT}:100"
     done | $FYAD --title="$YTITLE - UPDATING" --text="\n  <b>Be patient while SALT freshen up...</b>\n  (if a progress bar do NOT get to 100% a manual update is required)\n\n" --width 800 --multi-progress --bar="SALT codebase":norm --bar="LGLAF codebase":norm --bar="kdztools codebase":norm --button=Close
+    F_LOG "$FUNCNAME: ended"
 }; export -f F_UPDATE
 
