@@ -72,13 +72,13 @@ for i in $DEVINF;do
     esac
 done        
 
-[ -z $LGMODEL ] && LGMODEL=no_device_found
-[ -z $LGSWV ] && LGSWV=no_device_found
-[ -z $LGFACV ] && LGFACV=no_device_found
-[ -z $LGCOUNTRY ] && LGCOUNTRY=no_device_found
-[ -z $LGSEC ] && LGSEC=no_device_found
-[ -z $LGBATT ] && LGBATT=no_device_found
-[ -z $DEVARB ] && DEVARB=no_device_found
+[ -z $LGMODEL ] && LGMODEL=no_device_found && DEVARB=no_device_found
+[ -z $LGSWV ] && LGSWV=no_device_found && DEVARB=no_device_found
+[ -z $LGFACV ] && LGFACV=no_device_found && DEVARB=no_device_found
+[ -z $LGCOUNTRY ] && LGCOUNTRY=no_device_found && DEVARB=no_device_found
+[ -z $LGSEC ] && LGSEC=no_device_found && DEVARB=no_device_found
+[ -z $LGBATT ] && LGBATT=no_device_found && DEVARB=no_device_found
+[ -z $DEVARB ] && DEVARB=no_ARB_info_found
 
 $FYAD --title="$YTITLE" --width=600 --text "\n  <b>$TFULLNAME</b>\n  is a replacement for the windows software LGUP (plus MANY more features!!)\n  and brought to you by <b>steadfasterX</b>.\n\n  $TNAME is based on:\n\t- the awesome <a href='https://github.com/Lekensteyn/lglaf'>LGLAF</a> code by Peter Wu\n\t- <a href='https://github.com/ehem/kdztools'>kdztools</a> by Elliott Mitchell\n\t- <b>MANY</b> enhancements by steadfasterX (including this GUI)\n\n  ${TNAME} sources: <a href='https://github.com/steadfasterX/salt'>$TNAME</a> | <a href='https://github.com/steadfasterX/lglaf'>Patched LGLAF</a> | <a href='https://github.com/steadfasterX/salt'>Patched kdztools</a>\n  $TNAME support: <a href='https://tinyurl.com/salty'>XDA thread</a>\n\n  The following comes directly from your device:\n  (<i>\"no_device_found\"</i> if no device connected)" \
     --form \
