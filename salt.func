@@ -43,6 +43,22 @@ F_MSG(){
     $YAD --center --width=$1 --title="$YTITLE" --text "$2" $3
 }; export -f F_MSG
 
+# print an error message
+F_MSGE(){ F_LOG "$FUNCNAME: started"
+    # takes up to 3 arguments
+    #
+    # 1 => width
+    # 2 => message
+    #
+    # optional:
+    # 3 => yad stuff
+    
+    $FYAD --width="$1" --title="$YTITLE - ERROR" --image="$SICONS/error.png" --text "$2" $3 --button=Exit:0
+    RES=$?
+    F_LOG $RES
+    echo $RES
+}; export -f F_MSGE
+
 # check errorcode + exit when not errorcode not as expected
 F_ERR(){
   # takes 2-4 arguments
