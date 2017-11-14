@@ -15,6 +15,14 @@ VARS=salt.vars
 source $VARS 
 [ $? -ne 0 ]&& echo "ERROR: including $VARS" && exit 3
 
+# do not echo but write log entry
+F_LOG(){
+    # takes 1 argument
+    # 1 => Message to log/echo (can handle \t and \n)
+  
+    echo -e "$(date '+%F %T'): $1" >> $LOG
+}; export -f F_LOG
+
 # echo output and save it in a log as well
 F_ELOG(){
   # takes 1 argument
