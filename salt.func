@@ -330,8 +330,9 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 		YADBARS="$YADBARS --bar=$BARNAME"
 	fi
     done
- 
+
     # FLASH
+    export PYTHONUNBUFFERED=1
     F_AUTH
     CNT=0
     for img in $CHOOSENP; do
@@ -340,25 +341,23 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
         F_ELOG "flashing: $FFILE to $FPART"
 
        	echo "5"
-	PBAR=10
+	PBAR=0
 	# inform yad which partition we flash
 	echo "#flashing: $FPART"
 
-	# fake the progress bar as lglaf do not have it
-	while [ $PBAR -le 90 ];do echo "$PBAR"; PBAR=$((PBAR+1)); sleep 5s ;done &
-	PBLOOP=$!
         F_LOG "$FUNCNAME: $FPART starting"
-        python2 $LAFPATH/partitions.py --restore "$FFILE" $FPART 2>&1 | tee -a $LOG | sed "s/^/#$FPART: /g"
+        stdbuf -oL -eL python2 -u $LAFPATH/partitions.py --batch --restore "$FFILE" $FPART 2>&1 | sed -e "s%:\([0-9]*\):\([0-9]*\)%,#$FPART: \1 KB/\2 KB%g" | tee -a $LOG | tr "," "\n"
 	FLASHERR=$?
 	if [ $FLASHERR -eq 0 ];then
-		kill $PBLOOP && echo "100"
+		echo "100"
                 F_LOG "$FUNCNAME: $FPART finished"
 	else
                 F_LOG "$FUNCNAME: $FPART FAILED with $FLASHERR"
 		echo "# $FPART: FAILED"
-		kill $PBLOOP && F_ERR $FUNCNAME 4 "\n  ERROR!\n\n  DO NOT REBOOT YOUR DEVICE!\n  FLASHING PROBLEM OCCURED!!!\n  while flashing:\n\n  <b>$FPART</b>" 
+	F_ERR $FUNCNAME 4 "\n  ERROR!\n\n  DO NOT REBOOT YOUR DEVICE!\n  FLASHING PROBLEM OCCURED!!!\n  while flashing:\n\n  <b>$FPART</b>" 
 	fi
     done | $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if the progress bar does NOT get up to 100%: DO NOT REBOOT THE DEVICE!)\n\n" --width 900 --progress $YADBARS --button='Close (WAIT until all is flashed)':1 --auto-kill
+    F_MSG 400 "FLASHING ENDED WITH RESULT: $${PIPESTATUS[0]}"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_FLASHPART
 
