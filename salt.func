@@ -10,7 +10,7 @@
 # source salt.func
 #
 ##########################################################################
-VARS=salt.vars
+VARS="${0%/*}/salt.vars"
 
 source $VARS 
 [ $? -ne 0 ]&& echo "ERROR: including $VARS" && exit 3
