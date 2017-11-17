@@ -332,6 +332,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     done
  
     # FLASH
+    F_AUTH
     CNT=0
     for img in $CHOOSENP; do
         FFILE="$IMGDIR/${img/:*}"
