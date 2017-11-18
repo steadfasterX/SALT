@@ -408,9 +408,9 @@ F_STARTKDZ(){ F_LOG "$FUNCNAME: started"
         --field="KDZ file":FL --file-filter="KDZ files (*.kdz)| *.kdz *.KDZ"\
         --field="Target directory":DIR \
         --field=:LBL \
-        --field="Extract useless userdata partition (leave unchecked if unsure)":CHK \
-        --field="Extract useless cache partition (leave unchecked if unsure)":CHK \
-        undef undef true false false\
+        --field="Remove useless userdata partition (leave checked if unsure)":CHK \
+        --field="Remove useless cache partition (leave checked if unsure)":CHK \
+        undef /tmp true true true\
         )
     F_ELOG "returned: $EXCHOICES"
     KDZFILE=$(echo "$EXCHOICES" | cut -d '|' -f 1)
