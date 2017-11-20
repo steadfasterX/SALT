@@ -41,7 +41,9 @@ F_MSG(){ F_LOG "$FUNCNAME: started"
     # optional:
     #  3 => free args
     $FYAD --width=$1 --title="$YTITLE" --text "$2" $3
+    RET=$?
     F_LOG "$FUNCNAME: ended"
+    echo $RET
 }; export -f F_MSG
 
 # print an error message
@@ -102,7 +104,7 @@ F_EXIT(){ F_LOG "$FUNCNAME: started"
   
   # TODO (optional): do any other actions
   exit $ECODE
-    F_LOG "$FUNCNAME: ended"
+  F_LOG "$FUNCNAME: ended"
 }; export -f F_EXIT
 
 # get current phone data
@@ -446,7 +448,7 @@ F_UPDATE(){ F_LOG "$FUNCNAME: started"
         echo "${CNT}:5"
         cd $u 
         echo "${CNT}:10"
-        git pull 2>&1 | tee -a $LOG | sed "s/^/${CNT}:#/g"
+        $GIT pull 2>&1 | tee -a $LOG | sed "s/^/${CNT}:#/g"
         test ${PIPESTATUS[0]} -eq 0 && echo "${CNT}:100"
     done | $FYAD --title="$YTITLE - UPDATING" --text="\n  <b>Be patient while SALT freshen up...</b>\n  (if a progress bar do NOT get to 100% a manual update is required)\n\n" --width 800 --multi-progress --bar="SALT codebase":norm --bar="LGLAF codebase":norm --bar="kdztools codebase":norm --button=Close
     F_LOG "$FUNCNAME: ended"
