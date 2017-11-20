@@ -37,22 +37,22 @@ fi
 
 # check the base:
 if [ ! -d "$LAFPATH" ];then
-    echo -e "\nERROR: Expected LG LAF NG here: $LAFPATH"
-    F_MSG 400 "\n  ERROR!\n\n  Expected lglaf here:\n  ${LAFPATH}\n\n  but it is missing..\n\n  Should I download it for you now?" "--button=Yes:0 --button=Abort:1" 
-    DLLAF=$?
+    F_ELOG "First start of SALT? Expected LG LAF NG here: $LAFPATH"
+    DLLAF=$(F_MSG 400 "\n  First start of SALT?\n\n  Expected <b><u>lglaf</u></b> here:\n  ${LAFPATH}\n\n  but it is missing..\n\n  Should I download it for you now?" "--button=Yes:0 --button=Abort:1")
+    #DLLAF=$MERR
     if [ "$DLLAF" -eq 0 ];then
-        git clone $LAFGIT $LAFPATH
+        $GIT clone --progress $LAFGIT $LAFPATH 2>&1 | $FYAD --title="$YTITLE - UPDATING" --text="\n  <b>Installing LGLAF ...</b>\n" --height=600 --width=700 --text-info --listen --tail --button=Close
     else
-        F_EXIT
+        F_ERR lafupdate $DLLAF "\n  Without this SALT will not work!\n  ABORTED. \n"
     fi
 fi
 if [ ! -d "$KDZTOOLS" ];then
-    F_MSG 400 "\n  ERROR!\n\n  Expected kdztools here:\n  ${KDZTOOLS}\n\n  but it is missing..\n\n  Should I download it for you now?" "--button=Yes:0 --button=Abort:1"
-    DLKDZ=$?
+    F_ELOG "First start of SALT? Expected kdztools here: $KDZTOOLS"
+    DLKDZ=$(F_MSG 400 "\n  First start of SALT?\n\n  Expected <b><u>kdztools</u></b> here:\n  ${KDZTOOLS}\n\n  but it is missing..\n\n  Should I download it for you now?" "--button=Yes:0 --button=Abort:1")
     if [ "$DLKDZ" -eq 0 ];then
-        git clone $KDZGIT $KDZTOOLS
+        $GIT clone --progress $KDZGIT $KDZTOOLS 2>&1 | $FYAD --title="$YTITLE - UPDATING" --text="\n  <b>Installing kdztools ...</b>\n" --width=700 --height=600 --text-info --listen --tail --button=Close
     else
-        F_EXIT
+        F_ERR ktoolsupdate $DLKDZ "\n  Without this SALT will not work!\n  ABORTED. \n"
     fi
 fi
 
