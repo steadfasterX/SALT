@@ -257,10 +257,9 @@ F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
     # If all the above is fine: FLASH
     F_FLASHPART "$KDZTMP/extracteddz"
 
-    # wipe to avoid bootloop
-    # TODO: let the user choose
+    # factory reset to avoid bootloop
+    # TODO: accept the taken user choice 
     F_WIPEPART userdata ni
-    F_WIPEPART cache ni
 
     F_MSG 400 "KDZ flashing completed. check the log for details (SALT main screen)"
     F_LOG "$FUNCNAME: ended"
@@ -363,6 +362,8 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 	        F_ERR $FUNCNAME 4 "\n  ERROR!\n\n  DO NOT REBOOT YOUR DEVICE!\n  FLASHING PROBLEM OCCURED!!!\n  while flashing:\n\n  <b>$FPART</b>" 
 	fi
     done | $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if the progress bar does NOT get up to 100%: DO NOT REBOOT THE DEVICE!)\n\n" --width 900 --progress --button='Close (WAIT until all is flashed)':1 --auto-kill
+    
+    F_WIPEPART cache ni
     F_MSG 400 "FLASHING ENDED WITH RESULT: ${PIPESTATUS[0]}"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_FLASHPART
