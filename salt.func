@@ -361,7 +361,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 		echo "# $FPART: FAILED"
 	        F_ERR $FUNCNAME 4 "\n  ERROR!\n\n  DO NOT REBOOT YOUR DEVICE!\n  FLASHING PROBLEM OCCURED!!!\n  while flashing:\n\n  <b>$FPART</b>" 
 	fi
-    done | $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if the progress bar does NOT get up to 100%: DO NOT REBOOT THE DEVICE!)\n\n" --width 900 --progress --button='Close (WAIT until all is flashed)':1 --auto-kill
+    done | $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if the progress bar does NOT get up to 100%: DO NOT REBOOT THE DEVICE!)\n\n" --width 900 --progress --button='Close (WAIT until all is flashed)':1
     
     F_WIPEPART cache ni
     F_MSG 400 "FLASHING ENDED WITH RESULT: ${PIPESTATUS[0]}"
