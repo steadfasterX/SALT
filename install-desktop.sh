@@ -3,17 +3,17 @@
 
 HERE="$(pwd)"
 
-source ${HERE}/salt.vars
+echo here: $HERE
 
 cat > ${HERE}/SALT.desktop <<EOFDSK
 [Desktop Entry]
 Version=1.0
 Type=Application
 Terminal=false
-Name=S.A.L.T
-Icon=${HERE}/$SICONS/salt_icon.png
+Name=SALT
+Icon=${HERE}/icons/salt_icon.png
 Comment=SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
-Exec=${HERE}/salt
+Exec=gksu ${HERE}/salt
 EOFDSK
 chmod +x ${HERE}/SALT.desktop
 
