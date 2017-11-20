@@ -197,7 +197,7 @@ F_CHKMODEL(){ F_LOG "$FUNCNAME: started"
 
 # flash a KDZ
 F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
-    # takes XXXX arguments
+    # takes 5 arguments
     #
     #   1 => KDZ filename
     #   2 => Factory reset
@@ -254,7 +254,13 @@ F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
 
     # If all the above is fine: FLASH
     F_FLASHPART "$KDZTMP/extracteddz"
-    #($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1)  | $FYAD --title="$YTITLE - FLASH" --text-info --text "\n  <b><span color='#ff0000'>FLASHING KDZ (REAL)...</span></b>\n" --listen --tail --height=600 --width=900 --wrap --fore=blue --button="Close":0
+
+    # wipe to avoid bootloop
+    # TODO: let the user choose
+    F_WIPEPART userdata ni
+    F_WIPEPART cache ni
+
+    F_MSG 400 "KDZ flashing completed. check the log for details (SALT main screen)"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_FLASHKDZ
 
