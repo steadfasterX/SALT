@@ -90,11 +90,12 @@ case "$LGSEC" in
     ;;
 esac
 
+# main SALT screen 
 $FYAD --title="$YTITLE" --width=600 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  is a replacement for the windows software LGUP (plus MANY more features!!)\n  and brought to you by <b>steadfasterX</b>.\n\n  $TNAME is based on several tools. Click the ABOUT button to find out more!\n\n  The following comes directly from your device:\n  (<i>\"no_device_found\"</i> if no device connected)" \
     --form \
     --field="  Device model":RO $LGMODEL \
-    --field="  Current Firmware":RO $LGSWV \
-    --field="  Factory firmware":RO $LGFACV \
+    --field="  Firmware":RO $LGSWV \
+    --field="  Firmware (detailed)":RO $LGFACV \
     --field="  Country":RO $LGCOUNTRY \
     --field="  Bootloader":RO $LGSEC \
     --field="  Battery level":RO $LGBATT \
