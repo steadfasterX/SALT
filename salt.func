@@ -323,7 +323,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 
     CHOOSENP=$(for files in $IRES;do echo -e "$files" ;done \
                 | $FYAD --height=800 --width=600 --title="$YTITLE - FOLDER" --text "\n  Select the partitions you want to flash\n  (the RECOMMENDED partitions to flash are CHECKED already!)\n" --list --checklist \
-                        --column="Flash":CHK --column="Image File":TXT --column="Target partition" --column="Type" --column=sort_int --hide-column=5 --print-all --listen --no-selection \
+                        --column="Flash":CHK --column="Image File":TXT --column="Target partition" --column="Type" --column=sort_int --hide-column=5  --listen --no-selection \
                         --button=FLASH:0 --button=Abort:1 |cut -d "|" -f 2-3,5 | tr "|" ":" )
     [ $? -ne 0 ] && F_ERR $FUNCNAME 0 "No partition?"
 
@@ -356,7 +356,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 	if [ $FLASHERR -eq 0 ];then
 		echo "100"
                 F_LOG "$FUNCNAME: $FPART finished"
-                [ $CNT -eq $CHCOUNT ] && echo '# ALL PARTITIONS FLASHED SUCCESSFULY' && F_LOG "$FUNCNAME: All partitions flashed successfully"
+                [ $CNT -eq $CHCOUNT ] && echo '# ALL PARTITIONS FLASHED SUCCESSFULLY' && F_LOG "$FUNCNAME: All partitions flashed successfully"
 	else
                 F_LOG "$FUNCNAME: $FPART FAILED with $FLASHERR"
 		echo "# $FPART: FAILED"
