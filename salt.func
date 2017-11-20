@@ -297,23 +297,23 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
         APART=$(echo "${f/*:}" | sed 's/\.image//g;s/\.img//g;s/\.bin//g')
         case $APART in
             grow|cache|userdata|modemst1|modemst2|persist|persistent|drm)
-              if [ -z "$IRES" ];then IRES="false\n${AVIMG}\n${APART}\nunneeded"; else IRES="$IRES false\n${AVIMG}\n${APART}\nunneeded" ;fi
+              if [ -z "$IRES" ];then IRES="false\n${AVIMG}\n${APART}\nunneeded\n99"; else IRES="$IRES false\n${AVIMG}\n${APART}\nunneeded\n99" ;fi
             ;;
             rpm|rpmbak|tz|tzbak|sdi|sdibak|aboot|abootbak|pmic|pmicbak|hyp|hypbak|sbl1|sbl1bak)
-              if [ -z "$IRES" ];then IRES="true\n${AVIMG}\n${APART}\nbootloader"; else IRES="$IRES true\n${AVIMG}\n${APART}\nbootloader" ;fi
+              if [ -z "$IRES" ];then IRES="true\n${AVIMG}\n${APART}\nbootloader\n1"; else IRES="$IRES true\n${AVIMG}\n${APART}\nbootloader\n1" ;fi
             ;;
             misc|devinfo)
               if [ -z "$IRES" ];then 
-                IRES="false\n${AVIMG}\n${APART}</span>\n<span\tcolor='#ff0000'>dangerous</span>"
+                IRES="false\n${AVIMG}\n${APART}</span>\n<span\tcolor='#ff0000'>dangerous</span>\n88"
               else 
-                IRES="$IRES false\n${AVIMG}\n${APART}\n<span\tcolor='#ff0000'>dangerous</span>"
+                IRES="$IRES false\n${AVIMG}\n${APART}\n<span\tcolor='#ff0000'>dangerous</span>\n88"
               fi
             ;;
             *)
             if [ -z "$IRES" ];then
-                IRES="true\n${AVIMG}\n${APART}\n<span\tcolor='#558000'>safe-to-flash</span>"
+                IRES="true\n${AVIMG}\n${APART}\n<span\tcolor='#558000'>safe-to-flash</span>\n2"
             else
-                IRES="$IRES true\n${AVIMG}\n${APART}\n<span\tcolor='#558000'>safe-to-flash</span>"
+                IRES="$IRES true\n${AVIMG}\n${APART}\n<span\tcolor='#558000'>safe-to-flash</span>\n2"
             fi
             ;;
         esac
@@ -323,27 +323,26 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 
     CHOOSENP=$(for files in $IRES;do echo -e "$files" ;done \
                 | $FYAD --height=800 --width=600 --title="$YTITLE - FOLDER" --text "\n  Select the partitions you want to flash\n  (the RECOMMENDED partitions to flash are CHECKED already!)\n" --list --checklist \
-                        --column="Flash":CHK --column="Image File":TXT --column="Target partition" --column="Type" --listen --no-selection \
-                        --button=FLASH:0 --button=Abort:1 |cut -d "|" -f2-3 | tr "|" ":" )
+                        --column="Flash":CHK --column="Image File":TXT --column="Target partition" --column="Type" --column=sort_int --hide-column=5 --print-all --listen --no-selection \
+                        --button=FLASH:0 --button=Abort:1 |cut -d "|" -f 2-3,5 | tr "|" ":" )
     [ $? -ne 0 ] && F_ERR $FUNCNAME 0 "No partition?"
 
-    F_ELOG "choosen partitions: $CHOOSENP"
+    CHCOUNT=$(echo "$CHOOSENP" |tr " " "\n" |grep -c :)
+    [ $CHCOUNT -lt 1 ] && F_ERR $FUNCNAME 0 "No partition selected?"
 
-    # create progress bars dynamically
-    for bar in $CHOOSENP; do
-        BARNAME="${bar/*:}":NORM
-	if [ -z "$YADBARS" ];then
-        	YADBARS="--bar $BARNAME"
-	else
-		YADBARS="$YADBARS --bar=$BARNAME"
-	fi
-    done
+    F_ELOG "choosen partitions: $CHOOSENP -> $CHCOUNT"
+
+    SORTEDP=$(echo "$CHOOSENP" |tr " " "\n" | sort -t : -k 3n | cut -d ":" -f 1-2 | tr "\n" " " )
+    CHCOUNT=$(echo "$SORTEDP" |tr " " "\n" |grep -c :)
+
+    F_ELOG "sorted partitions: $SORTEDP -> $CHCOUNT"
 
     # FLASH
     export PYTHONUNBUFFERED=1
     F_AUTH
     CNT=0
-    for img in $CHOOSENP; do
+    for img in $SORTEDP; do
+        CNT=$((CNT+1))
         FFILE="$IMGDIR/${img/:*}"
         FPART=${img/*:}
         F_LOG "flashing: $FFILE to $FPART"
@@ -357,12 +356,13 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 	if [ $FLASHERR -eq 0 ];then
 		echo "100"
                 F_LOG "$FUNCNAME: $FPART finished"
+                [ $CNT -eq $CHCOUNT ] && echo '# ALL PARTITIONS FLASHED SUCCESSFULY' && F_LOG "$FUNCNAME: All partitions flashed successfully"
 	else
                 F_LOG "$FUNCNAME: $FPART FAILED with $FLASHERR"
 		echo "# $FPART: FAILED"
 	        F_ERR $FUNCNAME 4 "\n  ERROR!\n\n  DO NOT REBOOT YOUR DEVICE!\n  FLASHING PROBLEM OCCURED!!!\n  while flashing:\n\n  <b>$FPART</b>" 
 	fi
-    done | $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if the progress bar does NOT get up to 100%: DO NOT REBOOT THE DEVICE!)\n\n" --width 900 --progress $YADBARS --button='Close (WAIT until all is flashed)':1 --auto-kill
+    done | $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if the progress bar does NOT get up to 100%: DO NOT REBOOT THE DEVICE!)\n\n" --width 900 --progress --button='Close (WAIT until all is flashed)':1 --auto-kill
     F_MSG 400 "FLASHING ENDED WITH RESULT: ${PIPESTATUS[0]}"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_FLASHPART
