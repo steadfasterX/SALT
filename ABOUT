@@ -1,6 +1,0 @@
-SALT is based on:\n\n 
-\t- the awesome https://github.com/Lekensteyn/lglaf LGLAF code by Peter Wu\n
-\t- <a href='https://github.com/ehem/kdztools'>kdztools</a> by Elliott Mitchell\n
-\t- <b>MANY</b> enhancements by steadfasterX (including this GUI)\n\n
-SALT sources: <a href='https://github.com/steadfasterX/salt'>$TNAME</a> | <a href='https://github.com/steadfasterX/lglaf'>
-Patched LGLAF</a> | <a href='https://github.com/steadfasterX/kdztools'>Patched kdztools</a>\n  $TNAME support: <a href='https://tinyurl.com/salty'>XDA thread</a>
