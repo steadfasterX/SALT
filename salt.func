@@ -293,7 +293,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     unset IRES
     for f in $IMGFILES;do
         AVIMG="${f/:*}"
-        APART=$(echo "${f/*:}" | sed 's/\.image//g;s/\.img//g;s/\.bin//g')
+        APART=$(echo "${f/*:}" | sed -e 's/\.image//g;s/\.img//g;s/\.bin//g;s/mmcblk0p\(.*\)/\1/g')
         case $APART in
             grow|cache|userdata|modemst1|modemst2|persist|persistent|drm)
               if [ -z "$IRES" ];then IRES="false\n${AVIMG}\n${APART}\nunneeded\n99"; else IRES="$IRES false\n${AVIMG}\n${APART}\nunneeded\n99" ;fi
