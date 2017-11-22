@@ -63,7 +63,15 @@ DEVINF=$(F_GETINFO)
 for i in $DEVINF;do
     F_ELOG "parsing $i"
     case ${i/:*/} in
-        arb) DEVARB=${i/*:/};;
+        arb) 
+        DEVARBVAL=$(echo ${i}| cut -d ":" -f 2)
+        DEVARBEMPT=$(echo ${i}| cut -d ":" -f 3)
+        if [ $DEVARBEMPT -eq 0 ];then
+            DEVARB=$DEVARBVAL
+        else
+            DEVARB="ARB\tunknown"
+        fi
+        ;;
         battery_level) LGBATT=${i/*:/};;
         model_name) LGMODEL=${i/*:/};;
         device_sw_version) LGSWV=${i/*:/};;

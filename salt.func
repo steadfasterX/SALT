@@ -112,7 +112,7 @@ F_GETINFO(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
 
     IARB=$(F_CDARB)
-    echo "arb:$IARB" \
+    echo "arb:${IARB}" \
     && python2 $LAFPATH/lglaf.py -c '!INFO GPRO \x08\x0b\0\0' \
        | python2 $LAFPATH/scripts/parse-props.py - \
        | egrep "(device_sw_version|model_name|secure_device|laf_sw_version|device_factory_version|target_country|battery_level)" | tr "\n" " " | tr -d "'" | tee -a $LOG
@@ -145,11 +145,11 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started"
 F_CDARB(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
     #
-    
-    DEVARB=$(python2 $LAFPATH/partitions.py --skip-hello --dump - sbl1 | strings | grep "0 SW_ID" |cut -d " " -f 2 |tr -d "0")
-    [ -z "$DEVARB" ] && DEVARB=0
-    F_LOG "$FUNCNAME: DEVARB=$DEVARB"
-    echo $DEVARB
+    DEVARBEMPTY=0
+    DEVARB=$(python2 $LAFPATH/partitions.py --skip-hello --dump - sbl1 | strings | grep "0 SW_ID" |cut -d " " -f 2 |tr -d "0" | $FYAD --title="$YTITLE - COLLECTING" --text "\n  Catching device information..." --width=400 --progress --pulsate --auto-close --button=Abort)
+    [ -z "$DEVARB" ] && DEVARB="0" && DEVARBEMPTY=1
+    F_LOG "$FUNCNAME: DEVARB=$DEVARB, DEVARBEMPTY=$DEVARBEMPTY"
+    echo "${DEVARB}:${DEVARBEMPTY}"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_CDARB
 
@@ -241,7 +241,7 @@ F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
     # verify the internal functions do not generate crap
     [ -z "$KARB" -o -z "$DARB" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  Device ARB or KDZ ARB cannot be checked! ABORTED!!"
     # verify ARB compat
-    [ "$KARB" -ge "$DARB" ] && F_ELOG "Device and KDZ ARB are compatible" && ARBOK=1
+    [ "${DARB/:*}" -qe 0 ] && [ "$KARB" -ge "${DARB/:*}" ] && F_ELOG "Device and KDZ ARB are compatible" && ARBOK=1
     # a bulletproof method to avoid issues with any of the above (e.g. when KARB or DARB are not digits etc)
     [ "$ARBOK" -ne 1 ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  ARB is NOT compatible with your device! ABORTED!"
 
@@ -344,7 +344,6 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     F_ELOG "sorted partitions: $SORTEDP -> $CHCOUNT"
 
     # FLASH
-    export PYTHONUNBUFFERED=1
     F_AUTH
     CNT=0
     for img in $SORTEDP; do
