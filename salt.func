@@ -308,11 +308,18 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
                 IRES="$IRES false\n${AVIMG}\n${APART}\n<span\tcolor='#ff0000'>dangerous</span>\n88"
               fi
             ;;
-            *)
+            modem|limits|mpt|apdp|msadp|dpo|fsg|fsc|ssd|keystore|DDR|sec|encrypt|eksst|rct|boot|recovery|sns|eri|raw_resources*|operatorlogging|carrier|cust|felicia|factory|fota|system)
             if [ -z "$IRES" ];then
                 IRES="true\n${AVIMG}\n${APART}\n<span\tcolor='#558000'>safe-to-flash</span>\n2"
             else
                 IRES="$IRES true\n${AVIMG}\n${APART}\n<span\tcolor='#558000'>safe-to-flash</span>\n2"
+            fi
+            ;;
+            *)
+            if [ -z "$IRES" ];then
+                IRES="true\n${AVIMG}\n${APART}\nunknown-type\n2"
+            else
+                IRES="$IRES true\n${AVIMG}\n${APART}\nunknown-type\n2"
             fi
             ;;
         esac
