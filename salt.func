@@ -422,7 +422,7 @@ F_STARTKDZ(){ F_LOG "$FUNCNAME: started"
         "\n  This will extract any KDZ file for you with just a click\n" \
         --form \
         --field="KDZ file":FL --file-filter="KDZ files (*.kdz)| *.kdz *.KDZ"\
-        --field="Target directory":DIR \
+        --field="Target directory\nHINT: Requires 32GB of free data":DIR \
         --field=:LBL \
         --field="Remove useless userdata partition (leave checked if unsure)":CHK \
         --field="Remove useless cache partition (leave checked if unsure)":CHK \
