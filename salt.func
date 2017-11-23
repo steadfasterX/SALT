@@ -505,7 +505,7 @@ F_LAFEXEC(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     # takes 1 argument
 
     EXECMD="$1"
-    python2 ${LAFPATH}/lglaf.py --skip-hello -c \'!EXEC  ${EXECMD}\0\'
+    python2 ${LAFPATH}/lglaf.py --skip-hello -c \'!EXEC  ${EXECMD}\\0\'
 }; export -f F_LAFEXEC
 
 # flush file system buffers
