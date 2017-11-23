@@ -127,6 +127,7 @@ F_EXIT(){ F_LOG "$FUNCNAME: started"
 F_GETINFO(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
 
+    F_AUTH 2>&1 >> $LOG
     IARB=$(F_CDARB)
     echo "arb:${IARB}" \
     && python2 $LAFPATH/lglaf.py -c '!INFO GPRO \x08\x0b\0\0' \
