@@ -18,7 +18,7 @@ source $VARS
 ######################################################################################
 
 # there is no need to change these as they get auto set by the VERSION var
-if [ "${VERSION/*:}" == "TESTING" ] then
+if [ "${VERSION/*:}" == "TESTING" ];then
     export BRSALT=develop
     export BRKDZ=develop
     export BRLAF=g4-develop
