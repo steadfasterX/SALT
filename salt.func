@@ -15,6 +15,22 @@ VARS="${0%/*}/salt.vars"
 source $VARS 
 [ $? -ne 0 ]&& echo "ERROR: including $VARS" && exit 3
 
+######################################################################################
+
+# there is no need to change these as they get auto set by the VERSION var
+if [ "${VERSION/*:}" == "TESTING" ] then
+    export BRSALT=develop
+    export BRKDZ=develop
+    export BRLAF=g4-develop
+else
+    export BRSALT=master
+    export BRKDZ=master
+    export BRLAF=g4-stable
+fi
+
+######################################################################################
+
+
 # do not echo but write log entry
 F_LOG(){
     # takes 1 argument
@@ -146,7 +162,7 @@ F_CDARB(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
     #
     DEVARBEMPTY=0
-    DEVARB=$(python2 $LAFPATH/partitions.py --skip-hello --dump - sbl1 | strings | grep "0 SW_ID" |cut -d " " -f 2 |tr -d "0" | $FYAD --title="$YTITLE - COLLECTING" --text "\n  Catching device information..." --width=400 --progress --pulsate --auto-close --button=Abort)
+    DEVARB=$(python2 $LAFPATH/partitions.py --skip-hello --dump - sbl1 | strings | grep "0 SW_ID" |cut -d " " -f 2 |tr -d "0" | $FYAD --title="$YTITLE - COLLECTING" --text "\n  Collecting device information..." --width=400 --progress --pulsate --auto-close --button=Abort)
     [ -z "$DEVARB" ] && DEVARB="0" && DEVARBEMPTY=1
     F_LOG "$FUNCNAME: DEVARB=$DEVARB, DEVARBEMPTY=$DEVARBEMPTY"
     echo "${DEVARB}:${DEVARBEMPTY}"
@@ -371,6 +387,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     
     F_WIPEPART cache ni
     F_MSG 400 "FLASHING ENDED WITH RESULT: ${PIPESTATUS[0]}"
+    F_SYNC
     F_LOG "$FUNCNAME: ended"
 }; export -f F_FLASHPART
 
@@ -479,4 +496,20 @@ F_WIPEPART(){ F_LOG "$FUNCNAME: started"
         F_MSG 400 "Do you really want to wipe out <b>$WPART</b>?" "--button=Yes:0 --button='wtf NO never':1"
         [ $? -eq 0 ] && python2 ${LAFPATH}/partitions.py --wipe $WPART 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - WIPING" --width=800 --height=200 --text-info --listen --wrap --button=Close
     fi
+    F_SYNC
 }; export -f F_WIPEPART
+
+# execute commands via lglaf
+F_LAFEXEC(){ F_LOG "$FUNCNAME: started with these arguments: $@"
+    # takes 1 argument
+
+    EXECMD="$1"
+    python2 ${LAFPATH}/lglaf.py --skip-hello -c \'!EXEC  ${EXECMD}\0\'
+}; export -f F_LAFEXEC
+
+# flush file system buffers
+F_SYNC(){ F_LOG "$FUNCNAME: started"
+    # takes no arguments
+
+    F_LAFEXEC sync
+}; export -f F_SYNC
