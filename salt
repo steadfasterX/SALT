@@ -69,7 +69,7 @@ for i in $DEVINF;do
         if [ $DEVARBEMPT -eq 0 ];then
             DEVARB=$DEVARBVAL
         else
-            DEVARB="ARB\tunknown"
+            DEVARB="ARB_unknown"
         fi
         ;;
         battery_level) LGBATT=${i/*:/};;
