@@ -56,6 +56,15 @@ if [ ! -d "$KDZTOOLS" ];then
     fi
 fi
 
+# check if device in dl mode connected
+DEVCON=99
+while [ $DEVCON -ne 0 ];do
+    F_LOG "DEVCON before: $DEVCON"
+    F_CHKDEVCON
+    DEVCON=$?
+    F_LOG "DEVCON after: $DEVCON"
+done
+
 # main func
 F_MAIN(){
 DEVINF=$(F_GETINFO)
