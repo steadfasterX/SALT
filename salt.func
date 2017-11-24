@@ -78,11 +78,27 @@ F_MSGE(){ F_LOG "$FUNCNAME: started"
     # optional:
     # 3 => yad stuff
     
-    $FYAD --width="$1" --title="$YTITLE - ERROR" --image="$SICONS/error.png" --text "$2" $3 --button=Exit:0
+    $FYAD --width="$1" --title="$YTITLE - ERROR" --image="$SICONS/error.png" --text "ERROR:\n\n$2" $3 --button=Exit:0
     RES=$?
     F_LOG $RES
     echo $RES
 }; export -f F_MSGE
+
+# print an OK message
+F_MSGOK(){ F_LOG "$FUNCNAME: started"
+    # takes up to 3 arguments
+    #
+    # 1 => width
+    # 2 => message
+    #
+    # optional:
+    # 3 => yad stuff
+
+    $FYAD --width="$1" --title="$YTITLE - SUCCESS" --image="$SICONS/ok_64x64.png" --text "\n$2" $3 --button=Close:0
+    RES=$?
+    F_LOG $RES
+    echo $RES
+}; export -f F_MSGOK
 
 # check errorcode + exit when not errorcode not as expected
 F_ERR(){ F_LOG "$FUNCNAME: started"
@@ -308,7 +324,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     [ ! -d "$IMGDIR" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n Folder \n\n  $IMGDIR\n\n  does not exists?!"
     
     # create a list of *.image files and let the user choose
-    IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name *.bin -or -name *.img -or -name *.image | tr " " "_");do echo "${ifile##*/}";done | tr "\n" " ")
+    IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name *.bin -or -name *.img -or -name *.image | tr " " "_" |grep -vi GPT);do echo "${ifile##*/}";done | tr "\n" " ")
 
     F_ELOG "($FUNCNAME) image files: $IMGFILES"
 
@@ -353,8 +369,10 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     CHOOSENP=$(for files in $IRES;do echo -e "$files" ;done \
                 | $FYAD --height=800 --width=600 --title="$YTITLE - FOLDER" --text "\n  Select the partitions you want to flash\n  (the RECOMMENDED partitions to flash are CHECKED already!)\n" --list --checklist \
                         --column="Flash":CHK --column="Image File":TXT --column="Target partition" --column="Type" --column=sort_int --hide-column=5  --listen --no-selection \
-                        --button=FLASH:0 --button=Abort:1 |cut -d "|" -f 2-3,5 | tr "|" ":" )
-    [ $? -ne 0 ] && F_ERR $FUNCNAME 0 "No partition?"
+                        --button=FLASH:0 --button=Abort:99 |cut -d "|" -f 2-3,5 | tr "|" ":" )
+    CERR=$?
+    [ $CERR -ne 0 ] && F_ERR $FUNCNAME 0 "No partition?"
+    F_LOG "CERR: $CERR"
 
     CHCOUNT=$(echo "$CHOOSENP" |tr " " "\n" |grep -c :)
     [ $CHCOUNT -lt 1 ] && F_ERR $FUNCNAME 0 "No partition selected?"
@@ -391,10 +409,20 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 	        F_ERR $FUNCNAME 4 "\n  ERROR!\n\n  DO NOT REBOOT YOUR DEVICE!\n  FLASHING PROBLEM OCCURED!!!\n  while flashing:\n\n  <b>$FPART</b>" 
 	fi
     done | $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if the progress bar does NOT get up to 100%: DO NOT REBOOT THE DEVICE!)\n\n" --width 900 --progress --button='Close (WAIT until all is flashed)':1
+    FLERR=${PIPESTATUS[0]}
+
+    # check result
+    if [ "$FLERR" -eq 0 ];then
+        F_MSGOK 400 "Flashing was successful!"
+    else
+        F_MSGE 400 "FLASHING ENDED WITH ERROR: $FLERR\n\nCheck Debug Log in SALT main screen!\nDO NOT REBOOT THE DEVICE TO AVOID HARD BRICK!!!!"
+    fi
+
+    # wipe cache
+    F_WIPEPART cache ni || F_MSGE 400 "Wiping cache ended with an error: $WIPERR\n\nCheck Debug Log in SALT main screen."
     
-    F_WIPEPART cache ni
-    F_MSG 400 "FLASHING ENDED WITH RESULT: ${PIPESTATUS[0]}"
-    F_SYNC
+    # sync filesystems
+    F_SYNC || F_MSGE 400 "Syncing filesystems ended with an error: $WIPERR\n\nCheck Debug Log in SALT main screen.\nDO NOT REBOOT THE DEVICE!"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_FLASHPART
 
