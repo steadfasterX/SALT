@@ -370,9 +370,9 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
                 | $FYAD --height=800 --width=600 --title="$YTITLE - FOLDER" --text "\n  Select the partitions you want to flash\n  (the RECOMMENDED partitions to flash are CHECKED already!)\n" --list --checklist \
                         --column="Flash":CHK --column="Image File":TXT --column="Target partition" --column="Type" --column=sort_int --hide-column=5  --listen --no-selection \
                         --button=FLASH:0 --button=Abort:99 |cut -d "|" -f 2-3,5 | tr "|" ":" )
-    CERR=$?
-    [ $CERR -ne 0 ] && F_ERR $FUNCNAME 0 "No partition?"
+    CERR=${PIPESTATUS[1]}
     F_LOG "CERR: $CERR"
+    [ $CERR -ne 0 ] && F_ERR $FUNCNAME 0 "No partition or aborted by user"
 
     CHCOUNT=$(echo "$CHOOSENP" |tr " " "\n" |grep -c :)
     [ $CHCOUNT -lt 1 ] && F_ERR $FUNCNAME 0 "No partition selected?"
