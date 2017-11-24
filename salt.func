@@ -419,13 +419,11 @@ F_CHKDEVCON(){ F_LOG "$FUNCNAME: started"
 # open a shell
 F_SHELL(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
-    
-    F_ELOG $FUNCNAME started
 
     F_CHKDEVCON
     if [ $? -eq 0 ];then
         F_ELOG "device connected... Opening shell now!"
-        xterm -e "cd $LAFPATH && echo -e '\n*****************\nTYPE the word exit TO CLOSE THIS WINDOW\n*********************\n\n'; python2 $LAFPATH/auth.py; python2 $LAFPATH/lglaf.py"
+        xterm -e "cd $LAFPATH && echo -e '\n*****************\nTYPE the word exit TO CLOSE THIS WINDOW\n*********************\n\n'; python2 $LAFPATH/auth.py 2>&1 >> $LOG; python2 $LAFPATH/lglaf.py"
     fi
     F_LOG "$FUNCNAME: ended"
 }; export -f F_SHELL
