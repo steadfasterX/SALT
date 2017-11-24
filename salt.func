@@ -22,10 +22,16 @@ if [ "${VERSION/*:}" == "TESTING" ];then
     export BRSALT=develop
     export BRKDZ=develop
     export BRLAF=g4-develop
+    export BROSALT=master
+    export BROKDZ=master
+    export BROLAF=g4-stable
 else
     export BRSALT=master
     export BRKDZ=master
     export BRLAF=g4-stable
+    export BROSALT=develop
+    export BROKDZ=develop
+    export BROLAF=g4-develop
 fi
 
 ######################################################################################
@@ -465,10 +471,10 @@ F_UPDATE(){ F_LOG "$FUNCNAME: started"
     #
 
     # let the user switch between stable and develop
-    AA=$($FYAD --title="$YTITLE - SETUP" --text "\n  Here you can choose between stable and development branches of SALT and its backends" --form \
-            --field="  SALT branch\t":CBE $BRSALT \
-            --field="  kdztools branch\t":CBE $BRKDZ \
-            --field="  lglaf branch\t":CBE $BRLAF\
+    AA=$($FYAD --title="$YTITLE - SETUP" --item-separator='|' --text "\n  Here you can choose between stable and development branches of SALT and its backends" --form \
+            --field="  SALT branch\t":CBE "$BRSALT|$BROSALT" \
+            --field="  kdztools branch\t":CBE "$BRKDZ|$BROKDZ" \
+            --field="  lglaf branch\t":CBE "$BRLAF|$BROLAF"\
             --button=Update:0 --button=Cancel:1 \
          )
 
