@@ -56,7 +56,6 @@ if [ ! -d "$KDZTOOLS" ];then
     fi
 fi
 
-
 # main func
 F_MAIN(){
 DEVINF=$(F_GETINFO)
@@ -82,12 +81,12 @@ for i in $DEVINF;do
     esac
 done        
 
-[ -z $LGMODEL ] && LGMODEL=no_device_found && DEVARB=no_device_found
-[ -z $LGSWV ] && LGSWV=no_device_found && DEVARB=no_device_found
-[ -z $LGFACV ] && LGFACV=no_device_found && DEVARB=no_device_found
-[ -z $LGCOUNTRY ] && LGCOUNTRY=no_device_found && DEVARB=no_device_found
-[ -z $LGSEC ] && LGSEC=no_device_found && DEVARB=no_device_found
-[ -z $LGBATT ] && LGBATT=no_device_found && DEVARB=no_device_found
+[ -z $LGMODEL ] && LGMODEL=no_device_found
+[ -z $LGSWV ] && LGSWV=no_device_found 
+[ -z $LGFACV ] && LGFACV=no_device_found
+[ -z $LGCOUNTRY ] && LGCOUNTRY=no_device_found
+[ -z $LGSEC ] && LGSEC=no_device_found
+[ -z $LGBATT ] && LGBATT=no_device_found
 [ -z $DEVARB ] && DEVARB=no_ARB_info_found
 
 # translate bootloader locking state
