@@ -464,13 +464,28 @@ F_UPDATE(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
     #
 
+    # let the user switch between stable and develop
+    AA=$($FYAD --title="$YTITLE - SETUP" --text "\n  Here you can choose between stable and development branches of SALT and its backends" --form \
+            --field="  SALT branch\t":CBE $BRSALT \
+            --field="  kdztools branch\t":CBE $BRKDZ \
+            --field="  lglaf branch\t":CBE $BRLAF\
+            --button=Update:0 --button=Cancel:1 \
+         )
+
+    [ $? -ne 0 ] && F_LOG "Aborted on user request" && F_EXIT
+
+    BRSALT=$(echo "$AA"| cut -d "|" -f 1)
+    BRKDZ=$(echo "$AA"| cut -d "|" -f 2)
+    BRLAF=$(echo "$AA"| cut -d "|" -f 3)
+
     CNT=0
-    for u in $KDZTOOLS $LAFPATH $SALTPATH; do 
+    for u in ${SALTPATH}:$BRSALT ${LAFPATH}:$BRLAF ${KDZTOOLS}:$BRKDZ; do 
         CNT=$((CNT+1))
-        F_LOG "$FUNCNAME: updating $u ..."
+        F_LOG "$FUNCNAME: updating ${u/:*} on branch ${u/*:} ..."
         echo "${CNT}:5"
-        cd $u 
+        cd ${u/:*}
         echo "${CNT}:10"
+        F_LOG "$($GIT checkout ${u/*:} 2>&1)"
         $GIT pull 2>&1 | tee -a $LOG | sed "s/^/${CNT}:#/g"
         test ${PIPESTATUS[0]} -eq 0 && echo "${CNT}:100"
     done | $FYAD --title="$YTITLE - UPDATING" --text="\n  <b>Be patient while SALT freshen up...</b>\n  (if a progress bar do NOT get to 100% a manual update is required)\n\n" --width 800 --multi-progress --bar="SALT codebase":norm --bar="LGLAF codebase":norm --bar="kdztools codebase":norm --button=Close
