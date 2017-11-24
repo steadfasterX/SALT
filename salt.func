@@ -321,7 +321,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
             grow|cache|userdata|modemst1|modemst2|persist|persistent|drm)
               if [ -z "$IRES" ];then IRES="false\n${AVIMG}\n${APART}\nunneeded\n99"; else IRES="$IRES false\n${AVIMG}\n${APART}\nunneeded\n99" ;fi
             ;;
-            rpm|rpmbak|tz|tzbak|sdi|sdibak|aboot|abootbak|pmic|pmicbak|hyp|hypbak|sbl1|sbl1bak)
+            rpm|rpmbak|tz|tzbak|sdi|sdibak|aboot|abootbak|pmic|pmicbak|hyp|hypbak|sbl1|sbl1bak|laf)
               if [ -z "$IRES" ];then IRES="true\n${AVIMG}\n${APART}\nbootloader\n1"; else IRES="$IRES true\n${AVIMG}\n${APART}\nbootloader\n1" ;fi
             ;;
             misc|devinfo)
