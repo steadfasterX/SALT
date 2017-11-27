@@ -186,7 +186,7 @@ F_CDARB(){ F_LOG "$FUNCNAME: started"
     #
     DEVARBEMPTY=0
     DEVARB=$(python2 $LAFPATH/partitions.py --skip-hello --dump - sbl1 | strings | grep "0 SW_ID" |cut -d " " -f 2 |tr -d "0" | $FYAD --title="$YTITLE - COLLECTING" --text "\n  Collecting device information..." --width=400 --progress --pulsate --auto-close --button=Abort)
-    [ -z "$DEVARB" ] && DEVARB="0" && DEVARBEMPTY=1 && F_LOG "(python2 $LAFPATH/partitions.py --skip-hello --dump - sbl1 | strings | grep -C 5 SW_ID)"
+    [ -z "$DEVARB" ] && DEVARB="0" && DEVARBEMPTY=1 && F_LOG "$(python2 $LAFPATH/partitions.py --skip-hello --dump - sbl1 | strings | grep -C 5 SW_ID)"
     F_LOG "$FUNCNAME: DEVARB=$DEVARB, DEVARBEMPTY=$DEVARBEMPTY"
     echo "${DEVARB}:${DEVARBEMPTY}"
     F_LOG "$FUNCNAME: ended"
