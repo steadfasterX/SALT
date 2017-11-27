@@ -1,0 +1,11 @@
+#!/bin/bash
+################################################################################
+ 
+VARS="${0%/*}/salt.vars"
+source $VARS
+
+FUNCS="${0%/*}/salt.func"
+source $FUNCS
+
+F_LOG "getlog script started"
+cat $LOG | $FYAD --title="$YTITLE - DEBUGLOG" --width=800 --height=800 --wrap --text-info --button=Close:0 
