@@ -98,14 +98,6 @@ done
 [ -z $LGBATT ] && LGBATT=no_device_found
 [ -z $DEVARB ] && DEVARB=no_ARB_info_found
 
-# translate bootloader locking state
-case "$LGSEC" in
-    S) LGSEC="locked"
-    ;;
-    U) LGSEC="UNLOCKED"
-    ;;
-esac
-
 # main SALT screen 
 $FYAD --title="$YTITLE" --width=600 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  is a replacement for the windows software LGUP (plus MANY more features!!)\n  and brought to you by <b>steadfasterX</b>.\n\n  $TNAME is based on several tools. Click the ABOUT button to find out more!\n\n  The following comes directly from your device:\n  (<i>\"no_device_found\"</i> if no device connected)" \
     --form \
@@ -113,7 +105,7 @@ $FYAD --title="$YTITLE" --width=600 --image="$SICONS/salt_logo_128x128.png" --te
     --field="  Firmware":RO $LGSWV \
     --field="  Firmware (detailed)":RO $LGFACV \
     --field="  Country":RO $LGCOUNTRY \
-    --field="  Bootloader":RO $LGSEC \
+    --field="  Secure Device":RO $LGSEC \
     --field="  Battery level":RO $LGBATT \
     --field="  AntiRollback":RO $DEVARB \
     --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
