@@ -566,3 +566,46 @@ F_SYNC(){ F_LOG "$FUNCNAME: started"
 
     F_LAFEXEC sync
 }; export -f F_SYNC
+
+# take a nandroid backup of the device
+F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
+    # takes no arguments
+    BMAXDEF=90  # default max partition size in MB
+
+    # define backup type
+    $FYAD --width=400 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text "\n  Choose your backup type:\n  (Basic will just backup partitions up to $BMAXDEF MB)" --button=Full:1 --button=Basic:2 --buttons-layout=center
+    BAKTYPE=$?
+
+    case $BAKTYPE in
+        1) BAKTNAME=Full
+            BMAX=0
+        ;;
+        2) BAKTNAME=Basic
+            BMAX=$((BMAXDEF * 1024))
+        ;;
+        *) F_EXIT $FUNCNAME $BAKTYPE
+        ;;
+    esac
+    F_LOG "$FUNCNAME: choosen backup type was $BAKTYPE, $BAKTNAME, $BMAX KB"
+
+    BANS=$($FYAD --width=800 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text="\n Backup your device in <b>$BAKTNAME</b> mode\n" --form \
+        --field="Target directory\n(ensure you have enough space)":CDIR /tmp \
+        --button=Continue:0 --button=Abort:99)
+
+    BRET=$?
+    [ $BRET -ne 0 ] && F_EXIT "$FUNCNAME Aborted on users request" $BRET
+
+    BTDIR="${BANS/|*}"
+    F_LOG "$FUNCNAME: choosen target directory was $BTDIR"
+
+    [ ! -d "$BTDIR" ] && F_EXIT "$FUNCNAME: Target dir <$BTDIR> does not exists!" 3
+
+    # TODO: check disk space
+    
+    $FYAD --width=500 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text "\n  READY! Click START to begin the backup now." --button=START:0 --button=Abort:2
+    BRET=$?
+    [ $BRET -ne 0 ] && F_EXIT "$FUNCNAME Aborted on users request" $BRET
+
+    python2 ${LAFPATH}/extract-partitions.py --skip-hello --outdir $BTDIR --max-size $BMAX 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - $BAKTNAME BACKUP" --text-info --text "\n  <b><span color='#ff0000'>BE PATIENT! THE SCREEN REFRESHES AFTER EACH PARTITION FIRST!\n  WAIT until you see the hint: All finished</span></b>\n" --listen --tail --height=600 --width=800 --wrap --fore=black --button="Continue (wait until you see All finished)":0 
+
+}; export -f F_BACKUP
