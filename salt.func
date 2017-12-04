@@ -615,7 +615,7 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
 F_EGO(){
     # takes no arguments
 
-    FRET=0
+    FRET=1
     [ -f $LOCKFILE ] && FRET=$(F_MSG 500 "\n  Oops... SALT seems to be running already!\n  Do you want me to ignore this (not recommended)?" "--image=$SICONS/error.png --button=Ignore:1 --button=Close:0")
     [ $FRET -ne 1 ] && F_LOG "$FUNCNAME: Aborted on users request" && exit 123  # no regular F_EXIT here
     # create a lock file
