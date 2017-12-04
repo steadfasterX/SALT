@@ -3,6 +3,8 @@
 
 HERE="$(pwd)"
 
+gksudo --help 2>&1 >> /dev/null
+[ $? -ne 0 ] && echo "ERROR: Please install gksudo!" && exit
 echo here: $HERE
 
 cat > ${HERE}/SALT.desktop <<EOFDSK
@@ -13,7 +15,7 @@ Terminal=false
 Name=SALT
 Icon=${HERE}/icons/salt_icon.png
 Comment=SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
-Exec=gksu ${HERE}/salt
+Exec=gksudo ${HERE}/salt
 EOFDSK
 chmod +x ${HERE}/SALT.desktop
 
