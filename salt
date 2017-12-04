@@ -32,7 +32,8 @@ if [ "$ME" -ne 0 ];then
     echo -e '\nI need more POWER! If asked now type in your sudo password to restart with root perms (wait 20s or press CTRL+C to abort)'
     sudo $0 &
     sleep 20s
-    F_EXIT no-root-end-here
+    F_LOG "no-root mode ending now"
+    exit 0
 fi
 
 # check if we are alone
@@ -119,8 +120,8 @@ $FYAD --title="$YTITLE" --width=600 --image="$SICONS/salt_logo_128x128.png" --te
     true \
     --buttons-layout=spread \
     --button="!$SICONS/update_48x48.png!Updating SALT (kdztools, lglaf, SALT)":"bash -c F_UPDATE" \
-    --button="  Backup!$SICONS/backup.png!Open an adb like shell while in download mode":"bash -c F_BACKUP" \
-    --button="Flash (folder)!$SICONS/flash_48x48.png!This will flash one or multiple partitions from any folder":"bash -c F_FLASHPART "\
+    --button="  Backup!$SICONS/backup.png!Make a full or basic backup while in download mode":"bash -c F_BACKUP" \
+    --button="Flash (folder)!$SICONS/flash_48x48.png!This will flash one or multiple partitions from any folder (e.g. from a previous backup)":"bash -c F_FLASHPART "\
     --button="Extract!$SICONS/extract_48x48.png!Extract a KDZ file. If you want to flash choose Extract+Flash instead":"bash -c F_STARTKDZ" \
     --button=" Flash (kdz)!$SICONS/flashkdz_70x48.png!Extract and Flash like LGUP would do":2 
 UMODE=$?
@@ -129,6 +130,7 @@ UMODE=$?
 F_MAIN
 
 # flash a kdz
+# TODO: THIS HAS TO BE MOVED TO FUNC!
 if [ $UMODE -eq 2 ];then
     FLCHOICES=$($FYAD --title="$YTITLE - FLASH" --always-print-result --width=800 --text "\n  When proceeding you accept that there is no guarantee for nothing - nowhere.\n  I do my best to avoid problems but we all are humans right?\n  You do this on your own responsibility and own risk no matter what.\n\n  Select a KDZ file to flash:" --form \
         --field="":FL --file-filter="KDZ files (*.kdz)| *.kdz *.KDZ" \
