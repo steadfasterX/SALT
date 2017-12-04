@@ -35,6 +35,9 @@ if [ "$ME" -ne 0 ];then
     F_EXIT no-root-end-here
 fi
 
+# check if we are alone
+F_EGO
+
 # check the base:
 if [ ! -d "$LAFPATH" ];then
     F_ELOG "First start of SALT? Expected LG LAF NG here: $LAFPATH"

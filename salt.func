@@ -140,7 +140,8 @@ F_EXIT(){ F_LOG "$FUNCNAME: started"
   
   F_ELOG "EXIT: $EREASON with code $ECODE"
   
-  # TODO (optional): do any other actions
+  rm -vf $LOCKFILE >> $LOG
+
   exit $ECODE
   F_LOG "$FUNCNAME: ended"
 }; export -f F_EXIT
@@ -609,3 +610,14 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     python2 ${LAFPATH}/extract-partitions.py --skip-hello --outdir $BTDIR --max-size $BMAX 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - $BAKTNAME BACKUP" --text-info --text "\n  <b><span color='#ff0000'>BE PATIENT! THE SCREEN REFRESHES AFTER EACH PARTITION FIRST!\n  WAIT until you see the hint: All finished</span></b>\n" --listen --tail --height=600 --width=800 --wrap --fore=black --button="Continue (wait until you see All finished)":0 
 
 }; export -f F_BACKUP
+
+# check if we run already and if not create a lock 
+F_EGO(){
+    # takes no arguments
+
+    FRET=0
+    [ -f $LOCKFILE ] && FRET=$(F_MSG 500 "\n  Oops... SALT seems to be running already!\n  Do you want me to ignore this (not recommended)?" "--image=$SICONS/error.png --button=Ignore:1 --button=Close:0")
+    [ $FRET -ne 1 ] && F_LOG "$FUNCNAME: Aborted on users request" && exit 123  # no regular F_EXIT here
+    # create a lock file
+    date > $LOCKFILE && F_LOG "$FUNCNAME: $LOCKFILE created"
+}; export -f F_EGO
