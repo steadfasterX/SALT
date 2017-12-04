@@ -39,6 +39,9 @@ fi
 # check if we are alone
 F_EGO
 
+# catch ctrl+c for a clean exit
+trap F_EXIT SIGINT
+
 # check the base:
 if [ ! -d "$LAFPATH" ];then
     F_ELOG "First start of SALT? Expected LG LAF NG here: $LAFPATH"
@@ -166,5 +169,4 @@ if [ $UMODE -eq 2 ];then
     fi
 fi
 
-
-F_ELOG "SALT end!"
+F_EXIT "main->end" 0
