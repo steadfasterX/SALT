@@ -116,7 +116,7 @@ $FYAD --title="$YTITLE" --width=600 --image="$SICONS/salt_logo_128x128.png" --te
     --field="  Battery level":RO $LGBATT \
     --field="  AntiRollback":RO $DEVARB \
     --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
-    --field="Get Support / ABOUT / CREDITS!$SICONS/log_16x16.png":BTN "$FYAD --image=\"$SICONS/salt_logo_128x128.png\" --title=\"$YTITLE - ABOUT\" --width=800 --height=200 --text \"\n  $TNAME is based on:\n\t- <a href='https://sourceforge.net/projects/yad-dialog'>YAD</a> - without this no GUI\n\t- the awesome <a href='https://github.com/Lekensteyn/lglaf'>LGLAF</a> code by Peter Wu\n\t- <a href='https://github.com/ehem/kdztools'>kdztools</a> by Elliott Mitchell\n\t- <b>MANY</b> enhancements by steadfasterX (including this GUI)\n\n  ${TNAME} sources:\n\t- <a href='https://github.com/steadfasterX/salt'>$TNAME</a>\n\t- <a href='https://github.com/steadfasterX/lglaf'>Patched LGLAF</a>\n\t- <a href='https://github.com/steadfasterX/salt'>Patched kdztools</a>\n\n  $TNAME support: <a href='https://tinyurl.com/salty'>XDA thread</a>\" --button=Close:0" \
+    --field="Get Support / ABOUT / CREDITS!$SICONS/log_16x16.png":FBTN "bash -c F_ABOUT" \
     --field="  SALT debug log!$SICONS/log_16x16.png":FBTN "$SALTPATH/getlog" \
     --field="  Open a shell!$SICONS/terminal_30x30.png!Open an adb-like shell while in download mode":FBTN "bash -c F_SHELL" \
     --field="\n  <b><span color='#ff0000'>Mouse-Over a button to get more details!</span></b>":LBL \
