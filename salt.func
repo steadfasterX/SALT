@@ -705,6 +705,51 @@ F_LISTPARTS(){ F_LOG "$FUNCNAME: started"
 F_GETPARTS(){ F_LOG "$FUNCNAME: started"
     # takes no args
 
-    $PYTHONBIN $LAFPATH/partitions.py --list | tee -a $LOG | $FYAD --title="$YTITLE - PARTITIONS" --text-info --text "\n  Your partition listing:\n" --listen --tail --height=800 --width=1000 --wrap --fore=blue --button="Close":0
- 
+    PARTLIST=$($PYTHONBIN $LAFPATH/partitions.py --list --batch)
+
+    # make preselections
+    unset IRES
+    for f in $PARTLIST;do
+
+        PNAME="${f/:*}"
+        PARTN=$(echo "${f}" | cut -d ":" -f 2)
+        SSEC=$(echo "${f}" | cut -d ":" -f 3)
+        ESEC=$(echo "${f}" | cut -d ":" -f 4)
+        PARTUID=$(echo "${f}" | cut -d ":" -f 5)
+    
+        F_LOG "${PNAME},${PARTN},${SSEC},${ESEC},${PARTUID}"
+
+        case $PNAME in
+            grow|cache|userdata|modemst1|modemst2|persist|persistent|drm)
+              if [ -z "$IRES" ];then IRES="false\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nunneeded\n99"; else IRES="$IRES false\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nunneeded\n99" ;fi
+            ;;
+            rpm|rpmbak|tz|tzbak|sdi|sdibak|aboot|abootbak|pmic|pmicbak|hyp|hypbak|sbl1|sbl1bak|laf)
+              if [ -z "$IRES" ];then IRES="true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nbootloader\n1"; else IRES="$IRES true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nbootloader\n1" ;fi
+            ;;
+            misc|devinfo)
+              if [ -z "$IRES" ];then 
+                IRES="false\n${PNAME}\n${PARTN}<${SSEC}\n${ESEC}\n${PARTUID}\n</span>\n<span\tcolor='#ff0000'>dangerous</span>\n88"
+              else 
+                IRES="$IRES false\n${PNAME}\n${PARTN}\n<${SSEC}\n${ESEC}\n${PARTUID}\n<span\tcolor='#ff0000'>dangerous</span>\n88"
+              fi
+            ;;
+            modem|limits|mpt|apdp|msadp|dpo|fsg|fsc|ssd|keystore|DDR|sec|encrypt|eksst|rct|boot|recovery|sns|eri|raw_resources*|operatorlogging|carrier|cust|felicia|factory|fota|system)
+            if [ -z "$IRES" ];then
+                IRES="true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\n<span\tcolor='#558000'>safe-to-flash</span>\n2"
+            else
+                IRES="$IRES true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\n<span\tcolor='#558000'>safe-to-flash</span>\n2"
+            fi
+            ;;
+            *)
+            if [ -z "$IRES" ];then
+                IRES="true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nunknown-type\n2"
+            else
+                IRES="$IRES true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nunknown-type\n2"
+            fi
+            ;;
+        esac
+    done
+
+    F_LOG "($FUNCNAME) created yad list: $IRES"
+    echo "$IRES"
 }; export -f F_GETPARTS
