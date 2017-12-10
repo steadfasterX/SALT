@@ -150,7 +150,7 @@ F_EXIT(){ F_LOG "$FUNCNAME: started"
 F_GETINFO(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
 
-    (F_AUTH 2>&1) >> $LOG
+    #(F_AUTH 2>&1) >> $LOG
     IARB=$(F_CDARB)
     echo "arb:${IARB}" \
     && $PYTHONBIN $LAFPATH/lglaf.py -c '!INFO GPRO \x08\x0b\0\0' \
@@ -440,7 +440,7 @@ F_AUTH(){ F_LOG "$FUNCNAME: started"
 # check/ensure device is connected
 F_CHKDEVCON(){ F_LOG "$FUNCNAME: started"
     # takes no argument
-    F_AUTH
+    #F_AUTH
     $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  uname -m\0' | tee -a $LOG
     RET=${PIPESTATUS[0]}
     if [ $RET -ne 0 ];then
