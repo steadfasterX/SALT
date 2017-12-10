@@ -612,7 +612,7 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
 }; export -f F_BACKUP
 
 # check if we run already and if not create a lock 
-F_EGO(){
+F_EGO(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
 
     FRET=1
@@ -623,7 +623,9 @@ F_EGO(){
 }; export -f F_EGO
 
 # about/support screen
-F_ABOUT(){
+F_ABOUT(){ F_LOG "$FUNCNAME: started"
+    # takes no args
+
     $FYAD --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - ABOUT" --width=800 --height=500 --fixed --text \
         "\n  $TNAME is based on:\n\t- <a href='https://sourceforge.net/projects/yad-dialog'>YAD</a> - without this no GUI\n\t- the awesome <a href='https://github.com/Lekensteyn/lglaf'>LGLAF</a> code by Peter Wu\n\t- <a href='https://github.com/ehem/kdztools'>kdztools</a> by Elliott Mitchell\n\t- <b>MANY</b> enhancements by steadfasterX (including this GUI)\n\n  ${TNAME} sources:\n\t- <a href='https://github.com/steadfasterX/salt'>$TNAME</a>\n\t- <a href='https://github.com/steadfasterX/lglaf'>Patched LGLAF</a>\n\t- <a href='https://github.com/steadfasterX/salt'>Patched kdztools</a>\n\n  $TNAME support: <a href='https://tinyurl.com/salty'>XDA thread</a>\n\n  Special credits:\n\t- <a href='https://github.com/tuxuser/'>tuxuser</a> for making LAF communication on Nougat possible and for his great support!" \
         --button=Close:0
