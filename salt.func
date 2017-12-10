@@ -668,3 +668,24 @@ F_STARTKDZFL(){ F_LOG "$FUNCNAME: started"
         F_MSG 600 "\n  ERROR!\n\n  NO DEVICE CONNECTED?\n  If you have connected your device ensure that it is in DOWNLOAD mode\n  (not fastboot, not recovery, not booted Android)" "--button=Return:0"
     fi
 }; export -f F_STARTKDZFL
+
+# showing a advanced menu
+F_ADVMENU(){ F_LOG "$FUNCNAME: started"
+    # takes no args
+
+    $FYAD --title="$YTITLE" --width=800 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n\n <b><span color='#ff0000'>THIS IS AN ADVANCED Menu</span></b>\n\nUse these options here with <b><span color='#ff0000'>CARE!</span></b>\n\n" \
+        --form \
+        --field="SALT debug log!$SICONS/log_16x16.png":FBTN "$SALTPATH/getlog" \
+        --field="Show your partitions!!This will just list your current partitions":FBTN "bash -c F_GETPARTS" \
+        --field="Open a shell!$SICONS/terminal_30x30.png!Open an adb-like shell while in download mode":FBTN "bash -c F_SHELL" \
+        --button="Close"
+
+}; export -f F_ADVMENU
+
+# show your partitions
+F_GETPARTS(){ F_LOG "$FUNCNAME: started"
+    # takes no args
+
+    $PYTHONBIN $LAFPATH/partitions.py --list | tee -a $LOG | $FYAD --title="$YTITLE - PARTITIONS" --text-info --text "\n  Your partition listing:\n" --listen --tail --height=800 --width=1000 --wrap --fore=blue --button="Close":0
+ 
+}; export -f F_GETPARTS
