@@ -628,3 +628,41 @@ F_ABOUT(){
         "\n  $TNAME is based on:\n\t- <a href='https://sourceforge.net/projects/yad-dialog'>YAD</a> - without this no GUI\n\t- the awesome <a href='https://github.com/Lekensteyn/lglaf'>LGLAF</a> code by Peter Wu\n\t- <a href='https://github.com/ehem/kdztools'>kdztools</a> by Elliott Mitchell\n\t- <b>MANY</b> enhancements by steadfasterX (including this GUI)\n\n  ${TNAME} sources:\n\t- <a href='https://github.com/steadfasterX/salt'>$TNAME</a>\n\t- <a href='https://github.com/steadfasterX/lglaf'>Patched LGLAF</a>\n\t- <a href='https://github.com/steadfasterX/salt'>Patched kdztools</a>\n\n  $TNAME support: <a href='https://tinyurl.com/salty'>XDA thread</a>\n\n  Special credits:\n\t- <a href='https://github.com/tuxuser/'>tuxuser</a> for making LAF communication on Nougat possible and for his great support!" \
         --button=Close:0
 }; export -f F_ABOUT
+
+# flash a kdz
+F_STARTKDZFL(){ F_LOG "$FUNCNAME: started"
+    # takes no args
+
+    FLCHOICES=$($FYAD --title="$YTITLE - FLASH" --always-print-result --width=800 --text "\n  When proceeding you accept that there is no guarantee for nothing - nowhere.\n  I do my best to avoid problems but we all are humans right?\n  You do this on your own responsibility and own risk no matter what.\n\n  Select a KDZ file to flash:" --form \
+        --field="":FL --file-filter="KDZ files (*.kdz)| *.kdz *.KDZ" \
+        --field="\n":LBL \
+        --field="Factory Reset\t(if  *unchecked*  may result in bootloop)":CHK \
+        --field="Model Check\t(if  *unchecked*  may result in HARD BRICK)":CHK \
+        --field="ARB Check\t(if  *unchecked*  may result in HARD BRICK)":CHK \
+        --field=:LBL \
+        --field="TEST run\t\t(will  *not*  flash anything)":CHK \
+        undef true true true true true true\
+        --button="Agree &amp; Continue":0 \
+        --button="Cancel":1 \
+        )
+    FLERR=$?
+    [ $FLERR -ne 0 ] && F_EXIT flashing-select $FLERR 
+ 
+    LGKDZ=$(echo "$FLCHOICES" | cut -d '|' -f 1)
+    LGFR=$(echo "$FLCHOICES" | cut -d '|' -f 3)
+    LGCHKMOD=$(echo "$FLCHOICES" | cut -d '|' -f 4)
+    LGARB=$(echo "$FLCHOICES" | cut -d '|' -f 5)
+    LGDRY=$(echo "$FLCHOICES" | cut -d '|' -f 7)
+
+    F_ELOG "LGKDZ = $LGKDZ, LGFR = $LGFR, LGCHKMOD = $LGCHKMOD, LGARB = $LGARB, LGDRY = $LGDRY"
+
+    [ ! -f "$LGKDZ" ] && F_ERR flashing-kdz-invalid 3 "\n  <b>ERROR</b>\n\n  The file\n  $LGKDZ\n  does not exist!\n"
+
+    F_CHKDEVCON
+    if [ $? -eq 0 ];then
+        F_ELOG "device connected... going on!"
+        F_FLASHKDZ "$LGKDZ" "$LGFR" "$LGCHKMOD" "$LGARB" "$LGDRY"
+    else
+        F_MSG 600 "\n  ERROR!\n\n  NO DEVICE CONNECTED?\n  If you have connected your device ensure that it is in DOWNLOAD mode\n  (not fastboot, not recovery, not booted Android)" "--button=Return:0"
+    fi
+}; export -f F_STARTKDZFL
