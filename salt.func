@@ -678,6 +678,7 @@ F_ADVMENU(){ F_LOG "$FUNCNAME: started"
         --field="SALT debug log!$SICONS/log_16x16.png":FBTN "$SALTPATH/getlog" \
         --field="Show your partitions!!This will just list your current partitions":FBTN "bash -c F_LISTPARTS" \
         --field="Open a shell!$SICONS/terminal_30x30.png!Open an adb-like shell while in download mode":FBTN "bash -c F_SHELL" \
+        --field="<span color='#ff0000'>Erase</span> partition(s)!!EXTREMELY DANGEROUS - CAN EASILY BRICK YOUR DEVICE":FBTN "bash -c F_DELPART" \
         --button="Close"
 
 }; export -f F_ADVMENU
@@ -753,3 +754,43 @@ F_GETPARTS(){ F_LOG "$FUNCNAME: started"
     F_LOG "($FUNCNAME) created yad list: $IRES"
     echo "$IRES"
 }; export -f F_GETPARTS
+
+# erase partitions
+F_DELPART(){ F_LOG "$FUNCNAME: started"
+    # takes no args
+    
+    IRES=$(F_GETPARTS)
+    CHOOSENP=$(for files in $IRES;do echo -e "$files" | sed 's/true/false/g' ;done | $FYAD --height=800 --width=1000 --title="$YTITLE - PARTITIONS" --text "\n  Select a partition to flash:\n" --list  --checklist\
+            --column="Selection":CHK \
+            --column="Partition":TXT \
+            --column="#" \
+            --column="Start sector" \
+            --column="End sector" \
+            --column="UID" \
+            --column="Type" \
+            --column="sort_int" \
+            --listen --no-selection \
+            --hide-column=8 \
+            --button=ERASE:0 \
+            --button=Abort:3 | cut -d "|" -f 2,3,8 | tr "|" ":" )
+    CERR=$?
+    F_LOG "CHOOSENP: $CHOOSENP"
+    #CHOOSENP=$(for files in $IRES;do echo -e "$files" ;done \
+    #            | $FYAD --height=800 --width=600 --title="$YTITLE - ERASING" --text "\n  Select the partitions you want to ERASE\n" --list --checklist \
+    #                    --column="Flash":CHK --column="Image File":TXT --column="Target partition" --column="Type" --column=sort_int --hide-column=5  --listen --no-selection \
+    #                    --button=FLASH:0 --button=Abort:99 |cut -d "|" -f 2-3,5 | tr "|" ":" )
+
+    F_LOG "CERR: $CERR"
+    [ $CERR -ne 0 ] && F_ERR $FUNCNAME 0 "No partition or aborted by user"
+
+    CHCOUNT=$(echo "$CHOOSENP" |tr " " "\n" |grep -c :)
+    [ $CHCOUNT -lt 1 ] && F_ERR $FUNCNAME 0 "No partition selected?"
+
+    F_ELOG "choosen partitions: $CHOOSENP -> $CHCOUNT"
+
+    SORTEDP=$(echo "$CHOOSENP" |tr " " "\n" | sort -t : -k 3n | cut -d ":" -f 1-2 | tr "\n" " " )
+    CHCOUNT=$(echo "$SORTEDP" |tr " " "\n" |grep -c :)
+
+    F_ELOG "sorted partitions: $SORTEDP -> $CHCOUNT"
+    
+}; export -f F_DELPART
