@@ -746,25 +746,26 @@ F_GETPARTS(){ F_LOG "$FUNCNAME: started"
     
         F_LOG "${PNAME},${PARTN},${SSEC},${ESEC},${PARTUID}"
 
+        shopt -s extglob
         case $PNAME in
-            grow|cache|userdata|modemst1|modemst2|persist|persistent|drm)
+            ${PUNNEEDED})
               if [ -z "$IRES" ];then IRES="false\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nunneeded\n99"; else IRES="$IRES false\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nunneeded\n99" ;fi
             ;;
-            rpm|rpmbak|tz|tzbak|sdi|sdibak|aboot|abootbak|pmic|pmicbak|hyp|hypbak|sbl1|sbl1bak|laf)
+            ${PBOOTL})
               if [ -z "$IRES" ];then IRES="true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nbootloader\n1"; else IRES="$IRES true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nbootloader\n1" ;fi
             ;;
-            misc|devinfo)
+            ${PDEVICE})
               if [ -z "$IRES" ];then 
-                IRES="false\n${PNAME}\n${PARTN}<${SSEC}\n${ESEC}\n${PARTUID}\n</span>\n<span\tcolor='#ff0000'>dangerous</span>\n88"
+                IRES="false\n${PNAME}\n${PARTN}${SSEC}\n${ESEC}\n${PARTUID}\n</span>\n<span\tcolor='#ff0000'>dangerous</span>\n88"
               else 
-                IRES="$IRES false\n${PNAME}\n${PARTN}\n<${SSEC}\n${ESEC}\n${PARTUID}\n<span\tcolor='#ff0000'>dangerous</span>\n88"
+                IRES="$IRES false\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\n<span\tcolor='#ff0000'>dangerous</span>\n88"
               fi
             ;;
-            modem|limits|mpt|apdp|msadp|dpo|fsg|fsc|ssd|keystore|DDR|sec|encrypt|eksst|rct|boot|recovery|sns|eri|raw_resources*|operatorlogging|carrier|cust|felicia|factory|fota|system)
+            ${PSYSTEM})
             if [ -z "$IRES" ];then
-                IRES="true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\n<span\tcolor='#558000'>safe-to-flash</span>\n2"
+                IRES="true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\n<span\tcolor='#558000'>system-partition</span>\n2"
             else
-                IRES="$IRES true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\n<span\tcolor='#558000'>safe-to-flash</span>\n2"
+                IRES="$IRES true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\n<span\tcolor='#558000'>system-partition</span>\n2"
             fi
             ;;
             *)
