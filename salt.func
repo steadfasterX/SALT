@@ -781,6 +781,21 @@ F_GETPARTS(){ F_LOG "$FUNCNAME: started"
     echo "$IRES"
 }; export -f F_GETPARTS
 
+# factory reset a device
+F_FACRESET(){ F_LOG "$FUNCNAME: started"
+    # takes 1 (optional) argument
+    # when no arg given we assume interactive mode
+    #
+    # 1 => interactive (ia) or not (ni)
+
+    if [ -z $1 ];then WMODE=ia; else WMODE=$1; fi
+
+    # clean userdata
+    F_WIPEPART userdata $WMODE || F_MSGE 400 "Wiping userdata ended with an error: $WIPERR\n\nCheck debug Log in SALT advanced menu."
+    # wipe cache
+    F_WIPEPART cache $WMODE || F_MSGE 400 "Wiping cache ended with an error: $WIPERR\n\nCheck debug Log in SALT advanced menu."
+}
+
 # erase partitions
 F_DELPART(){ F_LOG "$FUNCNAME: started"
     # takes no args
