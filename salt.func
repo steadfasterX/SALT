@@ -152,15 +152,20 @@ F_ERR(){ F_LOG "$FUNCNAME: started"
 
 # exit properly
 F_EXIT(){ F_LOG "$FUNCNAME: started"
-  # takes 2 arguments (mandantory)
-  # 1 => the function or reason who calls the exit function
-  # 2 => the exitcode to be used
+  # takes 3 arguments
+  # mandantory:
+  #   1 => the function or reason who calls the exit function
+  #   2 => the exitcode to be used
+  #
+  # optional:
+  #   3 => type: cleaning lock file (full) or just close (when not set)
   EREASON=$1
   ECODE=$2
+  ETYPE=$3
   
   F_ELOG "EXIT: $EREASON with code $ECODE"
   
-  rm -vf $LOCKFILE >> $LOG
+  [ "$ETYPE" == "full" ] && rm -vf $LOCKFILE >> $LOG
 
   exit $ECODE
   F_LOG "$FUNCNAME: ended"
