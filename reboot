@@ -9,6 +9,6 @@ source $FUNCS
 
 F_LOG "Reboot button script started"
 $FYAD --title="$YTITLE - REBOOT" --image="$SICONS/warning_64x64.png" --width=400 --text '\n  Do you want to really reboot your device now?' --button=Yes:0 --button=No:1
-[ $? -eq 0 ] && F_LOG "REBOOT INITIATED by USER!" && python2 ${LAFPATH}/lglaf.py --skip-hello -c '!CTRL RSET'
+[ $? -eq 0 ] && F_LOG "REBOOT INITIATED by USER!" && $PYTHONBIN ${LAFPATH}/lglaf.py -c '!CTRL RSET'
 F_LOG "Reboot button script ended"
 
