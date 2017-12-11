@@ -127,4 +127,4 @@ F_MAIN(){
 }
 F_MAIN
 
-F_EXIT "main->end" 0
+F_EXIT "main->end" 0 full
