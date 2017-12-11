@@ -802,7 +802,7 @@ F_DELPART(){ F_LOG "$FUNCNAME: started"
     # takes no args
     
     IRES=$(F_GETPARTS)
-    CHOOSENP=$((for files in $IRES;do echo -e "$files" | sed 's/true/false/g' ;done | $FYAD --height=800 --width=1000 --title="$YTITLE - PARTITIONS" --text "\n  Select a partition to flash:\n" --list  --checklist\
+    CHOOSENP=$((for files in $IRES;do echo -e "$files" | sed 's/true/false/g' ;done | $FYAD --height=800 --width=1000 --title="$YTITLE - WIPE" --text "\n  Select partition(s) to WIPE:\n" --list  --checklist\
             --column="Selection":CHK \
             --column="Partition":TXT \
             --column="#" \
@@ -813,7 +813,7 @@ F_DELPART(){ F_LOG "$FUNCNAME: started"
             --column="sort_int" \
             --listen --no-selection \
             --hide-column=8 \
-            --button=ERASE:0 \
+            --button=WIPE:0 \
             --button=Abort:3) | cut -d "|" -f 2,3,8 | tr "|" ":")
     CERR=${PIPESTATUS[0]}
     F_LOG "CHOOSENP: $CHOOSENP"
