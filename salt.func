@@ -222,7 +222,8 @@ F_CDARB(){ F_LOG "$FUNCNAME: started"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_CDARB
 
-# check local file for antirollback bullshit (I'm still pissed off how a vendor is doing this! I mean HARDBRICK a phone ?? wtf LG?)
+# check local file for antirollback bullshit
+# (I'm still pissed off that LG is REALLY doing this! I mean HARDBRICK a phone ?? wtf LG? Its MY decision if I wanna use an outdated/insecure ROM version!)
 F_CKARB(){ F_LOG "$FUNCNAME: started"
     # takes 1 argument
     #  
@@ -326,7 +327,7 @@ F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
     # If all the above is fine: FLASH
     F_FLASHPART "$KDZTMP/extracteddz"
 
-    # factory reset to avoid bootloop
+    # factory reset to avoid bootloop (cache gets deleted by FLASHPART already)
     # TODO: accept the taken user choice 
     F_WIPEPART userdata ni
 
@@ -800,10 +801,6 @@ F_DELPART(){ F_LOG "$FUNCNAME: started"
             --button=Abort:3 | cut -d "|" -f 2,3,8 | tr "|" ":" )
     CERR=$?
     F_LOG "CHOOSENP: $CHOOSENP"
-    #CHOOSENP=$(for files in $IRES;do echo -e "$files" ;done \
-    #            | $FYAD --height=800 --width=600 --title="$YTITLE - ERASING" --text "\n  Select the partitions you want to ERASE\n" --list --checklist \
-    #                    --column="Flash":CHK --column="Image File":TXT --column="Target partition" --column="Type" --column=sort_int --hide-column=5  --listen --no-selection \
-    #                    --button=FLASH:0 --button=Abort:99 |cut -d "|" -f 2-3,5 | tr "|" ":" )
 
     F_LOG "CERR: $CERR"
     [ $CERR -ne 0 ] && F_ERR $FUNCNAME 0 "No partition or aborted by user"
