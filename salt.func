@@ -103,6 +103,23 @@ F_MSGOK(){ F_LOG "$FUNCNAME: started"
     echo $RES
 }; export -f F_MSGOK
 
+# print a warning message
+F_MSGW(){ F_LOG "$FUNCNAME: started"
+    # takes up to 3 arguments
+    #
+    # 1 => width
+    # 2 => message
+    #
+    # optional:
+    # 3 => yad stuff
+
+    $FYAD --width="$1" --title="$YTITLE - SUCCESS" --image="$SICONS/warning_64x64.png" --text "\n$2" $3 --button=Close:0
+    RES=$?
+    F_LOG "$2"
+    F_LOG $RES
+    echo $RES
+}; export -f F_MSGW
+
 # check errorcode + exit when not errorcode not as expected
 F_ERR(){ F_LOG "$FUNCNAME: started"
   # takes 2-4 arguments
