@@ -802,7 +802,7 @@ F_DELPART(){ F_LOG "$FUNCNAME: started"
     # takes no args
     
     IRES=$(F_GETPARTS)
-    CHOOSENP=$(for files in $IRES;do echo -e "$files" | sed 's/true/false/g' ;done | $FYAD --height=800 --width=1000 --title="$YTITLE - PARTITIONS" --text "\n  Select a partition to flash:\n" --list  --checklist\
+    CHOOSENP=$((for files in $IRES;do echo -e "$files" | sed 's/true/false/g' ;done | $FYAD --height=800 --width=1000 --title="$YTITLE - PARTITIONS" --text "\n  Select a partition to flash:\n" --list  --checklist\
             --column="Selection":CHK \
             --column="Partition":TXT \
             --column="#" \
@@ -814,21 +814,44 @@ F_DELPART(){ F_LOG "$FUNCNAME: started"
             --listen --no-selection \
             --hide-column=8 \
             --button=ERASE:0 \
-            --button=Abort:3 | cut -d "|" -f 2,3,8 | tr "|" ":" )
-    CERR=$?
+            --button=Abort:3) | cut -d "|" -f 2,3,8 | tr "|" ":")
+    CERR=${PIPESTATUS[0]}
     F_LOG "CHOOSENP: $CHOOSENP"
 
     F_LOG "CERR: $CERR"
-    [ $CERR -ne 0 ] && F_ERR $FUNCNAME 0 "No partition or aborted by user"
+    [ $CERR -ne 0 ] && F_MSGE 400 "Aborted by user!" && F_EXIT $FUNCNAME $CERR
 
     CHCOUNT=$(echo "$CHOOSENP" |tr " " "\n" |grep -c :)
-    [ $CHCOUNT -lt 1 ] && F_ERR $FUNCNAME 0 "No partition selected?"
+    [ $CHCOUNT -lt 1 ] && F_MSGE 400 "No partition selected?" && F_EXIT $FUNCNAME $CHCOUNT
 
     F_ELOG "choosen partitions: $CHOOSENP -> $CHCOUNT"
 
-    SORTEDP=$(echo "$CHOOSENP" |tr " " "\n" | sort -t : -k 3n | cut -d ":" -f 1-2 | tr "\n" " " )
+    SORTEDP=$(echo "$CHOOSENP" |tr " " "\n" | sort -t : -k 3n | cut -d ":" -f 1-2 | tr "\n" " ")
+    SORTEDPH=$(echo "$SORTEDP" | tr " " "\n" |cut -d ":" -f1 )
     CHCOUNT=$(echo "$SORTEDP" |tr " " "\n" |grep -c :)
 
-    F_ELOG "sorted partitions: $SORTEDP -> $CHCOUNT"
+    LCERR=$(F_MSGW 600 "Last chance to stop!\n\n<b><span color='#ff0000'>THIS CAN EASILY HARD BRICK YOUR DEVICE IF YOU DO NOT KNOW WHAT YOU'RE DOING!</span></b>\n\nThese partitions will be erased when continuing:\n\n$SORTEDPH\n\nAre you totally sure?" "--button=ERASE-THEM:99")
+    [ $LCERR -ne 99 ] && F_MSGE 400 "Aborted on user request!" && F_EXIT $FUNCNAME 4
     
+    F_ELOG "sorted partitions: $SORTEDP -> $CHCOUNT"
+    for w in $SORTEDP; do
+        echo 0
+        echo "#${w/:*}"
+        sleep 2
+        echo 40
+        ($PYTHONBIN $LAFPATH/partitions.py --wipe ${w/:*} 2>&1) >> $LOG
+        if [ $? -ne 0 ];then
+            echo "#ERROR: while wiping ${w/:*}"
+            F_MSGE 600 "ERROR while wiping ${w/:*} !! " && F_EXIT $FUNCNAME 4
+        else
+            echo "#wiped ${w/:*} successfully"
+            echo 100
+        fi
+    done | $FYAD --title="$YTITLE - ERASING" --text="\n  <b>SALT is now erasing selected partitions...</b>\n  (if the progress bar does NOT get up to 100%: DO NOT REBOOT THE DEVICE!)\n\n" --width 900 --progress --button='Abort':1 --button="Finish (wait until all is done)":0
+    EERR=${PIPESTATUS[0]}
+    if [ $EERR -eq 0 ];then
+        F_MSGOK 400 "All partitions wiped successfully:\n\n$SORTEDPH"
+    else
+        F_MSGE 600 "  Problems occured while wiping (EERR: $EERR) or ABORTED by user!\n  Check log and do not poweroff the device until you fixed this!"
+    fi
 }; export -f F_DELPART
