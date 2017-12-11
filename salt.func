@@ -555,6 +555,8 @@ F_UPDATE(){ F_LOG "$FUNCNAME: started"
         $GIT pull 2>&1 | tee -a $LOG | sed "s/^/${CNT}:#/g"
         test ${PIPESTATUS[0]} -eq 0 && echo "${CNT}:100"
     done | $FYAD --title="$YTITLE - UPDATING" --text="\n  <b>Be patient while SALT freshen up...</b>\n  (if a progress bar do NOT get to 100% a manual update is required)\n\n" --width 800 --multi-progress --bar="SALT codebase":norm --bar="LGLAF codebase":norm --bar="kdztools codebase":norm --button=Close
+
+    F_MSGW 600 "You must restart SALT if you have updated or changed the <b>SALT</b> branch before the changes become active." "--fixed"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_UPDATE
 
@@ -653,7 +655,7 @@ F_ABOUT(){ F_LOG "$FUNCNAME: started"
     # takes no args
 
     $FYAD --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - ABOUT" --width=800 --height=500 --fixed --text \
-        "\n  $TNAME is based on:\n\t- <a href='https://sourceforge.net/projects/yad-dialog'>YAD</a> - without this no GUI\n\t- the awesome <a href='https://github.com/Lekensteyn/lglaf'>LGLAF</a> code by Peter Wu\n\t- <a href='https://github.com/ehem/kdztools'>kdztools</a> by Elliott Mitchell\n\t- <b>MANY</b> enhancements by steadfasterX (including this GUI)\n\n  ${TNAME} sources:\n\t- <a href='https://github.com/steadfasterX/salt'>$TNAME</a>\n\t- <a href='https://github.com/steadfasterX/lglaf'>Patched LGLAF</a>\n\t- <a href='https://github.com/steadfasterX/salt'>Patched kdztools</a>\n\n  $TNAME support: <a href='https://tinyurl.com/salty'>XDA thread</a>\n\n  Special credits:\n\t- <a href='https://github.com/tuxuser/'>tuxuser</a> for making LAF communication on Nougat possible and for his great support!" \
+        "\n  $TNAME is based on:\n\t- <a href='https://sourceforge.net/projects/yad-dialog'>YAD</a> - without this no GUI\n\t- the awesome <a href='https://github.com/Lekensteyn/lglaf'>LGLAF</a> code by Peter Wu\n\t- <a href='https://github.com/ehem/kdztools'>kdztools</a> by Elliott Mitchell\n\t- <b>MANY</b> enhancements by steadfasterX (including this GUI)\n\n  ${TNAME} sources:\n\t- <a href='https://github.com/steadfasterX/salt'>$TNAME</a>\n\t- <a href='https://github.com/steadfasterX/lglaf'>Patched LGLAF</a>\n\t- <a href='https://github.com/steadfasterX/salt'>Patched kdztools</a>\n\n  $TNAME support: <a href='https://tinyurl.com/SALTatXDA'>XDA thread</a>\n\n  Special credits:\n\t- <a href='https://github.com/tuxuser/'>tuxuser</a> for making LAF communication on Nougat possible and for his great support!" \
         --button=Close:0
 }; export -f F_ABOUT
 
