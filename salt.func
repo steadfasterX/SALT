@@ -830,7 +830,7 @@ F_DELPART(){ F_LOG "$FUNCNAME: started"
     SORTEDPH=$(echo "$SORTEDP" | tr " " "\n" |cut -d ":" -f1 )
     CHCOUNT=$(echo "$SORTEDP" |tr " " "\n" |grep -c :)
 
-    LCERR=$(F_MSGW 600 "Last chance to stop!\n\n<b><span color='#ff0000'>THIS CAN EASILY HARD BRICK YOUR DEVICE IF YOU DO NOT KNOW WHAT YOU'RE DOING!</span></b>\n\nThese partitions will be erased when continuing:\n\n$SORTEDPH\n\nAre you totally sure?" "--button=ERASE-THEM:99")
+    LCERR=$(F_MSGW 600 "Last chance to stop!\n\n<b><span color='#ff0000'>THIS CAN EASILY HARD BRICK YOUR DEVICE IF YOU DO NOT KNOW WHAT YOU'RE DOING!</span></b>\n\nThese partitions will be erased when continuing:\n\n$SORTEDPH\n\nAre you totally sure?" "--button=WIPE-THEM:99")
     [ $LCERR -ne 99 ] && F_MSGE 400 "Aborted on user request!" && F_EXIT $FUNCNAME 4
     
     F_ELOG "sorted partitions: $SORTEDP -> $CHCOUNT"
