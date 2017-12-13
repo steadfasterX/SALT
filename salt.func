@@ -636,7 +636,77 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
 
     $PYTHONBIN ${LAFPATH}/extract-partitions.py --outdir $BTDIR --max-size $BMAX 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - $BAKTNAME BACKUP" --text-info --text "\n  <b><span color='#ff0000'>BE PATIENT! THE SCREEN REFRESHES AFTER EACH PARTITION FIRST!\n  WAIT until you see the hint: All finished</span></b>\n" --listen --tail --height=600 --width=800 --wrap --fore=blue --button="Continue (wait until you see All finished)":0 
 
+    VERSUPP=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  md5sum /dev/block/bootdevice/by-name/\0' --rawshell 2>&1 | cut -d ' ' -f 1)
+    if [ -z "$VERSUPP" ];then
+        F_MSG 400 "\n  Your device/firmware does not support verification of the backup sorry."
+    else
+        unset VERANS
+        VERANS=$(F_MSGOK 600 "\n  Your device supports md5sum verification!\n  Do you want to verify your just created backup?" "--button=Verify:2")
+        F_LOG "$FUNCNAME: VERANS was $VERANS"
+        [ "$VERANS" == "2" ] && F_VERIFYBAK "$BTDIR"
+    fi
+
 }; export -f F_BACKUP
+
+# verify a backup folder with reality
+F_VERIFYBAK(){ F_LOG "$FUNCNAME: started"
+    # takes 1 argument
+    #
+    # mandantory:
+    # 1 => path to the backup images (can be img,image,bin,mmcblk0p* files)
+
+    VDIR=$1
+    [ ! -d "$VDIR" ] && F_MSGE 400 "$VDIR does not exists!\nHow should I verify ghost images??" && F_EXIT "$FUNCNAME no VDIR" 3
+
+    #declare -A BAKOK BAKWARN BAKERR
+    BAKOK=()
+    BAKWARNING=()
+    BAKERROR=()
+    for vfile in $(find "$VDIR" -maxdepth 1 -type f -name *.bin -or -name *.img -or -name *.image | tr " " ",");do
+        vfileloc=$(echo "${vfile}"| tr "," " ")
+        LOCFILE=$(md5sum "$vfileloc" | cut -d " " -f1)
+        echo "#${vfileloc/*\/} md5: $LOCFILE"
+        vfilerem=$(echo "${vfileloc/*\/}" | tr "," " " | sed -e 's/\.image//g;s/\.img//g;s/\.bin//g')
+        F_LOG "$FUNCNAME: vfile: ${vfile}, vfileloc: $vfileloc, LOCFILE: $LOCFILE, vfilerem: $vfilerem"
+
+        if [ -z "$vfilerem" ];then
+            vfilerem=$(echo "${vfileloc}" | tr "," " " | sed -e 's/mmcblk0p\(.*\)/\1/g')
+            REMFILE=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  md5sum /dev/block/bootdevice/by-num/p'${vfilerem}'\0' --rawshell 2>&1 | cut -d ' ' -f1)
+        else
+            LAFEXEC='!EXEC  md5sum /dev/block/bootdevice/by-name/${vfilerem}\0'
+            REMFILE=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  md5sum /dev/block/bootdevice/by-name/'${vfilerem}'\0' --rawshell 2>&1 | cut -d ' ' -f1)
+        fi
+        F_LOG "$FUNCNAME: vfilerem: $vfilerem, REMFILE: $REMFILE"
+        if [ -z "$LOCFILE" -o -z "$REMFILE" ];then
+            F_LOG "$FUNCNAME: #${vfile/*\/} verify not possible as one or both hashes are empty (LOCFILE: $LOCFILE , REMFILE: $REMFILE)!"
+            BAKWARNING+=("${vfile/*\/}\n")
+        else
+            if [ "$LOCFILE" == "$REMFILE" ];then
+                F_LOG "$FUNCNAME: #${vfile/*\/} verify OK ($LOCFILE == $REMFILE)!"
+                echo "#${vfile/*\/} verify OK!"
+                BAKOK+=("${vfile/*\/}\n")
+            else
+                F_LOG "$FUNCNAME: #${vfile/*\/} verify ERROR (($LOCFILE != $REMFILE))!"
+                echo "#${vfile/*\/} verify ERROR!"
+                BAKERROR+=("${vfile/*\/}\n")
+            fi
+        fi
+    done
+    
+    F_LOG "Success\n${BAKOK[@]}\nWarning\n${BAKWARNING[@]}\nErrors\n${BAKERROR[@]}"
+    F_LOG "Success\n${#BAKOK[@]}\nWarning\n${#BAKWARNING[@]}\nErrors\n${#BAKERROR[@]}"
+    BAKOKYAD=$(echo "${BAKOK[@]}")
+    BAKWARNYAD=$(echo "${BAKWARNING[@]}")
+    BAKERRYAD=$(echo "${BAKERROR[@]}")
+    $FYAD --title="$YTITLE - BAK VERIFY" --width=600 --center --text="\n\tClick on the corresponding buttons to display details\n\n" --form \
+            --field="\t${#BAKOK[@]}":RO OK \
+            --field="\t${#BAKWARNING[@]}":RO WARNING \
+            --field="\t${#BAKERROR[@]}":RO ERROR \
+            --field=Details:FBTN "$FYAD --image=$SICONS/ok_64x64.png --width=800 --title=\"$YTITLE - OK\" --text=\"\nThese partitions were successfully verified (md5 matched):\n\n${BAKOKYAD}\" --button=Close" \
+            --field=Details:FBTN "$FYAD --image=$SICONS/warning_64x64.png --width=800 --title=\"$YTITLE - WARNINGS\" --text=\"\nThese files cant be verified (no md5 on partition possible):\n\n${BAKWARNYAD}\" --button=Close" \
+            --field=Details:FBTN "$FYAD --image=$SICONS/error.png --width=800 --title=\"$YTITLE - ERRORS\" --text=\"\nThese files are corrupt (md5 mismatch):\n\n${BAKERRYAD}\" --button=Close" \
+            --columns=2 --button=Close
+}; export -f F_VERIFYBAK
 
 # check if we run already and if not create a lock 
 F_EGO(){ F_LOG "$FUNCNAME: started"
