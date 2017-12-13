@@ -599,10 +599,9 @@ F_SYNC(){ F_LOG "$FUNCNAME: started"
 # take a nandroid backup of the device
 F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     # takes no arguments
-    BMAXDEF=90  # default max partition size in MB
 
     # define backup type
-    $FYAD --width=400 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text "\n  Choose your backup type:\n  (Basic will just backup partitions up to $BMAXDEF MB)" --button=Full:1 --button=Basic:2 --buttons-layout=center
+    $FYAD --width=450 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text "\n  Choose your backup type:\n  (Basic will just backup partitions up to $BMAXDEF MB\n  which is defined in BMAXDEF variable)" --button=Full:1 --button=Basic:2 --buttons-layout=center
     BAKTYPE=$?
 
     case $BAKTYPE in
