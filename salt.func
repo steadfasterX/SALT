@@ -656,16 +656,38 @@ F_VERIFYBAK(){ F_LOG "$FUNCNAME: started"
     # 1 => path to the backup images (can be img,image,bin,mmcblk0p* files)
 
     VDIR=$1
-    [ ! -d "$VDIR" ] && F_MSGE 400 "$VDIR does not exists!\nHow should I verify ghost images??" && F_EXIT "$FUNCNAME no VDIR" 3
+    [ ! -d "$VDIR" ] && F_MSGE 650 "$VDIR does not exists!\nHow am I supposed to use these files existing only in your head?" && F_EXIT "$FUNCNAME no VDIR" 3
 
-    #declare -A BAKOK BAKWARN BAKERR
+    DIRFILES=$(for v in $(find "$VDIR" -maxdepth 1 -type f -name *.bin -or -name *.img -or -name *.image -or -name mmcblk0p* | tr " " ","); do echo "$v";done)
+
+    F_LOG "$FUNCNAME: detected files: $DIRFILES"
+    CHCOUNT=$(echo "$DIRFILES" | egrep -c '^.+')
+    F_LOG "$(echo \"$DIRFILES\" | egrep -c '^.+')"
+    F_LOG "detected files: $DIRFILES -> $CHCOUNT"
+
+    [ $CHCOUNT -lt 1 ] && F_MSGE 400 "$FUNCNAME: No valid image files found\n(valid are: bin, img, image, mmcblk0p*)!" && F_EXIT "$FUNCNAME: exited" 3
+
+
+    SORTEDF=$(echo "$DIRFILES" |tr " " "\n" | sort | tr "\n" " " )
+    CHCOUNT=$(echo "$SORTEDF" |tr " " "\n" |egrep -c '^.+')
+
+    F_ELOG "sorted partitions: $SORTEDF -> $CHCOUNT"
+
+    CNT=0
     BAKOK=()
     BAKWARNING=()
     BAKERROR=()
-    for vfile in $(find "$VDIR" -maxdepth 1 -type f -name *.bin -or -name *.img -or -name *.image | tr " " ",");do
+
+    # open yad listener
+    echo 0> /tmp/t 
+    tail -f /tmp/t | $FYAD --title="$YTITLE - VERIFY" --text="\n  <b>SALT is now verifying the backup...</b>\n  (just wait until you see: <b><span color='#ff0000'>VERIFICATION FINISHED</span></b>)\n" --width 900 --progress --button='Close (WAIT until FINISHED)':0 --auto-close &
+    tail_pid=$!
+
+    for vfile in $SORTEDF;do
+        CNT=$((CNT+1))
         vfileloc=$(echo "${vfile}"| tr "," " ")
         LOCFILE=$(md5sum "$vfileloc" | cut -d " " -f1)
-        echo "#${vfileloc/*\/} md5: $LOCFILE"
+        echo "#${vfileloc/*\/} md5: $LOCFILE" >>/tmp/t
         vfilerem=$(echo "${vfileloc/*\/}" | tr "," " " | sed -e 's/\.image//g;s/\.img//g;s/\.bin//g')
         F_LOG "$FUNCNAME: vfile: ${vfile}, vfileloc: $vfileloc, LOCFILE: $LOCFILE, vfilerem: $vfilerem"
 
@@ -678,33 +700,40 @@ F_VERIFYBAK(){ F_LOG "$FUNCNAME: started"
         fi
         F_LOG "$FUNCNAME: vfilerem: $vfilerem, REMFILE: $REMFILE"
         if [ -z "$LOCFILE" -o -z "$REMFILE" ];then
-            F_LOG "$FUNCNAME: #${vfile/*\/} verify not possible as one or both hashes are empty (LOCFILE: $LOCFILE , REMFILE: $REMFILE)!"
+            F_LOG "$FUNCNAME: ${vfile/*\/} verify not possible as one or both hashes are empty (LOCFILE: $LOCFILE , REMFILE: $REMFILE)!"
+            echo "#${vfile/*\/} no md5 verify!">>/tmp/t
             BAKWARNING+=("${vfile/*\/}\n")
         else
             if [ "$LOCFILE" == "$REMFILE" ];then
-                F_LOG "$FUNCNAME: #${vfile/*\/} verify OK ($LOCFILE == $REMFILE)!"
-                echo "#${vfile/*\/} verify OK!"
+                F_LOG "$FUNCNAME: ${vfile/*\/} verify OK ($LOCFILE == $REMFILE)!"
+                echo "#${vfile/*\/} verify OK!">>/tmp/t
                 BAKOK+=("${vfile/*\/}\n")
+                F_LOG "${BAKOK[@]}"
             else
                 F_LOG "$FUNCNAME: #${vfile/*\/} verify ERROR (($LOCFILE != $REMFILE))!"
-                echo "#${vfile/*\/} verify ERROR!"
+                echo "#${vfile/*\/} verify ERROR!" >>/tmp/t
                 BAKERROR+=("${vfile/*\/}\n")
             fi
         fi
+        CNTPERC=$(($CNT * 100 / $CHCOUNT))
+        echo $CNTPERC >>/tmp/t
+        [ $CNT -eq $CHCOUNT ] && echo '# VERIFICATION FINISHED!' >>/tmp/t && F_LOG "$FUNCNAME: Verification finished"
     done
-    
+    # close yad listener
+    kill $tail_pid
+
     F_LOG "Success\n${BAKOK[@]}\nWarning\n${BAKWARNING[@]}\nErrors\n${BAKERROR[@]}"
-    F_LOG "Success\n${#BAKOK[@]}\nWarning\n${#BAKWARNING[@]}\nErrors\n${#BAKERROR[@]}"
+    F_LOG "Success(#): ${#BAKOK[@]}, Warnings(#): ${#BAKWARNING[@]}, Errors(#): ${#BAKERROR[@]}"
     BAKOKYAD=$(echo "${BAKOK[@]}")
     BAKWARNYAD=$(echo "${BAKWARNING[@]}")
     BAKERRYAD=$(echo "${BAKERROR[@]}")
-    $FYAD --title="$YTITLE - BAK VERIFY" --width=600 --center --text="\n\tClick on the corresponding buttons to display details\n\n" --form \
+    $FYAD --title="$YTITLE - BAK VERIFY" --width=600 --center --text="\n\tVerifying completed!\n\tClick on the corresponding buttons to display details\n\n" --form \
             --field="\t${#BAKOK[@]}":RO OK \
             --field="\t${#BAKWARNING[@]}":RO WARNING \
             --field="\t${#BAKERROR[@]}":RO ERROR \
-            --field=Details:FBTN "$FYAD --image=$SICONS/ok_64x64.png --width=800 --title=\"$YTITLE - OK\" --text=\"\nThese partitions were successfully verified (md5 matched):\n\n${BAKOKYAD}\" --button=Close" \
-            --field=Details:FBTN "$FYAD --image=$SICONS/warning_64x64.png --width=800 --title=\"$YTITLE - WARNINGS\" --text=\"\nThese files cant be verified (no md5 on partition possible):\n\n${BAKWARNYAD}\" --button=Close" \
-            --field=Details:FBTN "$FYAD --image=$SICONS/error.png --width=800 --title=\"$YTITLE - ERRORS\" --text=\"\nThese files are corrupt (md5 mismatch):\n\n${BAKERRYAD}\" --button=Close" \
+            --field=Details:FBTN "$FYAD --image=$SICONS/ok_64x64.png --width=800 --title=\"$YTITLE - OK\" --text=\"\nThese partitions were successfully verified (md5 matched):\n\n ${BAKOKYAD}\" --button=Close" \
+            --field=Details:FBTN "$FYAD --image=$SICONS/warning_64x64.png --width=800 --title=\"$YTITLE - WARNINGS\" --text=\"\nThese files cant be verified (no md5 on partition possible):\n\n ${BAKWARNYAD}\" --button=Close" \
+            --field=Details:FBTN "$FYAD --image=$SICONS/error.png --width=800 --title=\"$YTITLE - ERRORS\" --text=\"\nThese files are corrupt (md5 mismatch):\n\n ${BAKERRYAD}\" --button=Close" \
             --columns=2 --button=Close
 }; export -f F_VERIFYBAK
 
