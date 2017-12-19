@@ -66,6 +66,7 @@ fi
 # check if device in dl mode connected
 DEVCON=99
 while [ $DEVCON -ne 0 ];do
+    [ $DEVCON -eq 11 ] && break
     F_LOG "DEVCON before: $DEVCON"
     F_CHKDEVCON
     DEVCON=$?
@@ -74,29 +75,30 @@ done
 
 # main func
 F_MAIN(){
-    DEVINF=$(F_GETINFO)
-    for i in $DEVINF;do
-        F_ELOG "parsing $i"
-        case ${i/:*/} in
-            arb) 
-            DEVARBVAL=$(echo ${i}| cut -d ":" -f 2)
-            DEVARBEMPT=$(echo ${i}| cut -d ":" -f 3)
-            if [ $DEVARBEMPT -eq 0 ];then
-                DEVARB=$DEVARBVAL
-            else
-                DEVARB="ARB_unknown"
-            fi
-            ;;
-            battery_level) LGBATT=${i/*:/};;
-            model_name) LGMODEL=${i/*:/};;
-            device_sw_version) LGSWV=${i/*:/};;
-            secure_device) LGSEC=${i/*:/};;
-            device_factory_version) LGFACV=${i/*:/};;
-            target_country) LGCOUNTRY=${i/*:/};;
-            *) F_ELOG "unknown parameter: $i" ;;
-        esac
-    done        
-    
+    if [ $DEVCON -ne 11 ];then
+        DEVINF=$(F_GETINFO)
+        for i in $DEVINF;do
+            F_ELOG "parsing $i"
+            case ${i/:*/} in
+                arb)
+                DEVARBVAL=$(echo ${i}| cut -d ":" -f 2)
+                DEVARBEMPT=$(echo ${i}| cut -d ":" -f 3)
+                if [ $DEVARBEMPT -eq 0 ];then
+                    DEVARB=$DEVARBVAL
+                else
+                    DEVARB="ARB_unknown"
+                fi
+                ;;
+                battery_level) LGBATT=${i/*:/};;
+                model_name) LGMODEL=${i/*:/};;
+                device_sw_version) LGSWV=${i/*:/};;
+                secure_device) LGSEC=${i/*:/};;
+                device_factory_version) LGFACV=${i/*:/};;
+                target_country) LGCOUNTRY=${i/*:/};;
+                *) F_ELOG "unknown parameter: $i" ;;
+            esac
+        done        
+    fi
     [ -z $LGMODEL ] && LGMODEL=no_device_found
     [ -z $LGSWV ] && LGSWV=no_device_found 
     [ -z $LGFACV ] && LGFACV=no_device_found
