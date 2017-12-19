@@ -214,7 +214,7 @@ F_CDARB(){ F_LOG "$FUNCNAME: started"
     $FYAD --title="$YTITLE - COLLECTING" --text "\n  Collecting device information..." --width=400 --timeout=15 --timeout-indicator=right --no-buttons &
     PBPP=$!
     DEVARB=$($PYTHONBIN $LAFPATH/partitions.py --dump - sbl1 | strings | grep "0 SW_ID" |cut -d " " -f 2 | head -n 1 | sed -e 's/0\{16,16\}/zero/g' | tr -d "0")
-    [ -z "$DEVARB" ] && DEVARB="0" && DEVARBEMPTY=1 && F_LOG "EMPTY ARB DETECTED:\n$($PYTHONBIN $LAFPATH/partitions.py --dump /tmp/sbl1.err sbl1 && strings /tmp/sbl1.err | grep -C 1 SW_ID |cut -d ' ' -f 2 | sed -e 's/0\{16,16\}/zero/g' 2>&1)" && F_LOG "Please send this log and the SBL1 dump in /tmp/sbl1.err"
+    [ -z "$DEVARB" ] && DEVARB="0" && DEVARBEMPTY=1 && F_LOG "EMPTY ARB DETECTED:\n$($PYTHONBIN $LAFPATH/partitions.py --dump /tmp/sbl1.err sbl1 && strings /tmp/sbl1.err | grep -C 1 SW_ID |cut -d ' ' -f 2 | sed -e 's/0\{16,16\}/zero/g' 2>&1)" && F_LOG "Please send this log and the SBL1 dump in /tmp/sbl1.err" && $PYTHONBIN $LAFPATH/partitions.py --list --debug 2>&1 >> $LOG
     F_LOG "$FUNCNAME: $(kill $PBPP)"
     [ "$DEVARB" == "zero" ] && DEVARB=0 && F_LOG "ARB valid and 0"
     F_LOG "$FUNCNAME: DEVARB=$DEVARB, DEVARBEMPTY=$DEVARBEMPTY"
