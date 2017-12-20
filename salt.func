@@ -625,7 +625,7 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     BRET=$?
     [ $BRET -ne 0 ] && F_EXIT "$FUNCNAME Aborted on users request" $BRET
 
-    $PYTHONBIN ${LAFPATH}/extract-partitions.py --outdir $BTDIR --max-size $BMAX 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - $BAKTNAME BACKUP" --text-info --text "\n  <b><span color='#ff0000'>BE PATIENT! THE SCREEN REFRESHES AFTER EACH PARTITION FIRST!\n  WAIT until you see the hint: All finished</span></b>\n" --listen --tail --height=600 --width=800 --wrap --fore=blue --button="Continue (wait until you see All finished)":0 
+    $PYTHONBIN ${LAFPATH}/extract-partitions.py --outdir $BTDIR --max-size $BMAX 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - $BAKTNAME BACKUP" --text-info --text "\n  <b><span color='#ff0000'>BE PATIENT! THE SCREEN REFRESHES AFTER EACH PARTITION FIRST!\n  WAIT until you see the hint: All finished</span></b>\n" --listen --tail --height=600 --width=800 --wrap --fore=grey --button="Continue (wait until you see All finished)":0 
 
     VERSUPP=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  md5sum /dev/block/bootdevice/by-name/\0' --rawshell 2>&1 | cut -d ' ' -f 1)
     if [ -z "$VERSUPP" ];then
