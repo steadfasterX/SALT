@@ -175,7 +175,6 @@ F_EXIT(){ F_LOG "$FUNCNAME: started"
 F_GETINFO(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
 
-    #(F_AUTH 2>&1) >> $LOG
     IARB=$(F_CDARB)
     echo "arb:${IARB}" \
     && $PYTHONBIN $LAFPATH/lglaf.py -c '!INFO GPRO \x08\x0b\0\0' \
@@ -416,7 +415,6 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     F_ELOG "sorted partitions: $SORTEDP -> $CHCOUNT"
 
     # FLASH
-    F_AUTH
     CNT=0
     for img in $SORTEDP; do
         CNT=$((CNT+1))
@@ -457,16 +455,9 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_FLASHPART
 
-# authenticate device
-F_AUTH(){ F_LOG "$FUNCNAME: started"
-    $PYTHONBIN $LAFPATH/auth.py
-    F_LOG "$FUNCNAME: ended"
-}; export -f F_AUTH
-
 # check/ensure device is connected
 F_CHKDEVCON(){ F_LOG "$FUNCNAME: started"
     # takes no argument
-    #F_AUTH
     $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  uname -m\0' | tee -a $LOG
     RET=${PIPESTATUS[0]}
     if [ $RET -ne 0 ];then
@@ -489,7 +480,7 @@ F_SHELL(){ F_LOG "$FUNCNAME: started"
     F_CHKDEVCON
     if [ $? -eq 0 ];then
         F_ELOG "device connected... Opening shell now!"
-        xterm -e "cd $LAFPATH && echo -e '\n*****************\nTYPE the word exit TO CLOSE THIS WINDOW\n*********************\n\n'; $PYTHONBIN $LAFPATH/auth.py 2>&1 >> $LOG; $PYTHONBIN $LAFPATH/lglaf.py"
+        xterm -e "cd $LAFPATH && echo -e '\n*****************\nTYPE the word exit TO CLOSE THIS WINDOW\n*********************\n\n'; $PYTHONBIN $LAFPATH/lglaf.py"
     fi
     F_LOG "$FUNCNAME: ended"
 }; export -f F_SHELL
