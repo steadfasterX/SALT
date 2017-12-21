@@ -707,6 +707,8 @@ F_VERIFYBAK(){ F_LOG "$FUNCNAME: started"
                 BAKERROR+=("${vfile/*\/}\n")
             fi
         fi
+        # ensure we do not overflow lafd
+        sleep 2
         CNTPERC=$(($CNT * 100 / $CHCOUNT))
         echo $CNTPERC >>/tmp/t
         [ $CNT -eq $CHCOUNT ] && echo '# VERIFICATION FINISHED!' >>/tmp/t && F_LOG "$FUNCNAME: Verification finished"
