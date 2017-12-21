@@ -40,7 +40,8 @@ fi
 F_EGO
 
 # catch ctrl+c for a clean exit
-trap F_EXIT SIGINT
+trap "F_EXIT 'ctrl+c pressed' 0 full" SIGINT
+
 
 # check the base:
 if [ ! -d "$LAFPATH" ];then
