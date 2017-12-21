@@ -677,6 +677,7 @@ F_VERIFYBAK(){ F_LOG "$FUNCNAME: started"
     for vfile in $SORTEDF;do
         CNT=$((CNT+1))
         vfileloc=$(echo "${vfile}"| tr "," " ")
+        echo "#${vfileloc/*\/} generating md5 ..." >>/tmp/t
         LOCFILE=$(md5sum "$vfileloc" | cut -d " " -f1)
         echo "#${vfileloc/*\/} md5: $LOCFILE" >>/tmp/t
         vfilerem=$(echo "${vfileloc/*\/}" | tr "," " " | sed -e 's/\.image//g;s/\.img//g;s/\.bin//g')
