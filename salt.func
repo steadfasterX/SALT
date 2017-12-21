@@ -627,7 +627,7 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
 
     $PYTHONBIN ${LAFPATH}/extract-partitions.py --outdir $BTDIR --max-size $BMAX 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - $BAKTNAME BACKUP" --text-info --text "\n  <b><span color='#ff0000'>BE PATIENT! THE SCREEN REFRESHES AFTER EACH PARTITION FIRST!\n  WAIT until you see the hint: All finished</span></b>\n" --listen --tail --height=600 --width=800 --wrap --fore=grey --button="Continue (wait until you see All finished)":0 
 
-    VERSUPP=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  md5sum /dev/block/bootdevice/by-name/\0' --rawshell 2>&1 | cut -d ' ' -f 1)
+    VERSUPP=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  md5sum /dev/block/bootdevice/by-name/\0' --rawshell 2>&1 | cut -d ' ' -f 1 | grep -vi Hello)
     if [ -z "$VERSUPP" ];then
         F_MSG 400 "\n  Your device/firmware does not support verification of the backup sorry."
     else
