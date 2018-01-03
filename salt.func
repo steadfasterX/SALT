@@ -642,7 +642,7 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
 
     VERSUPP=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  md5sum /dev/block/bootdevice/by-name/\0' --rawshell 2>&1 | cut -d ' ' -f 1 | grep -vi Hello)
     if [ -z "$VERSUPP" ];then
-        F_MSG 400 "\n  Your device/firmware does not support verification of the backup sorry."
+        F_MSGW 600 "\n  Your device/firmware does not support verification of the backup sorry." 
     else
         unset VERANS
         VERANS=$(F_MSGOK 600 "\n  Your device supports md5sum verification!\n  Do you want to verify your just created backup?" "--button=Verify:2")
