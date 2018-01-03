@@ -30,7 +30,7 @@ echo -e "$(date '+%F %T'): Starting $TNAME v${VERSION}!\n***********************
 ME=$(id -u)
 if [ "$ME" -ne 0 ];then
     echo -e '\nI need more POWER! If asked now type in your sudo password to restart with root perms (wait 20s or press CTRL+C to abort)'
-    sudo $0 &
+    sudo $0 $@ &
     sleep 20s
     F_LOG "no-root mode ending now"
     exit 0
