@@ -135,9 +135,7 @@ F_MAIN(){
         --button="  Backup!$SICONS/backup.png!Make a full or basic backup while in download mode":"bash -c F_BACKUP" \
         --button="Extract!$SICONS/extract_48x48.png!Extract a KDZ file. If you want to flash choose Extract+Flash instead":"bash -c F_STARTKDZ"
     else
-      $FYAD --title="$YTITLE - EXPERIMENTAL" --width=800 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  is a replacement for the windows software LGUP (plus MANY more features!!)\n  and brought to 
-you by <b>steadfasterX</b>.\n\n  $TNAME is based on several tools. Click the ABOUT button to find out more!\n\n  The following comes directly from your device:\n  (<i>\"no_device_found\"</i> if no device conn
-ected)" \
+      $FYAD --title="$YTITLE - EXPERIMENTAL" --width=800 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  is a replacement for the windows software LGUP (plus MANY more features!!)\n  and brought to you by <b>steadfasterX</b>.\n\n  $TNAME is based on several tools. Click the ABOUT button to find out more!\n\n  The following comes directly from your device:\n  (<i>\"no_device_found\"</i> if no device connected)" \
         --form \
         --field="  Device model":RO $LGMODEL \
         --field="  Firmware":RO $LGSWV \
