@@ -577,7 +577,8 @@ F_LAFEXEC(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     # takes 1 argument
 
     EXECMD="$1"
-    $PYTHONBIN ${LAFPATH}/lglaf.py -c "'!EXEC  ${EXECMD}\0'"
+    RET=$($PYTHONBIN ${LAFPATH}/lglaf.py -c "'!EXEC  ${EXECMD}\0'")
+    echo $RET
 }; export -f F_LAFEXEC
 
 # flush file system buffers
