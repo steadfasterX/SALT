@@ -176,8 +176,10 @@ F_GETINFO(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
 
     IARB=$(F_CDARB)
-    echo "arb:${IARB}" \
-    && $PYTHONBIN $LAFPATH/lglaf.py -c '!INFO GPRO \x08\x0b\0\0' \
+    USU=$(F_CKUSU)
+    echo "usu:${USU}" \
+      && echo "arb:${IARB}" \
+      && $PYTHONBIN $LAFPATH/lglaf.py -c '!INFO GPRO \x08\x0b\0\0' \
        | $PYTHONBIN $LAFPATH/scripts/parse-props.py - \
        | egrep "(device_sw_version|model_name|secure_device|laf_sw_version|device_factory_version|target_country|battery_level)" | tr "\n" " " | tr -d "'" | tee -a $LOG
     F_LOG "$FUNCNAME: ended"
@@ -220,6 +222,16 @@ F_CDARB(){ F_LOG "$FUNCNAME: started"
     echo "${DEVARB}:${DEVARBEMPTY}"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_CDARB
+
+# check for the Unofficial steadfasterX Unlock (G4 only)
+F_CKUSU(){ F_LOG "$FUNCNAME: started"
+    # takes no arguments
+    #
+    USUDET=$(F_LAFEXEC "grep 'slub_debug=FZP' /proc/cmdline"|wc -l)
+    F_LOG "$FUNCNAME: USU=$USUDET (1=yes, 0=no)"
+    echo "${USUDET}"
+    F_LOG "$FUNCNAME: ended"
+}; export -f F_CKUSU
 
 # check local file for antirollback bullshit
 # (I'm still pissed off that LG is REALLY doing this! I mean HARDBRICK a phone ?? wtf LG? Its MY decision if I wanna use an outdated/insecure ROM version!)

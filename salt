@@ -86,6 +86,14 @@ F_MAIN(){
         for i in $DEVINF;do
             F_ELOG "parsing $i"
             case ${i/:*/} in
+                usu)
+                LGUSUA=${i/*:/}
+                if [ $LGUSUA == 1 ];then
+                    LGUSU="Unofficially_unlocked_by_UsU"
+                else
+                    LGUSU="no_UsU"
+                fi
+                ;;
                 arb)
                 DEVARBVAL=$(echo ${i}| cut -d ":" -f 2)
                 DEVARBEMPT=$(echo ${i}| cut -d ":" -f 3)
@@ -105,6 +113,7 @@ F_MAIN(){
             esac
         done        
     fi
+    [ -z $LGUSUA ] && LGUSU=no_device_found
     [ -z $LGMODEL ] && LGMODEL=no_device_found
     [ -z $LGSWV ] && LGSWV=no_device_found 
     [ -z $LGFACV ] && LGFACV=no_info_found
@@ -122,6 +131,7 @@ F_MAIN(){
         --field="  Firmware":RO $LGSWV \
         --field="  Firmware (detailed)":RO $LGFACV \
         --field="  Country":RO $LGCOUNTRY \
+        --field="  UsU":RO $LGUSU \
         --field="  Secure Device":RO $LGSEC \
         --field="  Battery level":RO $LGBATT \
         --field="  AntiRollback":RO $DEVARB \
