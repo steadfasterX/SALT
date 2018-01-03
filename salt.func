@@ -409,8 +409,8 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     F_ELOG "($FUNCNAME) created yad list: $IRES"
 
     CHOOSENP=$(for files in $IRES;do echo -e "$files" ;done \
-                | $FYAD --height=800 --width=600 --title="$YTITLE - FOLDER" --text "\n  Select the partitions you want to flash\n  (the RECOMMENDED partitions to flash are CHECKED already!)\n" --list --checklist \
-                        --column="Flash":CHK --column="Image File":TXT --column="Target partition" --column="Type" --column=sort_int --hide-column=5  --listen --no-selection \
+                | $FYAD --height=800 --width=700 --title="$YTITLE - FOLDER" --text "\n  Select the partitions you want to flash\n  (the RECOMMENDED partitions to flash are CHECKED already!)\n\n  Hint: you can change the target partition here but do this only when you\n  <b>REALLY KNOW</b> what you're doing!\n" --list --checklist \
+                        --column="Flash":CHK --column="Image File":TXT --column="Target partition" --column="Type" --editable --editable-cols="3" --column=sort_int --hide-column=5  --listen  \
                         --button=FLASH:0 --button=Abort:99 |cut -d "|" -f 2-3,5 | tr "|" ":" )
     CERR=${PIPESTATUS[1]}
     F_LOG "CERR: $CERR"
