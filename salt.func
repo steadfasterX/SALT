@@ -354,7 +354,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     [ ! -d "$IMGDIR" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n Folder \n\n  $IMGDIR\n\n  does not exists?!"
     
     # create a list of *.image files and let the user choose
-    IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name *.bin -or -name *.img -or -name *.image | tr " " "_" |grep -vi GPT);do echo "${ifile##*/}";done | tr "\n" " ")
+    IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name *.bin -or -name *.img -or -name *.image -or -name *.mbn | tr " " "_" |grep -vi GPT);do echo "${ifile##*/}";done | tr "\n" " ")
 
     F_ELOG "($FUNCNAME) image files: $IMGFILES"
 
@@ -362,7 +362,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     unset IRES
     for f in $IMGFILES;do
         AVIMG="${f/:*}"
-        APART=$(echo "${f/*:}" | sed -e 's/\.image//g;s/\.img//g;s/\.bin//g;s/mmcblk0p\(.*\)/\1/g')
+        APART=$(echo "${f/*:}" | sed -e 's/\.image//g;s/\.img//g;s/\.bin//g;s/\.mbn//g;s/mmcblk0p\(.*\)/\1/g')
         case $APART in
             grow|cache|userdata|modemst1|modemst2|persist|persistent|drm)
               if [ -z "$IRES" ];then IRES="false\n${AVIMG}\n${APART}\nunneeded\n99"; else IRES="$IRES false\n${AVIMG}\n${APART}\nunneeded\n99" ;fi
@@ -644,19 +644,19 @@ F_VERIFYBAK(){ F_LOG "$FUNCNAME: started"
     # takes 1 argument
     #
     # mandantory:
-    # 1 => path to the backup images (can be img,image,bin,mmcblk0p* files)
+    # 1 => path to the backup images (can be img,image,bin,mbn,mmcblk0p* files)
 
     VDIR=$1
     [ ! -d "$VDIR" ] && F_MSGE 650 "$VDIR does not exists!\nHow am I supposed to use these files existing only in your head?" && F_EXIT "$FUNCNAME no VDIR" 3
 
-    DIRFILES=$(for v in $(find "$VDIR" -maxdepth 1 -type f -name *.bin -or -name *.img -or -name *.image -or -name mmcblk0p* | tr " " ","); do echo "$v";done)
+    DIRFILES=$(for v in $(find "$VDIR" -maxdepth 1 -type f -name *.bin -or -name *.img -or -name *.image -or -name mmcblk0p* -or name *.mbn | tr " " ","); do echo "$v";done)
 
     F_LOG "$FUNCNAME: detected files: $DIRFILES"
     CHCOUNT=$(echo "$DIRFILES" | egrep -c '^.+')
     F_LOG "$(echo \"$DIRFILES\" | egrep -c '^.+')"
     F_LOG "detected files: $DIRFILES -> $CHCOUNT"
 
-    [ $CHCOUNT -lt 1 ] && F_MSGE 400 "$FUNCNAME: No valid image files found\n(valid are: bin, img, image, mmcblk0p*)!" && F_EXIT "$FUNCNAME: exited" 3
+    [ $CHCOUNT -lt 1 ] && F_MSGE 400 "$FUNCNAME: No valid image files found\n(valid are: bin, img, image, mbn, mmcblk0p*)!" && F_EXIT "$FUNCNAME: exited" 3
 
 
     SORTEDF=$(echo "$DIRFILES" |tr " " "\n" | sort | tr "\n" " " )
@@ -680,7 +680,7 @@ F_VERIFYBAK(){ F_LOG "$FUNCNAME: started"
         echo "#${vfileloc/*\/} generating md5 ..." >>/tmp/t
         LOCFILE=$(md5sum "$vfileloc" | cut -d " " -f1)
         echo "#${vfileloc/*\/} md5: $LOCFILE" >>/tmp/t
-        vfilerem=$(echo "${vfileloc/*\/}" | tr "," " " | sed -e 's/\.image//g;s/\.img//g;s/\.bin//g')
+        vfilerem=$(echo "${vfileloc/*\/}" | tr "," " " | sed -e 's/\.image//g;s/\.img//g;s/\.mbn//g;s/\.bin//g')
         F_LOG "$FUNCNAME: vfile: ${vfile}, vfileloc: $vfileloc, LOCFILE: $LOCFILE, vfilerem: $vfilerem"
 
         if [ -z "$vfilerem" ];then
