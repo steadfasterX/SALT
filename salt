@@ -151,6 +151,7 @@ F_MAIN(){
         --field="  Firmware":RO $LGSWV \
         --field="  Firmware (detailed)":RO $LGFACV \
         --field="  Country":RO $LGCOUNTRY \
+        --field="  UsU":RO $LGUSU \
         --field="  Secure Device":RO $LGSEC \
         --field="  Battery level":RO $LGBATT \
         --field="  AntiRollback":RO $DEVARB \
