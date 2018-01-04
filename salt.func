@@ -582,7 +582,7 @@ F_UPDATE(){ F_LOG "$FUNCNAME: started"
 }; export -f F_UPDATE
 
 # wipe a partition
-F_WIPEPART(){ F_LOG "$FUNCNAME: started"
+F_WIPEPART(){ F_LOG "$FUNCNAME: started with $@"
     # takes 2 arguments
     #
     # 1 => partition name to wipe
