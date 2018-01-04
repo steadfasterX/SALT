@@ -223,6 +223,24 @@ F_CDARB(){ F_LOG "$FUNCNAME: started"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_CDARB
 
+# dumps a single partition
+F_DUMPPART(){ F_LOG "$FUNCNAME: started with $@"
+    # takes 2 args
+    #
+    # 1 => partition name
+    # 2 => path to store
+
+    [ -z $1 -o -z $2] && F_EXIT "$FUNCNAME missing args!" 3
+
+    PNAME=$1
+    BPTH="$2"
+    BFL="${BPTH}/${PNAME}"
+
+    [ ! -d "$BPTH" ] && mkdir -p "$BPTH"
+    $PYTHONBIN $LAFPATH/partitions.py --dump $BFL $PNAME
+
+}; export -f F_DUMPPART
+
 # check for the Unofficial steadfasterX Unlock (G4 only)
 F_CKUSU(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
