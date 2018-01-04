@@ -88,11 +88,7 @@ F_MAIN(){
             case ${i/:*/} in
                 usu)
                 LGUSUA=${i/*:/}
-                if [ $LGUSUA == 1 ];then
-                    LGUSU="Unofficially_unlocked_by_UsU"
-                else
-                    LGUSU="no_UsU"
-                fi
+                LGUSU="no_UsU"
                 ;;
                 arb)
                 DEVARBVAL=$(echo ${i}| cut -d ":" -f 2)
@@ -111,7 +107,8 @@ F_MAIN(){
                 target_country) LGCOUNTRY=${i/*:/};;
                 *) F_ELOG "unknown parameter: $i" ;;
             esac
-        done        
+        done
+        [ $LGUSUA == 1 ] && [ $LGMODEL == "LGLS991" ] && LGUSU="Unofficially_unlocked_by_UsU"
     fi
     [ -z $LGUSUA ] && LGUSU=no_device_found
     [ -z $LGMODEL ] && LGMODEL=no_device_found
