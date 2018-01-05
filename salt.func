@@ -245,7 +245,7 @@ F_DUMPPART(){ F_LOG "$FUNCNAME: started with $@"
 F_CKUSU(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
     #
-    F_DUMPPART aboot /tmp/UsU/check 2>&1 >> $LOG
+    (F_DUMPPART aboot /tmp/UsU/check 2>&1) >> $LOG
     REMAB=$(sha256sum /tmp/UsU/check/aboot | cut -d " " -f1)
 
     USUDET=0
