@@ -230,7 +230,7 @@ F_DUMPPART(){ F_LOG "$FUNCNAME: started with $@"
     # 1 => partition name
     # 2 => path to store
 
-    [ -z $1 -o -z $2] && F_EXIT "$FUNCNAME missing args!" 3
+    [ -z $1 -o -z $2 ] && F_EXIT "$FUNCNAME missing args!" 3
 
     PNAME=$1
     BPTH="$2"
