@@ -1035,7 +1035,11 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     F_LOG "$FUNCNAME: USUEX=$USUEX"
     kill $PROGY
 
-    [ -z "$USUEX" ] && F_MSGE 500 "   Oops?!\n\n   You have choosen\n\n   $USUSRC\n\n   but I can not find it...!" && F_EXIT $FUNCNAME 5
+    if [ -z "$USUEX" ];then 
+        F_MSGE 500 "   Oops?!\n\n   You have choosen\n\n   $USUSRC\n\n   but I can not find it...!\n\n   Try another method or ensure you stored it correctly."
+        $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls /storage/external_SD/ /data/media/0/Downloads\0' 2>&1 >> $LOG 
+        F_EXIT $FUNCNAME 5
+    fi
     
     # give feedback to the impatient users
     $FYAD --title="$YTITLE - FLASHING" --text="\n  Fasten your seat belt!\n  SALT is flashing UsU ...\n" --width=500 --progress --progress-text="activating UsU ..." --pulsate --no-buttons --auto-close &
