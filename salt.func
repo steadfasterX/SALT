@@ -1001,7 +1001,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
         sdcard) F_LOG "$FUNCNAME: Will load UsU from the external SD card.."
             USUSRC=/storage/external_SD/aboot_UsU.img
             $FYAD --width=800 --title="$YTITLE - UsU from sdcard" \
-                --text="\n   Please take out the sdcard <b>now</b> (without leaving download mode!)\n   and stick it in again - then press 'Next'" \
+                --text="\n   Please do the following (without leaving download mode!):\n\n\t- take out the sdcard <b>now</b>\n\t- insert it in again\n\t- press 'Next'" \
                 --button="Next":0 \
                 --button=Abort:99
             [ $? -ne 0 ] && F_EXIT $FUNCNAME $?
@@ -1078,7 +1078,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     # verify the whole result
     kill $PROGY
     if [ "$ABAFTER" == "$USUHASH" ];then
-        F_MSGOK 500 "   <b>CONGRATULATIONS!</b>\n\n   You're now secureboot off / unlocked!\n\n   Have fun and enjoy your unleashed phone :) !\n"
+        F_MSGOK 800 "   <b>CONGRATULATIONS!</b>\n\n   You're now secureboot off / unlocked!\n\n   Have fun and enjoy your unleashed phone :) !\n\n   <b>Whats next?</b>\n\n   Follow the guide at <a href='https://bit.do/unlockG4'>https://bit.do/unlockG4</a>\n\n   Basic steps are:\n\t- flash TWRP in fastboot\n\t- flash UsU twrp package in TWRP\n\t- flash your custom ROM\n\n   <b><span color='#ff0000'>If you skip the UsU twrp package flashing you will very likely bootloop!</span></b>" '--show-uri'
     else
         if [ "$ABAFTER" == "$ABPRE" ];then
             F_LOG "$FUNCNAME: Expected HASH: $USUHASH but got $TESTAFTER"
