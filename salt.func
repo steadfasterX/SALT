@@ -686,7 +686,7 @@ F_VERIFYBAK(){ F_LOG "$FUNCNAME: started"
     VDIR=$1
     [ ! -d "$VDIR" ] && F_MSGE 650 "$VDIR does not exists!\nHow am I supposed to use these files existing only in your head?" && F_EXIT "$FUNCNAME no VDIR" 3
 
-    DIRFILES=$(for v in $(find "$VDIR" -maxdepth 1 -type f -name *.bin -or -name *.img -or -name *.image -or -name mmcblk0p* -or name *.mbn | tr " " ","); do echo "$v";done)
+    DIRFILES=$(for v in $(find "$VDIR" -maxdepth 1 -type f -name *.bin -or -name *.img -or -name *.image -or -name mmcblk0p* -or -name *.mbn | tr " " ","); do echo "$v";done)
 
     F_LOG "$FUNCNAME: detected files: $DIRFILES"
     CHCOUNT=$(echo "$DIRFILES" | egrep -c '^.+')
