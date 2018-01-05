@@ -621,7 +621,7 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     F_LOG "$FUNCNAME: choosen backup type was $BAKTYPE, $BAKTNAME, $BMAX KB"
 
     BANS=$($FYAD --width=800 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text="\n Backup your device in <b>$BAKTNAME</b> mode\n" --form \
-        --field="Target directory\n(ensure you have enough space)":CDIR /tmp \
+        --field="Target directory\n(ensure you have enough space)":CDIR "${REALHOME}/salt_backup" \
         --button=Continue:0 --button=Abort:99)
 
     BRET=$?
@@ -630,7 +630,7 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     BTDIR="${BANS/|*}"
     F_LOG "$FUNCNAME: choosen target directory was $BTDIR"
 
-    [ ! -d "$BTDIR" ] && F_EXIT "$FUNCNAME: Target dir <$BTDIR> does not exists!" 3
+    [ ! -d "$BTDIR" ] && F_LOG "$FUNCNAME: Target dir <$BTDIR> does not exists. Will create it" && mkdir -p "$BTDIR"
 
     # TODO: check disk space
     
@@ -645,6 +645,9 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     else
         F_MSGOK 400 "Backup completed successfully"
     fi
+
+    # ensure regular users can work with the backup
+    chown -Rv ${REALUSER} ${REALHOME}/salt_backup >> $LOG
 
     VERSUPP=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  md5sum /dev/block/bootdevice/by-name/\0' --rawshell 2>&1 | cut -d ' ' -f 1 | grep -vi Hello)
     if [ -z "$VERSUPP" ];then
