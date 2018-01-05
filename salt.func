@@ -245,7 +245,11 @@ F_DUMPPART(){ F_LOG "$FUNCNAME: started with $@"
 F_CKUSU(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
     #
-    USUDET=$(F_LAFEXEC "grep 'slub_debug=FZP' /proc/cmdline"|wc -l)
+    F_DUMPPART aboot /tmp/UsU/check
+    REMAB=$(sha256sum /tmp/UsU/check/aboot | cut -d " " -f1)
+
+    USUDET=0
+    [ "$USUHASH" == "$REMAB" ] && USUDET=1
     F_LOG "$FUNCNAME: USU=$USUDET (1=yes, 0=no)"
     echo "${USUDET}"
     F_LOG "$FUNCNAME: ended"
