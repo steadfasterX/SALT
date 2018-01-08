@@ -497,6 +497,7 @@ F_CHKDEVCON(){ F_LOG "$FUNCNAME: started"
     if [ $RET -ne 0 ];then
         RES=$(F_MSG 700 "NO DEVICE CONNECTED?\nIf you have connected your device ensure that it is in DOWNLOAD mode\n(<u>not</u> fastboot, <u>not</u> recovery, <u>not</u> booted Android)" "--image=$SICONS/warning_64x64.png --button=Example-Picture:99 --button=Skip:11 --button=Retry:22")
         F_LOG "$FUNCNAME: msge result = $RES"
+        F_LOG "$FUNCNAME: lsusb output = $(lsusb |grep 1004)"
         [ $RES -eq 99 ] && [ ! -z $SUDO_USER ] && sudo -u $SUDO_USER xdg-open "$SICONS/dlmode.png"
         [ $RES -eq 99 ] && [ -z $SUDO_USER ] && xdg-open "$SICONS/dlmode.png"
         RET=$RES
