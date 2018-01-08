@@ -65,7 +65,8 @@ if [ ! -d "$KDZTOOLS" ];then
 fi
 
 # collect some sys info
-F_LOG "$(lsb_release -a)"
+F_LOG "System: $(lsb_release -a)"
+F_LOG "yad: $(yad --version)"
 
 # check if device in dl mode connected
 DEVCON=99
