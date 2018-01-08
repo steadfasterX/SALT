@@ -64,6 +64,9 @@ if [ ! -d "$KDZTOOLS" ];then
     fi
 fi
 
+# collect some sys info
+F_LOG: "$(lsb_release -a)"
+
 # check if device in dl mode connected
 DEVCON=99
 while [ $DEVCON -ne 0 ];do
@@ -87,12 +90,10 @@ F_MAIN(){
             F_ELOG "parsing $i"
             case ${i/:*/} in
                 usu)
-                LGUSUA=${i/*:/}
-                if [ $LGUSUA == 1 ];then
-                    LGUSU="Unofficially_unlocked_by_UsU"
-                else
-                    LGUSU="no_UsU"
-                fi
+                LGUSUA=$(echo "${i}"|cut -d ":" -f2)
+                USUMODEL=$(echo "${i}"|cut -d ":" -f3)
+                LGUSU="no"
+                [ $LGUSUA == 1 ] && LGUSU="yes"
                 ;;
                 arb)
                 DEVARBVAL=$(echo ${i}| cut -d ":" -f 2)
@@ -103,6 +104,7 @@ F_MAIN(){
                     DEVARB="ARB_unknown"
                 fi
                 ;;
+                usu_model) USUMODEL=${i/*:/};;
                 battery_level) LGBATT=${i/*:/};;
                 model_name) LGMODEL=${i/*:/};;
                 device_sw_version) LGSWV=${i/*:/};;
@@ -111,7 +113,7 @@ F_MAIN(){
                 target_country) LGCOUNTRY=${i/*:/};;
                 *) F_ELOG "unknown parameter: $i" ;;
             esac
-        done        
+        done
     fi
     [ -z $LGUSUA ] && LGUSU=no_device_found
     [ -z $LGMODEL ] && LGMODEL=no_device_found
@@ -121,6 +123,8 @@ F_MAIN(){
     [ -z $LGSEC ] && LGSEC=no_device_found
     [ -z $LGBATT ] && LGBATT=no_device_found
     [ -z $DEVARB ] && DEVARB=no_ARB_info_found
+    # overwrite model definition when UsU and model info available
+    [ ! -z $USUMODEL ] && LGMODEL=$USUMODEL
     
     # main SALT screen depends on experimental flag
     if [ $EXPERIMENTAL -ne 1 ];then
@@ -128,16 +132,16 @@ F_MAIN(){
       $FYAD --title="$YTITLE" --width=800 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  is a replacement for the windows software LGUP (plus MANY more features!!)\n  and brought to you by <b>steadfasterX</b>.\n\n  $TNAME is based on several tools. Click the ABOUT button to find out more!\n\n  The following comes directly from your device:\n  (<i>\"no_device_found\"</i> if no device connected)" \
         --form \
         --field="  Device model":RO $LGMODEL \
-        --field="  Firmware":RO $LGSWV \
-        --field="  Firmware (detailed)":RO $LGFACV \
+        --field="  Firmware (laf)":RO $LGSWV \
+        --field="  Firmware (system)":RO $LGFACV \
         --field="  Country":RO $LGCOUNTRY \
         --field="  UsU":RO $LGUSU \
         --field="  Secure Device":RO $LGSEC \
         --field="  Battery level":RO $LGBATT \
-        --field="  AntiRollback":RO $DEVARB \
+        --field="  AntiRollBack":RO $DEVARB \
         --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
         --field="Get Support / ABOUT / CREDITS!$SICONS/log_16x16.png":FBTN "bash -c F_ABOUT" \
-        --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c F_ADVMENU" \
+        --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c 'F_ADVMENU $LGMODEL'" \
         --field="\n  <b><span color='#ff0000'>Mouse-Over a button to get more details!</span></b>":LBL \
         true \
         --buttons-layout=spread \
@@ -148,16 +152,16 @@ F_MAIN(){
       $FYAD --title="$YTITLE - EXPERIMENTAL" --width=800 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  is a replacement for the windows software LGUP (plus MANY more features!!)\n  and brought to you by <b>steadfasterX</b>.\n\n  $TNAME is based on several tools. Click the ABOUT button to find out more!\n\n  The following comes directly from your device:\n  (<i>\"no_device_found\"</i> if no device connected)" \
         --form \
         --field="  Device model":RO $LGMODEL \
-        --field="  Firmware":RO $LGSWV \
-        --field="  Firmware (detailed)":RO $LGFACV \
+        --field="  Firmware (laf)":RO $LGSWV \
+        --field="  Firmware (system)":RO $LGFACV \
         --field="  Country":RO $LGCOUNTRY \
         --field="  UsU":RO $LGUSU \
         --field="  Secure Device":RO $LGSEC \
         --field="  Battery level":RO $LGBATT \
-        --field="  AntiRollback":RO $DEVARB \
+        --field="  AntiRollBack":RO $DEVARB \
         --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
         --field="Get Support / ABOUT / CREDITS!$SICONS/log_16x16.png":FBTN "bash -c F_ABOUT" \
-        --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c F_ADVMENU" \
+        --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c 'F_ADVMENU $LGMODEL'" \
         --field="\n  <b><span color='#ff0000'>Mouse-Over a button to get more details!</span></b>":LBL \
         true \
         --buttons-layout=spread \
@@ -165,7 +169,7 @@ F_MAIN(){
         --button="  Backup!$SICONS/backup.png!Make a full or basic backup while in download mode":"bash -c F_BACKUP" \
         --button="Extract!$SICONS/extract_48x48.png!Extract a KDZ file. If you want to flash choose Extract+Flash instead":"bash -c F_STARTKDZ" \
         --button="Flash (folder)!$SICONS/flash_48x48.png!This will flash one or multiple partitions from any folder (e.g. from a previous backup)":"bash -c F_FLASHPART "\
-        --button=" Flash (kdz)!$SICONS/flashkdz_70x48.png!Extract and Flash like LGUP would do":"bash -c F_STARTKDZFL"
+        --button=" Flash (kdz)!$SICONS/flashkdz_70x48.png!Extract and Flash like LGUP would do":"bash -c F_STARTKDZFL" 
     fi
 }
 F_MAIN

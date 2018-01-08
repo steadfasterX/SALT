@@ -223,15 +223,50 @@ F_CDARB(){ F_LOG "$FUNCNAME: started"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_CDARB
 
-# check for the Unofficial steadfasterX Unlock (G4 only)
+# dumps a single partition
+F_DUMPPART(){ F_LOG "$FUNCNAME: started with $@"
+    # takes 2 args
+    #
+    # 1 => partition name
+    # 2 => path to store
+
+    [ -z $1 -o -z $2 ] && F_EXIT "$FUNCNAME missing args!" 3
+
+    PNAME=$1
+    BPTH="$2"
+    BFL="${BPTH}/${PNAME}"
+
+    [ ! -d "$BPTH" ] && mkdir -p "$BPTH"
+    $PYTHONBIN $LAFPATH/partitions.py --dump $BFL $PNAME
+
+}; export -f F_DUMPPART
+
+# check for the UsU Unlock (G4 only)
 F_CKUSU(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
     #
-    USUDET=$(F_LAFEXEC "grep 'slub_debug=FZP' /proc/cmdline"|wc -l)
+    (F_DUMPPART aboot /tmp/UsU/check 2>&1) >> $LOG
+    REMAB=$(sha256sum /tmp/UsU/check/aboot | cut -d " " -f1)
+
+    USUDET=0
+    [ "$USUHASH" == "$REMAB" ] && USUDET=1
     F_LOG "$FUNCNAME: USU=$USUDET (1=yes, 0=no)"
-    echo "${USUDET}"
+    unset USUMNM
+    [ $USUDET == 1 ] && USUMNM="$(F_USUMODEL)"
+    echo "${USUDET}:${USUMNM}"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_CKUSU
+
+# check for the real modelname when UsU
+F_USUMODEL(){ F_LOG "$FUNCNAME: started"
+    # takes no arguments
+    #
+    (F_DUMPPART raw_resources /tmp/UsU 2>&1) >> $LOG
+    REMRR=$(dd if=/tmp/UsU/raw_resources skip=3145722 count=6 bs=1 2>>/dev/null)
+    F_LOG "$FUNCNAME: USUMODEL=$REMRR"
+    echo "${REMRR}"
+    F_LOG "$FUNCNAME: ended"
+}; export -f F_USUMODEL
 
 # check local file for antirollback bullshit
 # (I'm still pissed off that LG is REALLY doing this! I mean HARDBRICK a phone ?? wtf LG? Its MY decision if I wanna use an outdated/insecure ROM version!)
@@ -565,7 +600,7 @@ F_UPDATE(){ F_LOG "$FUNCNAME: started"
 }; export -f F_UPDATE
 
 # wipe a partition
-F_WIPEPART(){ F_LOG "$FUNCNAME: started"
+F_WIPEPART(){ F_LOG "$FUNCNAME: started with $@"
     # takes 2 arguments
     #
     # 1 => partition name to wipe
@@ -814,7 +849,11 @@ F_STARTKDZFL(){ F_LOG "$FUNCNAME: started"
 
 # showing a advanced menu
 F_ADVMENU(){ F_LOG "$FUNCNAME: started"
-    # takes no args
+    # takes 1 arg
+    #
+    # 1 => LGMODEL
+    
+    LGMODEL=$1
 
     $FYAD --title="$YTITLE" --width=800 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n\n <b><span color='#ff0000'>THIS IS AN ADVANCED Menu</span></b>\n\nUse these options here with <b><span color='#ff0000'>CARE!</span></b>\n\n" \
         --form \
@@ -822,6 +861,7 @@ F_ADVMENU(){ F_LOG "$FUNCNAME: started"
         --field="Show your partitions!!This will just list your current partitions":FBTN "bash -c F_LISTPARTS" \
         --field="Open a shell!$SICONS/terminal_30x30.png!Open an adb-like shell while in download mode":FBTN "bash -c F_SHELL" \
         --field="<span color='#ff0000'>Erase</span> partition(s)!!EXTREMELY DANGEROUS - CAN EASILY BRICK YOUR DEVICE":FBTN "bash -c F_DELPART" \
+        --field="Unlock G4 (UsU)!$SICONS/salt_logo_30x30.png!Unofficial secureboot-off/steadfasterX Unlock":FBTN "bash -c 'F_DOUSU $LGMODEL'" \
         --button="Close"
 
 }; export -f F_ADVMENU
@@ -972,3 +1012,155 @@ F_DELPART(){ F_LOG "$FUNCNAME: started"
         F_MSGE 600 "  Problems occured while wiping (EERR: $EERR) or ABORTED by user!\n  Check log and do not poweroff the device until you fixed this!"
     fi
 }; export -f F_DELPART
+
+# flashing action for UsU
+F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
+    # takes 1 arg
+    #
+    # 1 => type of flashing
+
+    FLTYPE=$1
+    case $FLTYPE in
+        sdcard) F_LOG "$FUNCNAME: Will load UsU from the external SD card.."
+            USUSRC=/storage/external_SD/aboot_UsU.img
+            $FYAD --width=800 --title="$YTITLE - UsU from sdcard" \
+                --text="\n   Please do the following (without leaving download mode!):\n\n\t- take out the sdcard <b>now</b>\n\t- insert it in again\n\t- press 'Next'" \
+                --button="Next":0 \
+                --button=Abort:99
+            [ $? -ne 0 ] && F_EXIT $FUNCNAME $?
+        ;;
+        internal) F_LOG "$FUNCNAME: Will load UsU from the internal storage.."
+            USUSRC=/data/media/0/Download/aboot_UsU.img
+            $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  umount /data\0' --debug --rawshell 2>&1 >> $LOG
+            $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  mount -t ext4 /dev/block/bootdevice/by-name/userdata /data\0' --debug --rawshell 2>&1 >> $LOG
+            F_LOG "$FUNCNAME: userdata mounting finished"
+        ;;
+        direct) F_LOG "$FUNCNAME: Will flash UsU directly to the device..."
+            # once i get writing working in MM, N we can push the UsU file directly. We could do already on LP but ...
+            #USUF=$($FYAD --width=600 --title="$YTITLE - UsU" --text="\n    To minimize the risk of taken down by LG:\n    SALT does <b>not</b> come bundled with the UsU unlock file.\n\n    You have to download it manually and tell me the location:\n" \
+            #--form --field="    UsU unlock file":FL --file-filter="UsU file| aboot_UsU.img" \
+            #
+        ;;
+        *) F_ELOG "$FUNCNAME: no valid FLTYPE choosen!!!"
+           F_EXIT $FUNCNAME 2
+        ;;
+    esac
+
+    # verify UsU file existence
+    $FYAD --title="$YTITLE - VERIFY" --text="\n  SALT searches for the UsU file...\n" --width=500 --progress --progress-text="searching ..." --pulsate --no-buttons --auto-close &
+    PROGY=$!
+ 
+    USUEX=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls '$USUSRC'\0' --rawshell)
+    F_LOG "$FUNCNAME: USUEX=$USUEX"
+    kill $PROGY
+
+    if [ -z "$USUEX" ];then 
+        F_MSGE 500 "   Oops?!\n\n   You have choosen\n\n   $USUSRC\n\n   but I can not find it...!\n\n   Try another method or ensure you stored it to the correct path."
+        ($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls /storage/external_SD/ /data/media/0/Download\0' --rawshell 2>&1) >> $LOG 
+        F_EXIT $FUNCNAME 5
+    fi
+    
+    # give feedback to the impatient users
+    $FYAD --title="$YTITLE - FLASHING" --text="\n  Fasten your seat belt!\n  SALT is flashing UsU ...\n" --width=500 --progress --progress-text="activating UsU ..." --pulsate --no-buttons --auto-close &
+    PROGY=$!
+    
+    # verify writing in general (before actually writing to REAL aboot!!)
+    F_DUMPPART abootbak "/tmp/UsU/before"
+    TESTPRE=$(sha256sum /tmp/UsU/before/abootbak | cut -d " " -f1)
+    F_LOG "$FUNCNAME: abootbak before flashing: $TESTPRE"
+    F_LOG '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0'
+    $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0' --rawshell 2>&1 >> $LOG
+    F_DUMPPART abootbak "/tmp/UsU/after"
+    TESTAFTER=$(sha256sum /tmp/UsU/after/abootbak | cut -d " " -f1)
+    # verify test result
+    F_LOG "$FUNCNAME: abootbak after flashing: $TESTAFTER"
+    if [ "$TESTAFTER" == "$USUHASH" ];then
+        F_LOG "$FUNCNAME: PERFECT! We can really write on this device!"
+    else
+        if [ "$TESTAFTER" == "$TESTPRE" ];then
+            kill $PROGY
+            F_LOG "$FUNCNAME: Expected HASH: $USUHASH but got $TESTAFTER"
+            F_MSGE 800 "   PRE-TEST failure!\n\n   Sorry but flashing seems to be blocked on your device.\n   Nothing has changed! Pls use the <b>QFIL</b> method instead."
+            F_EXIT $FUNCNAME 2
+        else
+            kill $PROGY
+            F_LOG "$FUNCNAME: Expected HASH: $USUHASH but got $TESTAFTER"
+            F_MSGE 500 "   PRE-TEST failure!\n\n   This should never happen but if you see this\n   a VERY critical error happened!\n\n   DO NOT POWER OFF YOUR DEVICE!\n\n   Instead use LGup to flash a KDZ otherwise you may hard brick!"
+            F_EXIT $FUNCNAME 2
+        fi
+    fi
+
+    # real flash
+    F_DUMPPART aboot "/tmp/UsU/before"
+    ABPRE=$(sha256sum /tmp/UsU/before/aboot|cut -d " " -f1)
+    F_LOG "$FUNCNAME: aboot before flashing: $ABPRE"
+    F_LOG '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0'
+    $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0' --rawshell 2>&1 >> $LOG
+
+    # verify real flashing
+    F_DUMPPART aboot "/tmp/UsU/after"
+    ABAFTER=$(sha256sum /tmp/UsU/after/aboot|cut -d " " -f1)
+    F_LOG "$FUNCNAME: aboot after flashing: $ABAFTER"
+    
+    # verify the whole result
+    kill $PROGY
+    if [ "$ABAFTER" == "$USUHASH" ];then
+        F_MSGOK 800 "   <b>CONGRATULATIONS!</b>\n\n   You're now secureboot off / unlocked!\n\n   Have fun and enjoy your unleashed phone :) !\n\n   <b>Whats next?</b>\n\n   Follow the guide at <a href='https://bit.do/unlockG4'>https://bit.do/unlockG4</a>\n\n   Basic steps are:\n\t- flash TWRP in fastboot\n\t- flash UsU twrp package in TWRP\n\t- flash your custom ROM\n\n   <b><span color='#ff0000'>If you skip the UsU twrp package flashing you will very likely bootloop!</span></b>" '--show-uri'
+    else
+        if [ "$ABAFTER" == "$ABPRE" ];then
+            F_LOG "$FUNCNAME: Expected HASH: $USUHASH but got $TESTAFTER"
+            F_MSGE 800 "   Sorry but flashing seems to be blocked on your device.\n   Nothing has changed! Pls use the <b>QFIL</b> method instead."
+            F_EXIT $FUNCNAME 2
+        else
+            F_LOG "$FUNCNAME: Expected HASH: $USUHASH but got $TESTAFTER"
+            F_MSGE 500 "   This should never happen but if you see this\n   a VERY critical error happened!\n\n   DO NOT POWER OFF YOUR DEVICE!\n\n   Instead use LGup to flash a KDZ otherwise you may hard brick!"
+            F_EXIT $FUNCNAME 2
+        fi
+    fi
+
+}; export -f F_USUFLASH
+
+# Unofficial steadfasterX Unlock
+F_DOUSU(){ F_LOG "$FUNCNAME: started with this args: $@"
+    # Takes 1 argument
+    #
+    # 1 => model name
+
+    UMOD=$1
+    USUVALIDS="@(*LS991*|*F500*|*H810*|*H812*|*H811*|*H815*|*H818*|*H819*|*US991*|*VS986*)"
+
+    shopt -s extglob
+
+    case $UMOD in
+        ${USUVALIDS}) F_LOG "$FUNCNAME: Valid UsU model found ($UMOD)"
+        ;;
+        *) F_ELOG "$FUNCNAME: device model $UMOD is not working with this method!"
+           F_MSGE 900 "  Your device <b>$UMOD</b> is not supported by this method!\n\n  Supported are:\n\n  $USUVALIDS"
+           F_EXIT $FUNCNAME 4
+        ;;
+    esac
+    
+    A=$(F_MSGW 900 "  You device ($UMOD) is supported by UsU!\n\n  This unlock works for any <b>G4</b> model out there but for <b>no other device!</b>\n\n  <b><span color='#ff0000'>Unlocking your device is a risk - always!</span></b>\n\n  You do this on your <b>own</b> risk and without any guarantees\n\n  I do my best to avoid damage but don't cry when this here fails for you.\n  Ensure you have taken at least a basic backup with SALT before proceeding!\n  That backup is your only chance for recovery!" "--button=UNLOCK:99")
+
+    F_LOG "$FUNCNAME: Answered: $A"
+    if [ "$A" == "99" ];then
+        USUF=$($FYAD --width=800 --title="$YTITLE - UsU" --text="\n   UsU can be installed from either the internal storage or from an external SD card.\n   The paths for the UsU file are FIX and <b>can not</b> be changed:\n" \
+            --form --columns=2\
+            --field='   Placed <b>directly</b> on the sdcard - no subfolder!':LBL true \
+            --field='   Placed in <b>/data/media/0/Download</b>':LBL true \
+            --field="UNLOCK by external SDcard":FBTN "bash -c 'F_USUFLASH sdcard'"\
+            --field="UNLOCK by /data/media/0/Download":FBTN "bash -c 'F_USUFLASH internal'"\
+            --button="Cancel":0)
+
+        if [ $? -eq 98 ];then
+            USUFL="${USUF/\|/}"
+            F_LOG "$FUNCNAME: UsU file selected: $USUFL"
+            # check device connection
+            F_CHKDEVCON            
+        else
+            F_LOG "$FUNCNAME: aborted by user"
+        fi
+    fi
+
+}; export -f F_DOUSU
+
