@@ -135,7 +135,7 @@ F_MAIN(){
         --field="  UsU":RO $LGUSU \
         --field="  Secure Device":RO $LGSEC \
         --field="  Battery level":RO $LGBATT \
-        --field="  AntiRollback":RO $DEVARB \
+        --field="  AntiRollBack":RO $DEVARB \
         --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
         --field="Get Support / ABOUT / CREDITS!$SICONS/log_16x16.png":FBTN "bash -c F_ABOUT" \
         --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c F_ADVMENU" \
@@ -155,7 +155,7 @@ F_MAIN(){
         --field="  UsU":RO $LGUSU \
         --field="  Secure Device":RO $LGSEC \
         --field="  Battery level":RO $LGBATT \
-        --field="  AntiRollback":RO $DEVARB \
+        --field="  AntiRollBack":RO $DEVARB \
         --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
         --field="Get Support / ABOUT / CREDITS!$SICONS/log_16x16.png":FBTN "bash -c F_ABOUT" \
         --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c F_ADVMENU" \
