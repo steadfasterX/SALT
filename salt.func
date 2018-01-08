@@ -179,7 +179,7 @@ F_GETINFO(){ F_LOG "$FUNCNAME: started"
     USU=$(F_CKUSU)
     echo "usu:${USU}" \
       && echo "arb:${IARB}" \
-      && $PYTHONBIN $LAFPATH/lglaf.py -c '!INFO GPRO \x08\x0b\0\0' \
+      && $PYTHONBIN $LAFPATH/lglaf.py -c '!INFO GPRO \x08\x0b\0\0' --rawshell \
        | $PYTHONBIN $LAFPATH/scripts/parse-props.py - \
        | egrep "(device_sw_version|model_name|secure_device|laf_sw_version|device_factory_version|target_country|battery_level)" | tr "\n" " " | tr -d "'" | tee -a $LOG
     F_LOG "$FUNCNAME: ended"
@@ -262,7 +262,7 @@ F_USUMODEL(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
     #
     (F_DUMPPART raw_resources /tmp/UsU 2>&1) >> $LOG
-    REMRR=$(dd if=/tmp/UsU/raw_resources skip=3145722 count=6 bs=1 2>/dev/null)
+    REMRR=$(dd if=/tmp/UsU/raw_resources skip=3145722 count=6 bs=1 2>>/dev/null)
     F_LOG "$FUNCNAME: USUMODEL=$REMRR"
     echo "${REMRR}"
     F_LOG "$FUNCNAME: ended"
@@ -505,7 +505,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 # check/ensure device is connected
 F_CHKDEVCON(){ F_LOG "$FUNCNAME: started"
     # takes no argument
-    $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  uname -m\0' | tee -a $LOG
+    $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  uname -m\0' --rawshell | tee -a $LOG
     RET=${PIPESTATUS[0]}
     if [ $RET -ne 0 ];then
         RES=$(F_MSG 700 "NO DEVICE CONNECTED?\nIf you have connected your device ensure that it is in DOWNLOAD mode\n(<u>not</u> fastboot, <u>not</u> recovery, <u>not</u> booted Android)" "--image=$SICONS/warning_64x64.png --button=Example-Picture:99 --button=Skip:11 --button=Retry:22")
@@ -625,7 +625,7 @@ F_LAFEXEC(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     # takes 1 argument
 
     EXECMD="$1"
-    RET=$($PYTHONBIN ${LAFPATH}/lglaf.py -c "'!EXEC  ${EXECMD}\0'")
+    RET=$($PYTHONBIN ${LAFPATH}/lglaf.py -c "'!EXEC  ${EXECMD}\0'" --rawshell)
     echo $RET
 }; export -f F_LAFEXEC
 
@@ -1025,9 +1025,9 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
             [ $? -ne 0 ] && F_EXIT $FUNCNAME $?
         ;;
         internal) F_LOG "$FUNCNAME: Will load UsU from the internal storage.."
-            USUSRC=/data/media/0/Downloads/aboot_UsU.img
-            $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  umount /data\0' --debug 2>&1 >> $LOG
-            $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  mount -t ext4 /dev/block/bootdevice/by-name/userdata /data\0' --debug 2>&1 >> $LOG
+            USUSRC=/data/media/0/Download/aboot_UsU.img
+            $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  umount /data\0' --debug --rawshell 2>&1 >> $LOG
+            $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  mount -t ext4 /dev/block/bootdevice/by-name/userdata /data\0' --debug --rawshell 2>&1 >> $LOG
             F_LOG "$FUNCNAME: userdata mounting finished"
         ;;
         direct) F_LOG "$FUNCNAME: Will flash UsU directly to the device..."
@@ -1045,13 +1045,13 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     $FYAD --title="$YTITLE - VERIFY" --text="\n  SALT searches for the UsU file...\n" --width=500 --progress --progress-text="searching ..." --pulsate --no-buttons --auto-close &
     PROGY=$!
  
-    USUEX=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls '$USUSRC'\0')
+    USUEX=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls '$USUSRC'\0' --rawshell)
     F_LOG "$FUNCNAME: USUEX=$USUEX"
     kill $PROGY
 
     if [ -z "$USUEX" ];then 
-        F_MSGE 500 "   Oops?!\n\n   You have choosen\n\n   $USUSRC\n\n   but I can not find it...!\n\n   Try another method or ensure you stored it correctly."
-        $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls /storage/external_SD/ /data/media/0/Downloads\0' 2>&1 >> $LOG 
+        F_MSGE 500 "   Oops?!\n\n   You have choosen\n\n   $USUSRC\n\n   but I can not find it...!\n\n   Try another method or ensure you stored it to the correct path."
+        ($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls /storage/external_SD/ /data/media/0/Download\0' --rawshell 2>&1) >> $LOG 
         F_EXIT $FUNCNAME 5
     fi
     
@@ -1064,7 +1064,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     TESTPRE=$(sha256sum /tmp/UsU/before/abootbak | cut -d " " -f1)
     F_LOG "$FUNCNAME: abootbak before flashing: $TESTPRE"
     F_LOG '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0'
-    $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0' 2>&1 >> $LOG
+    $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0' --rawshell 2>&1 >> $LOG
     F_DUMPPART abootbak "/tmp/UsU/after"
     TESTAFTER=$(sha256sum /tmp/UsU/after/abootbak | cut -d " " -f1)
     # verify test result
@@ -1090,7 +1090,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     ABPRE=$(sha256sum /tmp/UsU/before/aboot|cut -d " " -f1)
     F_LOG "$FUNCNAME: aboot before flashing: $ABPRE"
     F_LOG '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0'
-    $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0' 2>&1 >> $LOG
+    $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0' --rawshell 2>&1 >> $LOG
 
     # verify real flashing
     F_DUMPPART aboot "/tmp/UsU/after"
