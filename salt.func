@@ -241,7 +241,7 @@ F_DUMPPART(){ F_LOG "$FUNCNAME: started with $@"
 
 }; export -f F_DUMPPART
 
-# check for the Unofficial steadfasterX Unlock (G4 only)
+# check for the UsU Unlock (G4 only)
 F_CKUSU(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
     #
@@ -251,9 +251,22 @@ F_CKUSU(){ F_LOG "$FUNCNAME: started"
     USUDET=0
     [ "$USUHASH" == "$REMAB" ] && USUDET=1
     F_LOG "$FUNCNAME: USU=$USUDET (1=yes, 0=no)"
-    echo "${USUDET}"
+    unset USUMNM
+    [ $USUDET == 1 ] && USUMNM="$(F_USUMODEL)"
+    echo "${USUDET}:${USUMNM}"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_CKUSU
+
+# check for the real modelname when UsU
+F_USUMODEL(){ F_LOG "$FUNCNAME: started"
+    # takes no arguments
+    #
+    (F_DUMPPART raw_resources /tmp/UsU 2>&1) >> $LOG
+    REMRR=$(dd if=/tmp/UsU/raw_resources skip=3145722 count=6 bs=1 2>/dev/null)
+    F_LOG "$FUNCNAME: USUMODEL=$REMRR"
+    echo "${REMRR}"
+    F_LOG "$FUNCNAME: ended"
+}; export -f F_USUMODEL
 
 # check local file for antirollback bullshit
 # (I'm still pissed off that LG is REALLY doing this! I mean HARDBRICK a phone ?? wtf LG? Its MY decision if I wanna use an outdated/insecure ROM version!)

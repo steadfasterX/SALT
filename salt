@@ -87,8 +87,10 @@ F_MAIN(){
             F_ELOG "parsing $i"
             case ${i/:*/} in
                 usu)
-                LGUSUA=${i/*:/}
-                LGUSU="no_UsU"
+                LGUSUA=$(echo "${i}"|cut -d ":" -f2)
+                USUMODEL=$(echo "${i}"|cut -d ":" -f3)
+                LGUSU="no"
+                [ $LGUSUA == 1 ] && LGUSU="yes"
                 ;;
                 arb)
                 DEVARBVAL=$(echo ${i}| cut -d ":" -f 2)
@@ -99,6 +101,7 @@ F_MAIN(){
                     DEVARB="ARB_unknown"
                 fi
                 ;;
+                usu_model) USUMODEL=${i/*:/};;
                 battery_level) LGBATT=${i/*:/};;
                 model_name) LGMODEL=${i/*:/};;
                 device_sw_version) LGSWV=${i/*:/};;
@@ -108,7 +111,6 @@ F_MAIN(){
                 *) F_ELOG "unknown parameter: $i" ;;
             esac
         done
-        [ $LGUSUA == 1 ] && [ $LGMODEL == "LGLS991" ] && LGUSU="Unofficially_unlocked_by_UsU"
     fi
     [ -z $LGUSUA ] && LGUSU=no_device_found
     [ -z $LGMODEL ] && LGMODEL=no_device_found
@@ -118,6 +120,8 @@ F_MAIN(){
     [ -z $LGSEC ] && LGSEC=no_device_found
     [ -z $LGBATT ] && LGBATT=no_device_found
     [ -z $DEVARB ] && DEVARB=no_ARB_info_found
+    # overwrite model definition when UsU and model info available
+    [ ! -z $USUMODEL ] && LGMODEL=$USUMODEL
     
     # main SALT screen depends on experimental flag
     if [ $EXPERIMENTAL -ne 1 ];then
@@ -145,8 +149,8 @@ F_MAIN(){
       $FYAD --title="$YTITLE - EXPERIMENTAL" --width=800 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  is a replacement for the windows software LGUP (plus MANY more features!!)\n  and brought to you by <b>steadfasterX</b>.\n\n  $TNAME is based on several tools. Click the ABOUT button to find out more!\n\n  The following comes directly from your device:\n  (<i>\"no_device_found\"</i> if no device connected)" \
         --form \
         --field="  Device model":RO $LGMODEL \
-        --field="  Firmware":RO $LGSWV \
-        --field="  Firmware (detailed)":RO $LGFACV \
+        --field="  Firmware (laf)":RO $LGSWV \
+        --field="  Firmware (system)":RO $LGFACV \
         --field="  Country":RO $LGCOUNTRY \
         --field="  UsU":RO $LGUSU \
         --field="  Secure Device":RO $LGSEC \
