@@ -138,7 +138,7 @@ F_MAIN(){
         --field="  AntiRollBack":RO $DEVARB \
         --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
         --field="Get Support / ABOUT / CREDITS!$SICONS/log_16x16.png":FBTN "bash -c F_ABOUT" \
-        --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c F_ADVMENU" \
+        --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c 'F_ADVMENU $LGMODEL'" \
         --field="\n  <b><span color='#ff0000'>Mouse-Over a button to get more details!</span></b>":LBL \
         true \
         --buttons-layout=spread \
@@ -158,7 +158,7 @@ F_MAIN(){
         --field="  AntiRollBack":RO $DEVARB \
         --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
         --field="Get Support / ABOUT / CREDITS!$SICONS/log_16x16.png":FBTN "bash -c F_ABOUT" \
-        --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c F_ADVMENU" \
+        --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c 'F_ADVMENU $LGMODEL'" \
         --field="\n  <b><span color='#ff0000'>Mouse-Over a button to get more details!</span></b>":LBL \
         true \
         --buttons-layout=spread \
@@ -166,8 +166,7 @@ F_MAIN(){
         --button="  Backup!$SICONS/backup.png!Make a full or basic backup while in download mode":"bash -c F_BACKUP" \
         --button="Extract!$SICONS/extract_48x48.png!Extract a KDZ file. If you want to flash choose Extract+Flash instead":"bash -c F_STARTKDZ" \
         --button="Flash (folder)!$SICONS/flash_48x48.png!This will flash one or multiple partitions from any folder (e.g. from a previous backup)":"bash -c F_FLASHPART "\
-        --button=" Flash (kdz)!$SICONS/flashkdz_70x48.png!Extract and Flash like LGUP would do":"bash -c F_STARTKDZFL" \
-        --button=" UNLOCK (UsU)!$SICONS/salt_logo_30x30.png!Unofficial steadfasterX Unlock":"bash -c 'F_DOUSU $LGMODEL'"
+        --button=" Flash (kdz)!$SICONS/flashkdz_70x48.png!Extract and Flash like LGUP would do":"bash -c F_STARTKDZFL" 
     fi
 }
 F_MAIN

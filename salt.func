@@ -849,7 +849,11 @@ F_STARTKDZFL(){ F_LOG "$FUNCNAME: started"
 
 # showing a advanced menu
 F_ADVMENU(){ F_LOG "$FUNCNAME: started"
-    # takes no args
+    # takes 1 arg
+    #
+    # 1 => LGMODEL
+    
+    LGMODEL=$1
 
     $FYAD --title="$YTITLE" --width=800 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n\n <b><span color='#ff0000'>THIS IS AN ADVANCED Menu</span></b>\n\nUse these options here with <b><span color='#ff0000'>CARE!</span></b>\n\n" \
         --form \
@@ -857,6 +861,7 @@ F_ADVMENU(){ F_LOG "$FUNCNAME: started"
         --field="Show your partitions!!This will just list your current partitions":FBTN "bash -c F_LISTPARTS" \
         --field="Open a shell!$SICONS/terminal_30x30.png!Open an adb-like shell while in download mode":FBTN "bash -c F_SHELL" \
         --field="<span color='#ff0000'>Erase</span> partition(s)!!EXTREMELY DANGEROUS - CAN EASILY BRICK YOUR DEVICE":FBTN "bash -c F_DELPART" \
+        --field="Unlock G4 (UsU)!$SICONS/salt_logo_30x30.png!Unofficial secureboot-off/steadfasterX Unlock":FBTN "bash -c 'F_DOUSU $LGMODEL'" \
         --button="Close"
 
 }; export -f F_ADVMENU
@@ -1142,9 +1147,9 @@ F_DOUSU(){ F_LOG "$FUNCNAME: started with this args: $@"
         USUF=$($FYAD --width=800 --title="$YTITLE - UsU" --text="\n   UsU can be installed from either the internal storage or from an external SD card.\n   The paths for the UsU file are FIX and <b>can not</b> be changed:\n" \
             --form --columns=2\
             --field='   Placed <b>directly</b> on the sdcard - no subfolder!':LBL true \
-            --field='   Placed in <b>/data/media/0/Downloads</b>':LBL true \
+            --field='   Placed in <b>/data/media/0/Download</b>':LBL true \
             --field="UNLOCK by external SDcard":FBTN "bash -c 'F_USUFLASH sdcard'"\
-            --field="UNLOCK by /data/media/0/Downloads":FBTN "bash -c 'F_USUFLASH internal'"\
+            --field="UNLOCK by /data/media/0/Download":FBTN "bash -c 'F_USUFLASH internal'"\
             --button="Cancel":0)
 
         if [ $? -eq 98 ];then
