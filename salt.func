@@ -179,7 +179,7 @@ F_GETINFO(){ F_LOG "$FUNCNAME: started"
     USU=$(F_CKUSU)
     echo "usu:${USU}" \
       && echo "arb:${IARB}" \
-      && $PYTHONBIN $LAFPATH/lglaf.py -c '!INFO GPRO \x08\x0b\0\0' \
+      && $PYTHONBIN $LAFPATH/lglaf.py -c '!INFO GPRO \x08\x0b\0\0' --rawshell \
        | $PYTHONBIN $LAFPATH/scripts/parse-props.py - \
        | egrep "(device_sw_version|model_name|secure_device|laf_sw_version|device_factory_version|target_country|battery_level)" | tr "\n" " " | tr -d "'" | tee -a $LOG
     F_LOG "$FUNCNAME: ended"
@@ -470,11 +470,12 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 # check/ensure device is connected
 F_CHKDEVCON(){ F_LOG "$FUNCNAME: started"
     # takes no argument
-    $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  uname -m\0' | tee -a $LOG
+    $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  uname -m\0' --rawshell | tee -a $LOG
     RET=${PIPESTATUS[0]}
     if [ $RET -ne 0 ];then
         RES=$(F_MSG 700 "NO DEVICE CONNECTED?\nIf you have connected your device ensure that it is in DOWNLOAD mode\n(<u>not</u> fastboot, <u>not</u> recovery, <u>not</u> booted Android)" "--image=$SICONS/warning_64x64.png --button=Example-Picture:99 --button=Skip:11 --button=Retry:22")
         F_LOG "$FUNCNAME: msge result = $RES"
+        F_LOG "$FUNCNAME: lsusb output = $(lsusb |grep 1004)"
         [ $RES -eq 99 ] && [ ! -z $SUDO_USER ] && sudo -u $SUDO_USER xdg-open "$SICONS/dlmode.png"
         [ $RES -eq 99 ] && [ -z $SUDO_USER ] && xdg-open "$SICONS/dlmode.png"
         RET=$RES
@@ -589,7 +590,7 @@ F_LAFEXEC(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     # takes 1 argument
 
     EXECMD="$1"
-    RET=$($PYTHONBIN ${LAFPATH}/lglaf.py -c "'!EXEC  ${EXECMD}\0'")
+    RET=$($PYTHONBIN ${LAFPATH}/lglaf.py -c "'!EXEC  ${EXECMD}\0'" --rawshell)
     echo $RET
 }; export -f F_LAFEXEC
 
