@@ -106,6 +106,7 @@ F_MAIN(){
                 fi
                 ;;
                 usu_model) USUMODEL=${i/*:/};;
+                romcomp) ROMCOMP=${i/*:/};;
                 battery_level) LGBATT=${i/*:/};;
                 model_name) LGMODEL=${i/*:/};;
                 device_sw_version) LGSWV=${i/*:/};;
@@ -123,6 +124,7 @@ F_MAIN(){
     [ -z $LGCOUNTRY ] && LGCOUNTRY=no_device_found
     [ -z $LGSEC ] && LGSEC=no_device_found
     [ -z $LGBATT ] && LGBATT=no_device_found
+    [ -z $ROMCOMP ] && ROMCOMP=no_device_found
     [ -z $DEVARB ] && DEVARB=no_ARB_info_found
     # overwrite model definition when UsU and model info available
     [ ! -z $USUMODEL ] && LGMODEL=$USUMODEL
@@ -137,6 +139,7 @@ F_MAIN(){
         --field="  Firmware (system)":RO $LGFACV \
         --field="  Country":RO $LGCOUNTRY \
         --field="  UsU":RO $LGUSU \
+        --field="  GPT compatibility":RO $ROMCOMP \
         --field="  Secure Device":RO $LGSEC \
         --field="  Battery level":RO $LGBATT \
         --field="  AntiRollBack":RO $DEVARB \
@@ -157,6 +160,7 @@ F_MAIN(){
         --field="  Firmware (system)":RO $LGFACV \
         --field="  Country":RO $LGCOUNTRY \
         --field="  UsU":RO $LGUSU \
+        --field="  GPT compatibility":RO $ROMCOMP \
         --field="  Secure Device":RO $LGSEC \
         --field="  Battery level":RO $LGBATT \
         --field="  AntiRollBack":RO $DEVARB \
