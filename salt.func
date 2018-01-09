@@ -180,7 +180,7 @@ F_GETINFO(){ F_LOG "$FUNCNAME: started"
     ROMCOMP=$(F_ROMCOMP)
 
     echo "usu:${USU}" \
-    echo "romcomp:$ROMCOMP" \
+      && echo "romcomp:$ROMCOMP" \
       && echo "arb:${IARB}" \
       && $PYTHONBIN $LAFPATH/lglaf.py -c '!INFO GPRO \x08\x0b\0\0' --rawshell \
        | $PYTHONBIN $LAFPATH/scripts/parse-props.py - \
@@ -258,7 +258,7 @@ F_DUMPPART(){ F_LOG "$FUNCNAME: started with $@"
     BFL="${BPTH}/${PNAME}"
 
     [ ! -d "$BPTH" ] && mkdir -p "$BPTH"
-    $PYTHONBIN $LAFPATH/partitions.py --dump $BFL $PNAME
+    $PYTHONBIN $LAFPATH/partitions.py --batch --dump $BFL $PNAME
 
 }; export -f F_DUMPPART
 
