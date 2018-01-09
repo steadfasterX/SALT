@@ -505,7 +505,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 # check/ensure device is connected
 F_CHKDEVCON(){ F_LOG "$FUNCNAME: started"
     # takes no argument
-    $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  uname -m\0' --rawshell | tee -a $LOG
+    $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  uname -m\0' --rawshell 2>&1 >> $LOG 
     RET=${PIPESTATUS[0]}
     if [ $RET -ne 0 ];then
         RES=$(F_MSG 700 "NO DEVICE CONNECTED?\nIf you have connected your device ensure that it is in DOWNLOAD mode\n(<u>not</u> fastboot, <u>not</u> recovery, <u>not</u> booted Android)" "--image=$SICONS/warning_64x64.png --button=Example-Picture:99 --button=Skip:11 --button=Retry:22")
