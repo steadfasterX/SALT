@@ -177,13 +177,34 @@ F_GETINFO(){ F_LOG "$FUNCNAME: started"
 
     IARB=$(F_CDARB)
     USU=$(F_CKUSU)
+    ROMCOMP=$(F_ROMCOMP)
+
     echo "usu:${USU}" \
+    echo "romcomp:$ROMCOMP" \
       && echo "arb:${IARB}" \
       && $PYTHONBIN $LAFPATH/lglaf.py -c '!INFO GPRO \x08\x0b\0\0' --rawshell \
        | $PYTHONBIN $LAFPATH/scripts/parse-props.py - \
        | egrep "(device_sw_version|model_name|secure_device|laf_sw_version|device_factory_version|target_country|battery_level)" | tr "\n" " " | tr -d "'" | tee -a $LOG
     F_LOG "$FUNCNAME: ended"
 }; export -f F_GETINFO
+
+# checks which ROM type is compatible with UsU on that device 
+F_ROMCOMP(){ F_LOG "$FUNCNAME: started"
+    # takes no arg
+
+    DEVTMO=$($PYTHONBIN $LAFPATH/partitions.py --list 2>&1 | grep -c carrier | tee -a $LOG)
+    DEVEUR=$($PYTHONBIN $LAFPATH/partitions.py --list 2>&1 | grep -c cust | tee -a $LOG)
+    F_LOG "UsU compatibility: $DEVTMO (0=h815, 1=h811)"
+    if [ "$DEVTMO" == "1" ];then
+        echo "H811"
+    elif [ "$DEVEUR" == "1" ];then
+        echo "H815"
+    else
+        echo "unknown"
+        F_LOG "UsU compatibility: cannot be detected! full GPT:"
+        $PYTHONBIN $LAFPATH/partitions.py --list 2>&1 >> $LOG
+    fi
+}; export -f F_ROMCOMP
 
 # extract a KDZ
 F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started"
@@ -505,7 +526,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 # check/ensure device is connected
 F_CHKDEVCON(){ F_LOG "$FUNCNAME: started"
     # takes no argument
-    $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  uname -m\0' --rawshell | tee -a $LOG
+    $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  uname -m\0' --rawshell 2>&1 >> $LOG 
     RET=${PIPESTATUS[0]}
     if [ $RET -ne 0 ];then
         RES=$(F_MSG 700 "NO DEVICE CONNECTED?\nIf you have connected your device ensure that it is in DOWNLOAD mode\n(<u>not</u> fastboot, <u>not</u> recovery, <u>not</u> booted Android)" "--image=$SICONS/warning_64x64.png --button=Example-Picture:99 --button=Skip:11 --button=Retry:22")
