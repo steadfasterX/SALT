@@ -881,7 +881,7 @@ F_ADVMENU(){ F_LOG "$FUNCNAME: started"
         --field="SALT debug log!$SICONS/log_16x16.png":FBTN "$SALTPATH/getlog" \
         --field="Show your partitions!!This will just list your current partitions":FBTN "bash -c F_LISTPARTS" \
         --field="Open a shell!$SICONS/terminal_30x30.png!Open an adb-like shell while in download mode":FBTN "bash -c F_SHELL" \
-        --field="<span color='#ff0000'>Erase</span> partition(s)!!EXTREMELY DANGEROUS - CAN EASILY BRICK YOUR DEVICE":FBTN "bash -c F_DELPART" \
+        --field="<span color='#ff0000'>Wipe</span> partition(s)!!EXTREMELY DANGEROUS - CAN EASILY BRICK YOUR DEVICE":FBTN "bash -c F_DELPART" \
         --field="Unlock G4 (UsU)!$SICONS/salt_logo_30x30.png!Unofficial secureboot-off/steadfasterX Unlock":FBTN "bash -c 'F_DOUSU $LGMODEL'" \
         --button="Close"
 
