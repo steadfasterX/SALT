@@ -88,7 +88,10 @@ F_MAIN(){
     if [ $DEVCON -ne 11 ];then
         DEVINF=$(F_GETINFO)
         for i in $DEVINF;do
-            F_ELOG "parsing $i"
+            case "${i/:*/}" in
+                imei|serial) F_ELOG "parsing ${i/:*/}:xxxxxxxxxxx" ;;
+                *)           F_ELOG "parsing ${i/*:/}" ;;
+            esac
             case ${i/:*/} in
                 usu)
                 LGUSUA=$(echo "${i}"|cut -d ":" -f2)
@@ -105,6 +108,9 @@ F_MAIN(){
                     DEVARB="ARB_unknown"
                 fi
                 ;;
+                imei) LGIMEI=${i/*:/};;
+                serial) LGSERIAL=${i/*:/};;
+                target_operator) LGOPER=${i/*:/};;
                 usu_model) USUMODEL=${i/*:/};;
                 romcomp) ROMCOMP=${i/*:/};;
                 battery_level) LGBATT=${i/*:/};;
@@ -118,6 +124,9 @@ F_MAIN(){
         done
     fi
     [ -z $LGUSUA ] && LGUSU=no_device_found
+    [ -z $LGIMEI ] && LGIMEI=no_device_found
+    [ -z $LGSERIAL ] && LGSERIAL=no_device_found
+    [ -z $LGOPER ] && LGOPER=no_device_found
     [ -z $LGMODEL ] && LGMODEL=no_device_found
     [ -z $LGSWV ] && LGSWV=no_device_found 
     [ -z $LGFACV ] && LGFACV=no_info_found
@@ -131,43 +140,44 @@ F_MAIN(){
     
     # main SALT screen depends on experimental flag
     if [ $EXPERIMENTAL -ne 1 ];then
- 
-      $FYAD --title="$YTITLE" --width=800 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  is a replacement for the windows software LGUP (plus MANY more features!!)\n  and brought to you by <b>steadfasterX</b>.\n\n  $TNAME is based on several tools. Click the ABOUT button to find out more!\n\n  The following comes directly from your device:\n  (<i>\"no_device_found\"</i> if no device connected)" \
-        --form \
+      $FYAD --title="$YTITLE" --width=1100 --height=600 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://bit.do/SALTatXDA'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
+        --form --columns=2 \
         --field="  Device model":RO $LGMODEL \
         --field="  Firmware (laf)":RO $LGSWV \
-        --field="  Firmware (system)":RO $LGFACV \
-        --field="  Country":RO $LGCOUNTRY \
+        --field="  Firmware (system)":RO "$LGFACV" \
+        --field="  Carrier":RO "$LGOPER" \
+        --field="  Country":RO "$LGCOUNTRY" \
         --field="  UsU":RO $LGUSU \
+        --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
         --field="  GPT compatibility":RO $ROMCOMP \
         --field="  Secure Device":RO $LGSEC \
         --field="  Battery level":RO $LGBATT \
-        --field="  AntiRollBack":RO $DEVARB \
-        --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
-        --field="Get Support / ABOUT / CREDITS!$SICONS/log_16x16.png":FBTN "bash -c F_ABOUT" \
+        --field="  <span color='#ff0000'>AntiRollBack</span>":RO $DEVARB \
+        --field="  IMEI" $LGIMEI \
+        --field="  Serial" $LGSERIAL \
         --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c 'F_ADVMENU $LGMODEL'" \
-        --field="\n  <b><span color='#ff0000'>Mouse-Over a button to get more details!</span></b>":LBL \
         true \
         --buttons-layout=spread \
         --button="!$SICONS/update_48x48.png!Updating SALT (kdztools, lglaf, SALT)":"bash -c F_UPDATE" \
         --button="  Backup!$SICONS/backup.png!Make a full or basic backup while in download mode":"bash -c F_BACKUP" \
         --button="Extract!$SICONS/extract_48x48.png!Extract a KDZ file. If you want to flash choose Extract+Flash instead":"bash -c F_STARTKDZ"
     else
-      $FYAD --title="$YTITLE - EXPERIMENTAL" --width=800 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  is a replacement for the windows software LGUP (plus MANY more features!!)\n  and brought to you by <b>steadfasterX</b>.\n\n  $TNAME is based on several tools. Click the ABOUT button to find out more!\n\n  The following comes directly from your device:\n  (<i>\"no_device_found\"</i> if no device connected)" \
-        --form \
+      $FYAD --title="$YTITLE - EXPERIMENTAL" --width=1100 --height=600 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://bit.do/SALTatXDA'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
+        --form --columns=2 \
         --field="  Device model":RO $LGMODEL \
         --field="  Firmware (laf)":RO $LGSWV \
-        --field="  Firmware (system)":RO $LGFACV \
-        --field="  Country":RO $LGCOUNTRY \
+        --field="  Firmware (system)":RO "$LGFACV" \
+        --field="  Carrier":RO "$LGOPER" \
+        --field="  Country":RO "$LGCOUNTRY" \
         --field="  UsU":RO $LGUSU \
+        --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
         --field="  GPT compatibility":RO $ROMCOMP \
         --field="  Secure Device":RO $LGSEC \
         --field="  Battery level":RO $LGBATT \
-        --field="  AntiRollBack":RO $DEVARB \
-        --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
-        --field="Get Support / ABOUT / CREDITS!$SICONS/log_16x16.png":FBTN "bash -c F_ABOUT" \
+        --field="  <span color='#ff0000'>AntiRollBack</span>":RO $DEVARB \
+        --field="  IMEI" $LGIMEI \
+        --field="  Serial" $LGSERIAL \
         --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c 'F_ADVMENU $LGMODEL'" \
-        --field="\n  <b><span color='#ff0000'>Mouse-Over a button to get more details!</span></b>":LBL \
         true \
         --buttons-layout=spread \
         --button="!$SICONS/update_48x48.png!Updating SALT (kdztools, lglaf, SALT)":"bash -c F_UPDATE" \
