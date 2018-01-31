@@ -207,24 +207,69 @@ F_ROMCOMP(){ F_LOG "$FUNCNAME: started"
 }; export -f F_ROMCOMP
 
 # extract a KDZ
-F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started"
-    # takes XXXX arguments
+F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
+    # takes 2 arguments
     #
     #   1 => KDZ file name (full path)
     #   2 => Target directory
-    #   3 => extract userdata
-    #   4 => extract cache
     LGKDZ="$1"
     LGTARGET="$2"
-    [ "$3" == "TRUE" ] && EARGS="--with-userdata"
-    [ "$4" == "TRUE" ] && EARGS="$EARGS --with-cache"
 
     [ -z "$LGKDZ" -o ! -f "$LGKDZ" ] && F_ERR $FUNCNAME 3 "Internal error: empty LGKDZ or file not found"
     [ -z "$LGTARGET" -o ! -d "$LGTARGET" ] && F_ERR $FUNCNAME 3 "Internal error: empty LGTARGET or directory not found"
 
-    ($KDZMGR --batch -x $LGKDZ -d $LGTARGET $EARGS 2>&1) | tee -a $LOG | $FYAD --title="$YTITLE - EXTRACT" --text-info --text "\n  <b><span color='#ff0000'>BE PATIENT! THE SCREEN REFRESHES EVERY MINUTE FIRST!\n  WAIT until you see the message: All done</span></b>\n" --listen --tail --height=600 --width=800 --wrap --fore=blue --button="Continue (wait until you see ALL DONE)":0
+    # grab the partition list
+    $FYAD --title="$YTITLE - PREPARE" --text "\n  Collecting KDZ information..." --width=400 --timeout=120 --timeout-indicator=right --no-buttons &
+    PBPP=$!
+    IRES=$($KDZMGR --batch --list -x $LGKDZ -d $LGTARGET 2>&1)
+    F_LOG "$FUNCNAME: $(kill $PBPP)"
+
+    CHOOSENP=$((for slice in $IRES;do if [ "${slice/*:/}" == "data" ];then echo -e "true:$slice"; else echo -e "false:$slice";fi | tr ':' '\n' ;done | $FYAD --height=800 --width=1000 --title="$YTITLE - EXTRACT" --text "\n  Select partition(s) to EXTRACT:\n" --list --checklist\
+            --column="Selection":CHK \
+            --column="#" \
+            --column="Partition":TXT \
+            --column="Type" \
+            --listen --no-selection \
+            --button=Extract:0 \
+            --button=Abort:3) | cut -d "|" -f 2,3 | tr "|" ":"| tr "\n" " ")
+    CERR=${PIPESTATUS[0]}
+    F_LOG "CHOOSENP: $CHOOSENP"
+
+    F_LOG "CERR: $CERR"
+    [ $CERR -ne 0 ] && F_MSGE 400 "Aborted by user!" && F_EXIT $FUNCNAME $CERR
+
+    CHCOUNT=$(echo "$CHOOSENP" |tr " " "\n" |grep -c :)
+    [ $CHCOUNT -lt 1 ] && F_MSGE 400 "No partition selected?" && F_EXIT $FUNCNAME $CHCOUNT
+
+    F_ELOG "choosen partitions: $CHOOSENP -> $CHCOUNT"
+
+    # open yad listener
+    echo 0> /tmp/e
+    tail -f /tmp/e | $FYAD --title="$YTITLE - EXTRACT" --text="\n  <b>SALT is now extracting ...</b>\n  (just wait until this dialog closes)\n" --width=900 --progress --button='Close (WAIT until FINISHED)':0 --auto-close &
+    tail_pid=$!
+
+    for slice in $CHOOSENP;do
+        CNT=$((CNT+1))
+        slicename=${slice/*:/}
+        slicenum=${slice/:*/}
+        echo "#extracting ${slicename} ..." >>/tmp/e
+        $KDZMGR --batch -x $LGKDZ -d $LGTARGET --slice $slicenum >> $LOG 2>&1
+
+        CNTPERC=$(($CNT * 100 / $CHCOUNT))
+        echo $CNTPERC >>/tmp/e
+        [ $CNT -eq $CHCOUNT ] && echo '# FINISHED!' >>/tmp/e && F_LOG "$FUNCNAME: Extract finished"
+    done
     EXERR=$?
-    [ $EXERR -ne 0 ] && F_ERR $FUNCNAME $EXERR "ERROR occured or aborted by user!"
+    # close yad listener
+    kill $tail_pid
+
+    if [ $EXERR -ne 0 ];then 
+        F_ERR $FUNCNAME $EXERR "ERROR occured or aborted by user!"
+    else
+        $FYAD --width="500" --title="$YTITLE - SUCCESS" --image="$SICONS/ok_64x64.png" --text "\nAll partitions extracted!\n" \
+            --button='Open target folder':"sudo -u $REALUSER xdg-open $LGTARGET/extracteddz" \
+            --button=Close:0
+    fi
     F_LOG "$FUNCNAME: ended"
 }; export -f F_EXTRACTKDZ
 
@@ -562,12 +607,9 @@ F_STARTKDZ(){ F_LOG "$FUNCNAME: started"
     EXCHOICES=$($FYAD --title="$YTITLE - EXTRACT" --width=800 --always-print-result --text \
         "\n  This will extract any KDZ file for you with just a click\n" \
         --form \
-        --field="KDZ file":FL --file-filter="KDZ files (*.kdz)| *.kdz *.KDZ"\
-        --field="Target directory\nHINT: Requires 32GB of free data":DIR \
-        --field=:LBL \
-        --field="Remove useless userdata partition (leave checked if unsure)":CHK \
-        --field="Remove useless cache partition (leave checked if unsure)":CHK \
-        undef /tmp true true true\
+        --field="  KDZ file":FL --file-filter="KDZ files (*.kdz)| *.kdz *.KDZ"\
+        --field="  Target directory\nHINT: Ensure you have enough free disk space":DIR \
+        undef /tmp \
         )
     F_ELOG "returned: $EXCHOICES"
     KDZFILE=$(echo "$EXCHOICES" | cut -d '|' -f 1)
