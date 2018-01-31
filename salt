@@ -3,7 +3,7 @@
 #
 # SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
 #
-# Copyright (C): 2017, steadfasterX <steadfastX|boun.cr>
+# Copyright (C): 2017-2018, steadfasterX <steadfastX|boun.cr>
 #
 # Main program for SALT
 #
@@ -65,7 +65,8 @@ if [ ! -d "$KDZTOOLS" ];then
 fi
 
 # collect some sys info
-F_LOG "System: $(lsb_release -a)"
+F_LOG "OS: $(cat /etc/*-release)"
+F_LOG "OS (lsb): $(lsb_release -a)"
 F_LOG "yad: $(yad --version)"
 
 # check if device in dl mode connected
