@@ -210,12 +210,17 @@ F_ROMCOMP(){ F_LOG "$FUNCNAME: started"
 
 # extract a KDZ
 F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
-    # takes 2 arguments
+    # takes 2-3 arguments
     #
+    # required:
     #   1 => KDZ file name (full path)
     #   2 => Target directory
+    # optional:
+    #   3 => auto mode (e.g. for KDZ flashing)
+
     LGKDZ="$1"
     LGTARGET="$2"
+    AUTOM="$3"
 
     [ -z "$LGKDZ" -o ! -f "$LGKDZ" ] && F_ERR $FUNCNAME 3 "Internal error: empty LGKDZ or file not found"
     [ -z "$LGTARGET" -o ! -d "$LGTARGET" ] && F_ERR $FUNCNAME 3 "Internal error: empty LGTARGET or directory not found"
@@ -227,9 +232,26 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
     $FYAD --title="$YTITLE - PREPARE" --text "\n  Collecting KDZ information..." --width=400 --timeout=120 --timeout-indicator=right --no-buttons &
     PBPP=$!
     IRES=$($KDZMGR --batch --list -x $LGKDZ -d $LGTARGET 2>&1)
+    IRESDATA=$(echo -e "$IRES" |grep ":data" | sort -t : -k 2)
+    IRESEMPTY=$(echo -e "$IRES" |grep ":empty" | sort -t : -k 2)
+    case "$LGUSU" in
+        yes) IRESAUTO=$(echo -e "$IRESDATA" | egrep -iv "($AUTONOEXTRACTUSU)")
+        ;;
+        no) IRESAUTO=$(echo -e "$IRESDATA" | egrep -iv "($AUTONOEXTRACT)")
+        ;;
+        *) kill $PBPP
+           F_MSGE 500 "ERROR: Cannot determine UsU state?! aborted.."
+           F_EXIT "$FUNCNAME: Cannot determine UsU state" 3 
+        ;; 
+    esac
+    F_LOG "collected data:\nUsU: $LGUSU\nIRESDATA:\n$IRESDATA\nIRESEMPTY:\n$IRESEMPTY\nIRESAUTO:\n$IRESAUTO"
     F_LOG "$FUNCNAME: $(kill $PBPP)"
 
-    CHOOSENP=$((for slice in $IRES;do if [ "${slice/*:/}" == "data" ];then echo -e "true:$slice"; else echo -e "false:$slice";fi | tr ':' '\n' ;done | $FYAD --height=800 --width=1000 --title="$YTITLE - EXTRACT" --text "\n  Select partition(s) to EXTRACT:\n" --list --checklist\
+    if [ x"$AUTOM" == "xauto" ];then
+        CHOOSENP=$(echo -e "$IRESAUTO"| cut -d ":" -f 1-2)
+    else
+        IRESSORTED=$(echo -e "$IRESDATA\n$IRESEMPTY")
+        CHOOSENP=$((for slice in $IRESSORTED;do if [ "${slice/*:/}" == "data" ];then echo -e "true:$slice"; else echo -e "false:$slice";fi | tr ':' '\n' ;done | $FYAD --height=800 --width=1000 --title="$YTITLE - EXTRACT" --text "\n  Select partition(s) to EXTRACT:\n" --list --checklist\
             --column="Selection":CHK \
             --column="#" \
             --column="Partition":TXT \
@@ -237,7 +259,8 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
             --listen --no-selection \
             --button=Extract:0 \
             --button=Abort:3) | cut -d "|" -f 2,3 | tr "|" ":"| tr "\n" " ")
-    CERR=${PIPESTATUS[0]}
+        CERR=${PIPESTATUS[0]}
+    fi
     F_LOG "CHOOSENP: $CHOOSENP"
 
     F_LOG "CERR: $CERR"
@@ -253,12 +276,14 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
     tail -f /tmp/e | $FYAD --title="$YTITLE - EXTRACT" --text="\n  <b>SALT is now extracting ...</b>\n  (just wait until this dialog closes)\n" --width=900 --progress --button='Close (WAIT until FINISHED)':0 --auto-close &
     tail_pid=$!
 
+    MGRARGS=
     for slice in $CHOOSENP;do
         CNT=$((CNT+1))
         slicename=${slice/*:/}
         slicenum=${slice/:*/}
         echo "#extracting ${slicename} ..." >>/tmp/e
-        $KDZMGR --batch -x $LGKDZ -d $LGTARGET --slice $slicenum >> $LOG 2>&1
+        [ $CNT -ne $CHCOUNT ] && MGRARGS="-D"
+        $KDZMGR --batch -x $LGKDZ -d $LGTARGET --slice $slicenum --with-cache --with-userdata $MGRARGS >> $LOG 2>&1
 
         CNTPERC=$(($CNT * 100 / $CHCOUNT))
         echo $CNTPERC >>/tmp/e
@@ -271,7 +296,7 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
     if [ $EXERR -ne 0 ];then 
         F_ERR $FUNCNAME $EXERR "ERROR occured or aborted by user!"
     else
-        $FYAD --width="500" --title="$YTITLE - SUCCESS" --image="$SICONS/ok_64x64.png" --text "\nAll partitions extracted!\n" \
+        [ x"$AUTOM" != "xauto" ] && $FYAD --width="500" --title="$YTITLE - SUCCESS" --image="$SICONS/ok_64x64.png" --text "\nAll partitions extracted!\n" \
             --button='Open target folder':"sudo -u $REALUSER xdg-open $LGTARGET/extracteddz" \
             --button=Close:0
     fi
@@ -402,7 +427,7 @@ F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
 
     # autoextract kdz without userdata and cache
     KDZTMP=/tmp
-    F_EXTRACTKDZ $LGKDZ $KDZTMP FALSE FALSE
+    F_EXTRACTKDZ $LGKDZ $KDZTMP auto
 
     # test mode?
     if [ "$LGDRY" != "FALSE" ];then
@@ -444,11 +469,11 @@ F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
     [ $? -ne 0 ] && F_ERR $FUNCNAME 3 "\n  Aborted on user check verification"
 
     # If all the above is fine: FLASH
-    F_FLASHPART "$KDZTMP/extracteddz"
+    F_FLASHPART "$KDZTMP/extracteddz" auto
 
     # factory reset to avoid bootloop (cache gets deleted by FLASHPART already)
     # TODO: accept the taken user choice 
-    F_WIPEPART userdata ni
+    #F_WIPEPART userdata ni
 
     F_MSG 600 "    KDZ flashing completed.\n    Check the log for details (Advanced Menu)"
     F_LOG "$FUNCNAME: ended"
@@ -514,7 +539,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
         esac
     done
 
-    F_ELOG "($FUNCNAME) created yad list: $IRES"
+    F_LOG "($FUNCNAME) created yad list: $IRES"
 
     CHOOSENP=$(for files in $IRES;do echo -e "$files" ;done \
                 | $FYAD --height=800 --width=700 --title="$YTITLE - FOLDER" --text "\n  Select the partitions you want to flash\n  (the RECOMMENDED partitions to flash are CHECKED already!)\n\n  Hint: you can change the target partition here but do this only when you\n  <b>REALLY KNOW</b> what you're doing!\n" --list --checklist \
@@ -527,12 +552,12 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     CHCOUNT=$(echo "$CHOOSENP" |tr " " "\n" |grep -c :)
     [ $CHCOUNT -lt 1 ] && F_ERR $FUNCNAME 0 "No partition selected?"
 
-    F_ELOG "choosen partitions: $CHOOSENP -> $CHCOUNT"
+    F_LOG "choosen partitions: $CHOOSENP -> $CHCOUNT"
 
     SORTEDP=$(echo "$CHOOSENP" |tr " " "\n" | sort -t : -k 3n | cut -d ":" -f 1-2 | tr "\n" " " )
     CHCOUNT=$(echo "$SORTEDP" |tr " " "\n" |grep -c :)
 
-    F_ELOG "sorted partitions: $SORTEDP -> $CHCOUNT"
+    F_LOG "sorted partitions: $SORTEDP -> $CHCOUNT"
 
     # FLASH
     CNT=0
