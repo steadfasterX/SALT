@@ -178,10 +178,12 @@ F_GETINFO(){ F_LOG "$FUNCNAME: started"
     IARB=$(F_CDARB)
     USU=$(F_CKUSU)
     ROMCOMP=$(F_ROMCOMP)
+    LAFVER=$($PYTHONBIN $LAFPATH/lglaf.py --proto --rawshell)
 
     echo "usu:${USU}" \
       && echo "romcomp:$ROMCOMP" \
       && echo "arb:${IARB}" \
+      && echo "lafver:$LAFVER" \
       && $PYTHONBIN $LAFPATH/lglaf.py -c '!INFO GPRO \x08\x0b\0\0' --rawshell \
        | $PYTHONBIN $LAFPATH/scripts/parse-props.py - \
        | egrep "(device_sw_version|model_name|secure_device|laf_sw_version|device_factory_version|target_country|battery_level|imei|target_operator|serial)" | tr "\n" " " | tr -d "'" 
