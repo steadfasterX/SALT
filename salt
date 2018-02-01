@@ -97,8 +97,8 @@ F_MAIN(){
                 usu)
                 LGUSUA=$(echo "${i}"|cut -d ":" -f2)
                 USUMODEL=$(echo "${i}"|cut -d ":" -f3)
-                LGUSU="no"
-                [ $LGUSUA == 1 ] && LGUSU="yes"
+                export LGUSU="no"
+                [ $LGUSUA == 1 ] && export LGUSU="yes"
                 ;;
                 arb)
                 DEVARBVAL=$(echo ${i}| cut -d ":" -f 2)
