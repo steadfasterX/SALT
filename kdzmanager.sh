@@ -10,12 +10,12 @@
 ##########################################################################################
 
 # the vars for the lgup-ng
-VARS=salt.vars
+VARS="${0%/*}/salt.vars"
 source $VARS
 [ $? -ne 0 ] && "ERROR: Missing requirement <$VARS>." && exit 3
 
 # the functions for the lglaf GUI
-FUNCS=salt.func
+FUNCS="${0%/*}/salt.func"
 source $FUNCS 
 [ $? -ne 0 ] && "ERROR: Missing requirement <$FUNCS>." && exit 3
 
