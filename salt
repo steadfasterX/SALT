@@ -90,8 +90,8 @@ F_MAIN(){
         DEVINF=$(F_GETINFO)
         for i in $DEVINF;do
             case "${i/:*/}" in
-                imei|serial) F_ELOG "parsing ${i/:*/}:xxxxxxxxxxx" ;;
-                *)           F_ELOG "parsing ${i/*:/}" ;;
+                imei|serial) F_LOG "parsing ${i/:*/}:xxxxxxxxxxx" ;;
+                *)           F_LOG "parsing ${i/*:/}" ;;
             esac
             case ${i/:*/} in
                 usu)
@@ -184,7 +184,7 @@ F_MAIN(){
         --button="!$SICONS/update_48x48.png!Updating SALT (kdztools, lglaf, SALT)":"bash -c F_UPDATE" \
         --button="  Backup!$SICONS/backup.png!Make a full or basic backup while in download mode":"bash -c F_BACKUP" \
         --button="Extract!$SICONS/extract_48x48.png!Extract a KDZ file. If you want to flash choose Extract+Flash instead":"bash -c F_STARTKDZ" \
-        --button="Flash (folder)!$SICONS/flash_48x48.png!This will flash one or multiple partitions from any folder (e.g. from a previous backup)":"bash -c F_FLASHPART "\
+        --button="Flash (folder)!$SICONS/flash_48x48.png!This will flash one or multiple partitions from any folder (e.g. from a previous backup)":"bash -c F_FLASHPART"\
         --button=" Flash (kdz)!$SICONS/flashkdz_70x48.png!Extract and Flash like LGUP would do":"bash -c F_STARTKDZFL" 
     fi
 }
