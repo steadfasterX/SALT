@@ -234,13 +234,15 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
     IRES=$($KDZMGR --batch --list -x $LGKDZ -d $LGTARGET 2>&1)
     IRESDATA=$(echo -e "$IRES" |grep ":data" | sort -t : -k 2)
     IRESEMPTY=$(echo -e "$IRES" |grep ":empty" | sort -t : -k 2)
+    
+    # build the extract list based on the UsU state
     case "$LGUSU" in
         yes) IRESAUTO=$(echo -e "$IRESDATA" | egrep -iv "($AUTONOEXTRACTUSU)")
         ;;
-        no) IRESAUTO=$(echo -e "$IRESDATA" | egrep -iv "($AUTONOEXTRACT)")
+        no|no_device_found) IRESAUTO=$(echo -e "$IRESDATA" | egrep -iv "($AUTONOEXTRACT)")
         ;;
         *) kill $PBPP
-           F_MSGE 500 "ERROR: Cannot determine UsU state?! aborted.."
+           F_MSGE 500 "Unexpected LGUSU result ($LGUSU).. "
            F_EXIT "$FUNCNAME: Cannot determine UsU state" 3 
         ;; 
     esac
@@ -409,6 +411,11 @@ F_CHKMODEL(){ F_LOG "$FUNCNAME: started"
     F_LOG "$FUNCNAME: ended"
 } ; export -f F_CHKMODEL
 
+# checks if UsU variable is readable and set correctly
+F_USUVARVALID(){ F_LOG "$FUNCNAME: started"
+    if [ "$LGUSU" == "yes" -o "$LGUSU" == "no" ];then echo 1; else echo 0; fi
+ } ; export -f F_USUVARVALID
+
 # flash a KDZ
 F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
     # takes 5 arguments
@@ -438,7 +445,11 @@ F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
 
     # check device connection
     F_CHKDEVCON
-   
+
+    # that one is required for flashing (the device must be connected and UsU state must be detected!)
+    VARSET=$(F_USUVARVALID)
+    if [ "$VARSET" -eq 0 ];then F_MSGE 500 "ERROR: Cannot determine UsU state?! aborted.."; F_EXIT "$FUNCNAME" 3; fi
+
     # recheck valid image files
     # TODO
 
@@ -497,6 +508,11 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     F_LOG "$FUNCNAME: IMGDIR=$IMGDIR"
 
     [ ! -d "$IMGDIR" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n Folder \n\n  $IMGDIR\n\n  does not exists?!"
+
+    # check device connection
+    F_CHKDEVCON    
+    VARSET=$(F_USUVARVALID)
+    if [ "$VARSET" -eq 0 ];then F_MSGE 500 "ERROR: Cannot determine UsU state?! aborted.."; F_EXIT "$FUNCNAME" 3; fi
     
     # create a list of *.image files and let the user choose
     IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name *.bin -or -name *.img -or -name *.image -or -name *.mbn | tr " " "_" |egrep -vi "(GPT|firehose|zeros)");do echo "${ifile##*/}";done | tr "\n" " ")
