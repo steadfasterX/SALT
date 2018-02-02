@@ -157,7 +157,7 @@ F_MAIN(){
         --field="  UsU":RO $LGUSU \
         --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
         --field="  GPT compatibility":RO $ROMCOMP \
-        --field="  LAF version":RO $LAFVER \
+        --field="  LAF protocol":RO $LAFVER \
         --field="  Battery level":RO $LGBATT \
         --field="  <span color='#ff0000'>AntiRollBack</span>":RO $DEVARB \
         --field="  IMEI" $LGIMEI \
@@ -180,7 +180,7 @@ F_MAIN(){
               --field="  UsU":RO $LGUSU \
               --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
               --field="  GPT compatibility":RO $ROMCOMP \
-              --field="  LAF version":RO $LAFVER \
+              --field="  LAF protocol":RO $LAFVER \
               --field="  Battery level":RO $LGBATT \
               --field="  <span color='#ff0000'>AntiRollBack</span>":RO $DEVARB \
               --field="  IMEI" $LGIMEI \
