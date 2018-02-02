@@ -126,7 +126,7 @@ F_MAIN(){
         done
     fi
     [ -z $LAFVER ] && LAFVER=no_device_found
-    [ -z $LGUSUA ] && LGUSU=no_device_found
+    [ -z $LGUSUA ] && export LGUSU=no_device_found
     [ -z $LGIMEI ] && LGIMEI=no_device_found
     [ -z $LGSERIAL ] && LGSERIAL=no_device_found
     [ -z $LGOPER ] && LGOPER=no_device_found
