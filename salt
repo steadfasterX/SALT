@@ -63,6 +63,15 @@ if [ ! -d "$KDZTOOLS" ];then
         F_ERR ktoolsupdate $DLKDZ "\n  Without this SALT will not work!\n  ABORTED. \n"
     fi
 fi
+if [ ! -d "$SDATPATH" ];then
+    F_ELOG "First start of SALT? Expected sdat2img here: $SDATPATH"
+    DLSDAT=$(F_MSG 400 "\n  First start of SALT?\n\n  Expected <b><u>sdat2img</u></b> here:\n  ${KDZTOOLS}\n\n  but it is missing..\n\n  Should I download it for you now?" "--button=Yes:0 --button=Abort:1")
+    if [ "$DLSDAT" -eq 0 ];then
+        $GIT clone --progress $SDATGIT $SDATPATH 2>&1 | $FYAD --title="$YTITLE - UPDATING" --text="\n  <b>Installing sdat2img ...</b>\n" --width=700 --height=600 --text-info --listen --tail --button=Close
+    else
+        F_LOG "sdat2imgsupdate $DLSDAT  Without this SALT will not fully work"
+    fi
+fi
 
 # collect some sys info
 F_LOG "OS: $(cat /etc/*-release)"
