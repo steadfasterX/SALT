@@ -10,18 +10,18 @@
 ##########################################################################################
 
 # the vars for the lgup-ng
-VARS=salt.vars
+VARS="${0%/*}/salt.vars"
 source $VARS
 [ $? -ne 0 ] && "ERROR: Missing requirement <$VARS>." && exit 3
 
 # the functions for the lglaf GUI
-FUNCS=salt.func
+FUNCS="${0%/*}/salt.func"
 source $FUNCS 
 [ $? -ne 0 ] && "ERROR: Missing requirement <$FUNCS>." && exit 3
 
 
 F_HELP(){
-    echo -e "\nCopyright (C) 2017: steadfasterX <steadfastX | boun.cr>"
+    echo -e "\nCopyright (C) 2017-2018: steadfasterX <steadfastX | boun.cr>"
     echo -e "LICENSE: LGPLv2 (https://www.gnu.org/licenses/old-licenses/lgpl-2.0.txt)\n"
     echo -e "\nUsage:\n----------------------------\n"
     echo -e "\tactions (one or both):"
@@ -29,6 +29,7 @@ F_HELP(){
     echo -e "\t                                 note: the current dir will be used as target dir by default"
     echo -e "\t                                       extractedkdz/ and extracteddz/ will be created here"
     echo -e "\t-d | --extractdir <target dir>   if you want to specify another target dir for the KDZ"
+    echo -e "\t-s | --slice '<part#> <part#>'   extract only these slices (must be number(s) separated by space and quoted)"
     echo
     echo -e "\t--flash [PATH TO IMAGE FILES]    will flash all image files of that directory (except userdata)"
     echo -e "\t[--with-userdata --flash ...]    will flash all image files including userdata (like a factory reset)"
@@ -37,6 +38,7 @@ F_HELP(){
     echo -e "\t-h | --help                        this output"
     echo -e "\t-t | --test                      test mode: will not extract/flash but print what would be done"
     echo -e "\t-b | --batch                     batch mode: no questions - DANGEROUS!"
+    echo -e "\t-D | --debug                     debug mode"
     echo -e "\n"
     echo -e "\n\tExamples:\n"
     echo -e "\tkdzmanager.sh -x ~/Downloads/h815v20p.kdz  (extract only)"
@@ -54,6 +56,8 @@ TESTMODE=0
 UDATA=0
 BATCH=0
 WCACHE=0
+DEBUG=0
+LISTMODE=0
 
 # check the args!
 while [ ! -z $1 ];do
@@ -107,6 +111,9 @@ while [ ! -z $1 ];do
         shift
         ;;
         -b|--batch) BATCH=1 ; shift ;;
+        -D|--debug) DEBUG=1 ; shift ;;
+        -s|--slice) SELPARTS="$2"; shift 2;;
+        -l|--list) LISTMODE=1; shift;;
         *)
         F_HELP
         exit
@@ -114,64 +121,98 @@ while [ ! -z $1 ];do
     esac
 done
 
+# list partitions of a DZ file
+FK_LISTPARTS(){
+    if [ "$BATCH" -eq 1 ];then
+        python2 ${KDZTOOLS}/undz -b -l -f ${KDZDIR}/extractedkdz/*.dz 2>>$LOG
+    else
+        python2 ${KDZTOOLS}/undz -l -f ${KDZDIR}/extractedkdz/*.dz
+    fi        
+}
 
-# extract KDZ and DZ
-if [ $EXTRACT -eq 1 ];then
-    [ -z $KDZDIR ] && KDZDIR="$(echo ~/Downloads)"
-    echo -e "\nWill extract all files to: $KDZDIR"
-    echo -e "\n\n***********\nWARNING:\n***********\nKDZ files contain the userdata image which can be very big (e.g. 23 GB on a LG G4)\nEnsure you have enough free disk space before continuing!\nYou can continue even when you have not enough free space but the result will be incomplete (still enough maybe)\n"
-    [ "$BATCH" -eq 0 ] && read -p "I understood and want to continue (press ENTER)" DUMMY
-
-    if [ $TESTMODE -eq 0 ];then
+# extract a KDZ file
+FK_EXTRACTKDZ(){
+    if [ "$BATCH" -eq 1 ];then
+        python2 ${KDZTOOLS}/unkdz -f "$FULLKDZ" -x -d ${KDZDIR}/extractedkdz 2>>$LOG
+    else
         python2 ${KDZTOOLS}/unkdz -f "$FULLKDZ" -x -d ${KDZDIR}/extractedkdz
-        python2 ${KDZTOOLS}/undz -s -f ${KDZDIR}/extractedkdz/*.dz -d ${KDZDIR}/extracteddz
-        # delete unneeded parse files
-        rm -rvf ${KDZDIR}/extracteddz/*.params
-        # rename GPT files to ensure they will not flashed by accident
-        for gpt in $(find ${KDZDIR}/extracteddz/ -type f |grep -i GPT);do mv -v "$gpt" "${gpt/\.image/.gpt}";done
-        # delete userdata partition when not needed
-        [ "$UDATA" -eq 0 ] && echo "You have selected to delete userdata partition" && rm -rfv ${KDZDIR}/extracteddz/userdata*
-        # delete cache partition when not needed
-        [ "$WCACHE" -eq 0 ] && echo "You have selected to delete cache partition" && rm -rfv ${KDZDIR}/extracteddz/cache*
-    else
-        echo "TESTMODE only:"
-        echo "CMD: python2 ${KDZTOOLS}/unkdz -f $FULLKDZ -x -d ${KDZDIR}/extractedkdz"
-        echo "CMD: python2 ${KDZTOOLS}/undz -s -f ${KDZDIR}/extractedkdz/*.dz -d ${KDZDIR}/extracteddz"
     fi
+}
 
-    echo -e "\n\nALL FINISHED! Your extracted files are in: ${KDZDIR}/extracteddz\n"
-fi
+# extract a DZ
+FK_EXTRACTPARTS(){
+    if [ "$BATCH" -eq 1 ];then
+        python2 ${KDZTOOLS}/undz -b -s $SELPARTS -f ${KDZDIR}/extractedkdz/*.dz -d ${KDZDIR}/extracteddz
+    else
+        python2 ${KDZTOOLS}/undz -s $SELPARTS -f ${KDZDIR}/extractedkdz/*.dz -d ${KDZDIR}/extracteddz
+    fi
+    # delete unneeded parse files
+    rm -rvf ${KDZDIR}/extracteddz/*.params
+    # rename GPT files to ensure they will not flashed by accident
+    for gpt in $(find ${KDZDIR}/extracteddz/ -type f |grep -i GPT);do mv -v "$gpt" "${gpt/\.image/.gpt}";done
+}
 
-# flash partitions
-if [ $FLASHING -eq 1 ];then
-    # authenticate once
-    if [ $TESTMODE -eq 0 ];then
-        sudo python2 ${LAFPATH}/auth.py
-    else
-        echo "TESTMODE only:"
-        echo "CMD: sudo python2 ${LAFPATH}/auth.py"
-    fi
-    # check if we want to leave out userdata (default)
-    # gpt will be handled in a different manner (not ready yet)
-    if [ $UDATA -eq 0 ];then
-        GREPOUT="userdata|gpt"
-    else
-        GREPOUT="gpt"
-    fi
+if [ $LISTMODE -eq 1 ];then
+    BATCH=1
+    FK_EXTRACTKDZ 2>&1 >>$LOG
+    FK_LISTPARTS 2>>$LOG | sort -u -t : -k 2 | sort -t : -k 3| egrep -v "(unallocated)"
+else
+    # extract KDZ and DZ
+    if [ $EXTRACT -eq 1 ];then
+        [ -z $KDZDIR ] && KDZDIR="$(echo ~/Downloads)"
+        echo -e "\nWill extract all files to: $KDZDIR"
+        echo -e "\n\n***********\nWARNING:\n***********\nKDZ files contain the userdata image which can be very big (e.g. 23 GB on a LG G4)\nEnsure you have enough free disk space before continuing!\nYou can continue even when you have not enough free space but the result will be incomplete (still enough maybe)\n"
+        [ "$BATCH" -eq 0 ] && read -p "I understood and want to continue (press ENTER)" DUMMY
     
-    # flash
-    for part in $(find $IMGPATH -type f -name *.image|egrep -vi "($GREPOUT)");do
-        RMPATH=${part##*/}
-        REMPART=${RMPATH/\.image/}
-        echo -e "... flashing: $part to ${REMPART}"
-        # redirecting the misleading error output (sorry dirty workaround atm..)
         if [ $TESTMODE -eq 0 ];then
-            sudo python2 ${LAFPATH}/partitions.py --restore $part $REMPART 2>/dev/null
+            DZFILE=$(find ${KDZDIR}/extractedkdz/*.dz 2>/dev/null)
+            [ ! -f "$DZFILE" ] && FK_EXTRACTKDZ
+            FK_EXTRACTPARTS
+            # delete userdata partition when not needed
+            [ "$UDATA" -eq 0 ] && echo "You have selected to delete userdata partition" && rm -rfv ${KDZDIR}/extracteddz/userdata*
+            # delete cache partition when not needed
+            [ "$WCACHE" -eq 0 ] && echo "You have selected to delete cache partition" && rm -rfv ${KDZDIR}/extracteddz/cache*
+            # clean DZ file
+            [ $DEBUG -eq 0 ] && rm -fv ${KDZDIR}/extractedkdz/*.dz
         else
             echo "TESTMODE only:"
-            echo "CMD: sudo python2 ${LAFPATH}/partitions.py --restore $part $REMPART"
+            echo "CMD: python2 ${KDZTOOLS}/unkdz -f $FULLKDZ -x -d ${KDZDIR}/extractedkdz"
+            echo "CMD: python2 ${KDZTOOLS}/undz -s -f ${KDZDIR}/extractedkdz/*.dz -d ${KDZDIR}/extracteddz"
         fi
-    done
+    
+        echo -e "\n\nALL FINISHED! Your extracted files are in: ${KDZDIR}/extracteddz\n"
+    fi
+    
+    # flash partitions
+    if [ $FLASHING -eq 1 ];then
+        # authenticate once
+        if [ $TESTMODE -eq 0 ];then
+            sudo python2 ${LAFPATH}/auth.py
+        else
+            echo "TESTMODE only:"
+            echo "CMD: sudo python2 ${LAFPATH}/auth.py"
+        fi
+        # check if we want to leave out userdata (default)
+        # gpt will be handled in a different manner (not ready yet)
+        if [ $UDATA -eq 0 ];then
+            GREPOUT="userdata|gpt"
+        else
+            GREPOUT="gpt"
+        fi
+        
+        # flash
+        for part in $(find $IMGPATH -type f -name *.image|egrep -vi "($GREPOUT)");do
+            RMPATH=${part##*/}
+            REMPART=${RMPATH/\.image/}
+            echo -e "... flashing: $part to ${REMPART}"
+            # redirecting the misleading error output (sorry dirty workaround atm..)
+            if [ $TESTMODE -eq 0 ];then
+                sudo python2 ${LAFPATH}/partitions.py --restore $part $REMPART 2>/dev/null
+            else
+                echo "TESTMODE only:"
+                echo "CMD: sudo python2 ${LAFPATH}/partitions.py --restore $part $REMPART"
+            fi
+        done
+    fi
 fi
-
-echo -e "\n\nAll done.\n\n"
+[ "$BATCH" -eq 0 ] && echo -e "\n\nAll done.\n\n"

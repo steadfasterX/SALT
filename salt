@@ -3,7 +3,7 @@
 #
 # SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
 #
-# Copyright (C): 2017, steadfasterX <steadfastX|boun.cr>
+# Copyright (C): 2017-2018, steadfasterX <steadfastX|boun.cr>
 #
 # Main program for SALT
 #
@@ -63,9 +63,19 @@ if [ ! -d "$KDZTOOLS" ];then
         F_ERR ktoolsupdate $DLKDZ "\n  Without this SALT will not work!\n  ABORTED. \n"
     fi
 fi
+if [ ! -d "$SDATPATH" ];then
+    F_ELOG "First start of SALT? Expected sdat2img here: $SDATPATH"
+    DLSDAT=$(F_MSG 400 "\n  First start of SALT?\n\n  Expected <b><u>sdat2img</u></b> here:\n  ${KDZTOOLS}\n\n  but it is missing..\n\n  Should I download it for you now?" "--button=Yes:0 --button=Abort:1")
+    if [ "$DLSDAT" -eq 0 ];then
+        $GIT clone --progress $SDATGIT $SDATPATH 2>&1 | $FYAD --title="$YTITLE - UPDATING" --text="\n  <b>Installing sdat2img ...</b>\n" --width=700 --height=600 --text-info --listen --tail --button=Close
+    else
+        F_LOG "sdat2imgsupdate $DLSDAT  Without this SALT will not fully work"
+    fi
+fi
 
 # collect some sys info
-F_LOG "System: $(lsb_release -a)"
+F_LOG "OS: $(cat /etc/*-release)"
+F_LOG "OS (lsb): $(lsb_release -a)"
 F_LOG "yad: $(yad --version)"
 
 # check if device in dl mode connected
@@ -88,13 +98,16 @@ F_MAIN(){
     if [ $DEVCON -ne 11 ];then
         DEVINF=$(F_GETINFO)
         for i in $DEVINF;do
-            F_ELOG "parsing $i"
+            case "${i/:*/}" in
+                imei|serial) F_LOG "parsing ${i/:*/}:xxxxxxxxxxx" ;;
+                *)           F_LOG "parsing ${i/*:/}" ;;
+            esac
             case ${i/:*/} in
                 usu)
                 LGUSUA=$(echo "${i}"|cut -d ":" -f2)
                 USUMODEL=$(echo "${i}"|cut -d ":" -f3)
-                LGUSU="no"
-                [ $LGUSUA == 1 ] && LGUSU="yes"
+                export LGUSU="no"
+                [ $LGUSUA == 1 ] && export LGUSU="yes"
                 ;;
                 arb)
                 DEVARBVAL=$(echo ${i}| cut -d ":" -f 2)
@@ -105,6 +118,10 @@ F_MAIN(){
                     DEVARB="ARB_unknown"
                 fi
                 ;;
+                lafver) LAFVER=${i/*:/};;
+                imei) LGIMEI=${i/*:/};;
+                serial) LGSERIAL=${i/*:/};;
+                target_operator) LGOPER=${i/*:/};;
                 usu_model) USUMODEL=${i/*:/};;
                 romcomp) ROMCOMP=${i/*:/};;
                 battery_level) LGBATT=${i/*:/};;
@@ -117,7 +134,11 @@ F_MAIN(){
             esac
         done
     fi
-    [ -z $LGUSUA ] && LGUSU=no_device_found
+    [ -z $LAFVER ] && LAFVER=no_device_found
+    [ -z $LGUSUA ] && export LGUSU=no_device_found
+    [ -z $LGIMEI ] && LGIMEI=no_device_found
+    [ -z $LGSERIAL ] && LGSERIAL=no_device_found
+    [ -z $LGOPER ] && LGOPER=no_device_found
     [ -z $LGMODEL ] && LGMODEL=no_device_found
     [ -z $LGSWV ] && LGSWV=no_device_found 
     [ -z $LGFACV ] && LGFACV=no_info_found
@@ -128,53 +149,62 @@ F_MAIN(){
     [ -z $DEVARB ] && DEVARB=no_ARB_info_found
     # overwrite model definition when UsU and model info available
     [ ! -z $USUMODEL ] && LGMODEL=$USUMODEL
-    
-    # main SALT screen depends on experimental flag
-    if [ $EXPERIMENTAL -ne 1 ];then
- 
-      $FYAD --title="$YTITLE" --width=800 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  is a replacement for the windows software LGUP (plus MANY more features!!)\n  and brought to you by <b>steadfasterX</b>.\n\n  $TNAME is based on several tools. Click the ABOUT button to find out more!\n\n  The following comes directly from your device:\n  (<i>\"no_device_found\"</i> if no device connected)" \
-        --form \
+
+    # make the decision whcih features should be enabled in the main GUI    
+    #TODO: test all flash parts again then we can enable that one: if [ "$LAFVER" == "1000001" ]||[ $EXPERIMENTAL -eq 1 ];then FLASHMENU=1; else FLASHMENU=0;fi
+    if [ "$LAFVER" == "1000001" ]||[ $EXPERIMENTAL -eq 1 ];then FLASHMENU=0; else FLASHMENU=0;fi
+
+    # main SALT screen depends on experimental flag .. and LAF version
+    if [ $FLASHMENU -eq 0 ]&&[ $EXPERIMENTAL -ne 1 ];then
+      $FYAD --title="$YTITLE" --width=1100 --height=600 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://bit.do/SALTatXDA'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
+        --form --columns=2 \
         --field="  Device model":RO $LGMODEL \
         --field="  Firmware (laf)":RO $LGSWV \
-        --field="  Firmware (system)":RO $LGFACV \
-        --field="  Country":RO $LGCOUNTRY \
+        --field="  Firmware (system)":RO "$LGFACV" \
+        --field="  Carrier":RO "$LGOPER" \
+        --field="  Country":RO "$LGCOUNTRY" \
         --field="  UsU":RO $LGUSU \
-        --field="  GPT compatibility":RO $ROMCOMP \
-        --field="  Secure Device":RO $LGSEC \
-        --field="  Battery level":RO $LGBATT \
-        --field="  AntiRollBack":RO $DEVARB \
         --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
-        --field="Get Support / ABOUT / CREDITS!$SICONS/log_16x16.png":FBTN "bash -c F_ABOUT" \
+        --field="  GPT compatibility":RO $ROMCOMP \
+        --field="  LAF protocol":RO $LAFVER \
+        --field="  Battery level":RO $LGBATT \
+        --field="  <span color='#ff0000'>AntiRollBack</span>":RO $DEVARB \
+        --field="  IMEI" $LGIMEI \
+        --field="  Serial":RO $LGSERIAL \
         --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c 'F_ADVMENU $LGMODEL'" \
-        --field="\n  <b><span color='#ff0000'>Mouse-Over a button to get more details!</span></b>":LBL \
         true \
         --buttons-layout=spread \
         --button="!$SICONS/update_48x48.png!Updating SALT (kdztools, lglaf, SALT)":"bash -c F_UPDATE" \
         --button="  Backup!$SICONS/backup.png!Make a full or basic backup while in download mode":"bash -c F_BACKUP" \
         --button="Extract!$SICONS/extract_48x48.png!Extract a KDZ file. If you want to flash choose Extract+Flash instead":"bash -c F_STARTKDZ"
     else
-      $FYAD --title="$YTITLE - EXPERIMENTAL" --width=800 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  is a replacement for the windows software LGUP (plus MANY more features!!)\n  and brought to you by <b>steadfasterX</b>.\n\n  $TNAME is based on several tools. Click the ABOUT button to find out more!\n\n  The following comes directly from your device:\n  (<i>\"no_device_found\"</i> if no device connected)" \
-        --form \
-        --field="  Device model":RO $LGMODEL \
-        --field="  Firmware (laf)":RO $LGSWV \
-        --field="  Firmware (system)":RO $LGFACV \
-        --field="  Country":RO $LGCOUNTRY \
-        --field="  UsU":RO $LGUSU \
-        --field="  GPT compatibility":RO $ROMCOMP \
-        --field="  Secure Device":RO $LGSEC \
-        --field="  Battery level":RO $LGBATT \
-        --field="  AntiRollBack":RO $DEVARB \
-        --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
-        --field="Get Support / ABOUT / CREDITS!$SICONS/log_16x16.png":FBTN "bash -c F_ABOUT" \
-        --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c 'F_ADVMENU $LGMODEL'" \
-        --field="\n  <b><span color='#ff0000'>Mouse-Over a button to get more details!</span></b>":LBL \
-        true \
-        --buttons-layout=spread \
-        --button="!$SICONS/update_48x48.png!Updating SALT (kdztools, lglaf, SALT)":"bash -c F_UPDATE" \
-        --button="  Backup!$SICONS/backup.png!Make a full or basic backup while in download mode":"bash -c F_BACKUP" \
-        --button="Extract!$SICONS/extract_48x48.png!Extract a KDZ file. If you want to flash choose Extract+Flash instead":"bash -c F_STARTKDZ" \
-        --button="Flash (folder)!$SICONS/flash_48x48.png!This will flash one or multiple partitions from any folder (e.g. from a previous backup)":"bash -c F_FLASHPART "\
-        --button=" Flash (kdz)!$SICONS/flashkdz_70x48.png!Extract and Flash like LGUP would do":"bash -c F_STARTKDZFL" 
+        if [ $EXPERIMENTAL -eq 1 ]||[ $FLASHMENU -eq 1 ];then
+            $FYAD --title="$YTITLE" --width=1100 --height=600 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://bit.do/SALTatXDA'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
+              --form --columns=2 \
+              --field="  Device model":RO $LGMODEL \
+              --field="  Firmware (laf)":RO $LGSWV \
+              --field="  Firmware (system)":RO "$LGFACV" \
+              --field="  Carrier":RO "$LGOPER" \
+              --field="  Country":RO "$LGCOUNTRY" \
+              --field="  UsU":RO $LGUSU \
+              --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
+              --field="  GPT compatibility":RO $ROMCOMP \
+              --field="  LAF protocol":RO $LAFVER \
+              --field="  Battery level":RO $LGBATT \
+              --field="  <span color='#ff0000'>AntiRollBack</span>":RO $DEVARB \
+              --field="  IMEI" $LGIMEI \
+              --field="  Serial":RO $LGSERIAL \
+              --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c 'F_ADVMENU $LGMODEL'" \
+              true \
+              --buttons-layout=spread \
+              --button="!$SICONS/update_48x48.png!Updating SALT (kdztools, lglaf, SALT)":"bash -c F_UPDATE" \
+              --button="  Backup!$SICONS/backup.png!Make a full or basic backup while in download mode":"bash -c F_BACKUP" \
+              --button="Extract!$SICONS/extract_48x48.png!Extract a KDZ file. If you want to flash choose Extract+Flash instead":"bash -c F_STARTKDZ" \
+              --button="Flash (folder)!$SICONS/flash_48x48.png!This will flash one or multiple partitions from any folder (e.g. from a previous backup)":"bash -c F_FLASHPART"\
+              --button=" Flash (kdz)!$SICONS/flashkdz_70x48.png!Extract and Flash like LGUP would do":"bash -c F_STARTKDZFL" 
+        else
+            F_LOG "ERROR dont know which GUI should be used... :("
+        fi
     fi
 }
 F_MAIN

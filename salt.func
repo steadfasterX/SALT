@@ -178,13 +178,15 @@ F_GETINFO(){ F_LOG "$FUNCNAME: started"
     IARB=$(F_CDARB)
     USU=$(F_CKUSU)
     ROMCOMP=$(F_ROMCOMP)
+    LAFVER=$($PYTHONBIN $LAFPATH/lglaf.py --proto --rawshell)
 
     echo "usu:${USU}" \
       && echo "romcomp:$ROMCOMP" \
       && echo "arb:${IARB}" \
+      && echo "lafver:$LAFVER" \
       && $PYTHONBIN $LAFPATH/lglaf.py -c '!INFO GPRO \x08\x0b\0\0' --rawshell \
        | $PYTHONBIN $LAFPATH/scripts/parse-props.py - \
-       | egrep "(device_sw_version|model_name|secure_device|laf_sw_version|device_factory_version|target_country|battery_level)" | tr "\n" " " | tr -d "'" | tee -a $LOG
+       | egrep "(device_sw_version|model_name|secure_device|laf_sw_version|device_factory_version|target_country|battery_level|imei|target_operator|serial)" | tr "\n" " " | tr -d "'" 
     F_LOG "$FUNCNAME: ended"
 }; export -f F_GETINFO
 
@@ -207,24 +209,99 @@ F_ROMCOMP(){ F_LOG "$FUNCNAME: started"
 }; export -f F_ROMCOMP
 
 # extract a KDZ
-F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started"
-    # takes XXXX arguments
+F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
+    # takes 2-3 arguments
     #
+    # required:
     #   1 => KDZ file name (full path)
     #   2 => Target directory
-    #   3 => extract userdata
-    #   4 => extract cache
+    # optional:
+    #   3 => auto mode (e.g. for KDZ flashing)
+
     LGKDZ="$1"
     LGTARGET="$2"
-    [ "$3" == "TRUE" ] && EARGS="--with-userdata"
-    [ "$4" == "TRUE" ] && EARGS="$EARGS --with-cache"
+    AUTOM="$3"
 
     [ -z "$LGKDZ" -o ! -f "$LGKDZ" ] && F_ERR $FUNCNAME 3 "Internal error: empty LGKDZ or file not found"
     [ -z "$LGTARGET" -o ! -d "$LGTARGET" ] && F_ERR $FUNCNAME 3 "Internal error: empty LGTARGET or directory not found"
 
-    ($KDZMGR --batch -x $LGKDZ -d $LGTARGET $EARGS 2>&1) | tee -a $LOG | $FYAD --title="$YTITLE - EXTRACT" --text-info --text "\n  <b><span color='#ff0000'>BE PATIENT! THE SCREEN REFRESHES EVERY MINUTE FIRST!\n  WAIT until you see the message: All done</span></b>\n" --listen --tail --height=600 --width=800 --wrap --fore=blue --button="Continue (wait until you see ALL DONE)":0
+    # ensure the target dir does not contain old image files
+    for old in $(find "${LGTARGET}/extracteddz" -maxdepth 1 -type f -name *.bin -or -name *.img -or -name *.image -or -name *.mbn); do F_LOG "$(rm -vf $old)"; done
+
+    # grab the partition list
+    $FYAD --title="$YTITLE - PREPARE" --text "\n  Collecting KDZ information..." --width=400 --timeout=120 --timeout-indicator=right --no-buttons &
+    PBPP=$!
+    IRES=$($KDZMGR --batch --list -x $LGKDZ -d $LGTARGET 2>&1)
+    IRESDATA=$(echo -e "$IRES" |grep ":data" | sort -t : -k 2)
+    IRESEMPTY=$(echo -e "$IRES" |grep ":empty" | sort -t : -k 2)
+    
+    # build the extract list based on the UsU state
+    case "$LGUSU" in
+        yes) IRESAUTO=$(echo -e "$IRESDATA" | egrep -iv "($AUTONOEXTRACTUSU)")
+        ;;
+        no|no_device_found) IRESAUTO=$(echo -e "$IRESDATA" | egrep -iv "($AUTONOEXTRACT)")
+        ;;
+        *) kill $PBPP
+           F_MSGE 500 "Unexpected LGUSU result ($LGUSU).. "
+           F_EXIT "$FUNCNAME: Cannot determine UsU state" 3 
+        ;; 
+    esac
+    F_LOG "collected data:\nUsU: $LGUSU\nIRESDATA:\n$IRESDATA\nIRESEMPTY:\n$IRESEMPTY\nIRESAUTO:\n$IRESAUTO"
+    F_LOG "$FUNCNAME: $(kill $PBPP)"
+
+    if [ x"$AUTOM" == "xauto" ];then
+        CHOOSENP=$(echo -e "$IRESAUTO"| cut -d ":" -f 1-2)
+    else
+        IRESSORTED=$(echo -e "$IRESDATA\n$IRESEMPTY")
+        CHOOSENP=$((for slice in $IRESSORTED;do if [ "${slice/*:/}" == "data" ];then echo -e "true:$slice"; else echo -e "false:$slice";fi | tr ':' '\n' ;done | $FYAD --height=800 --width=1000 --title="$YTITLE - EXTRACT" --text "\n  Select partition(s) to EXTRACT:\n" --list --checklist\
+            --column="Selection":CHK \
+            --column="#" \
+            --column="Partition":TXT \
+            --column="Type" \
+            --listen --no-selection \
+            --button=Extract:0 \
+            --button=Abort:3) | cut -d "|" -f 2,3 | tr "|" ":"| tr "\n" " ")
+        CERR=${PIPESTATUS[0]}
+    fi
+    F_LOG "CHOOSENP: $CHOOSENP"
+
+    F_LOG "CERR: $CERR"
+    [ $CERR -ne 0 ] && F_MSGE 400 "Aborted by user!" && F_EXIT $FUNCNAME $CERR
+
+    CHCOUNT=$(echo "$CHOOSENP" |tr " " "\n" |grep -c :)
+    [ $CHCOUNT -lt 1 ] && F_MSGE 400 "No partition selected?" && F_EXIT $FUNCNAME $CHCOUNT
+
+    F_ELOG "choosen partitions: $CHOOSENP -> $CHCOUNT"
+
+    # open yad listener
+    echo 0> /tmp/e
+    tail -f /tmp/e | $FYAD --title="$YTITLE - EXTRACT" --text="\n  <b>SALT is now extracting ...</b>\n  (just wait until this dialog closes)\n" --width=900 --progress --button='Close (WAIT until FINISHED)':0 --auto-close &
+    tail_pid=$!
+
+    MGRARGS=
+    for slice in $CHOOSENP;do
+        CNT=$((CNT+1))
+        slicename=${slice/*:/}
+        slicenum=${slice/:*/}
+        echo "#extracting ${slicename} ..." >>/tmp/e
+        [ $CNT -ne $CHCOUNT ] && MGRARGS="-D"
+        $KDZMGR --batch -x $LGKDZ -d $LGTARGET --slice $slicenum --with-cache --with-userdata $MGRARGS >> $LOG 2>&1
+
+        CNTPERC=$(($CNT * 100 / $CHCOUNT))
+        echo $CNTPERC >>/tmp/e
+        [ $CNT -eq $CHCOUNT ] && echo '# FINISHED!' >>/tmp/e && F_LOG "$FUNCNAME: Extract finished"
+    done
     EXERR=$?
-    [ $EXERR -ne 0 ] && F_ERR $FUNCNAME $EXERR "ERROR occured or aborted by user!"
+    # close yad listener
+    kill $tail_pid
+
+    if [ $EXERR -ne 0 ];then 
+        F_ERR $FUNCNAME $EXERR "ERROR occured or aborted by user!"
+    else
+        [ x"$AUTOM" != "xauto" ] && $FYAD --width="500" --title="$YTITLE - SUCCESS" --image="$SICONS/ok_64x64.png" --text "\nAll partitions extracted!\n" \
+            --button='Open target folder':"sudo -u $REALUSER xdg-open $LGTARGET/extracteddz" \
+            --button=Close:0
+    fi
     F_LOG "$FUNCNAME: ended"
 }; export -f F_EXTRACTKDZ
 
@@ -334,6 +411,11 @@ F_CHKMODEL(){ F_LOG "$FUNCNAME: started"
     F_LOG "$FUNCNAME: ended"
 } ; export -f F_CHKMODEL
 
+# checks if UsU variable is readable and set correctly
+F_USUVARVALID(){ F_LOG "$FUNCNAME: started"
+    if [ "$LGUSU" == "yes" -o "$LGUSU" == "no" ];then echo 1; else echo 0; fi
+ } ; export -f F_USUVARVALID
+
 # flash a KDZ
 F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
     # takes 5 arguments
@@ -352,7 +434,7 @@ F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
 
     # autoextract kdz without userdata and cache
     KDZTMP=/tmp
-    F_EXTRACTKDZ $LGKDZ $KDZTMP FALSE FALSE
+    F_EXTRACTKDZ $LGKDZ $KDZTMP auto
 
     # test mode?
     if [ "$LGDRY" != "FALSE" ];then
@@ -363,7 +445,11 @@ F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
 
     # check device connection
     F_CHKDEVCON
-   
+
+    # that one is required for flashing (the device must be connected and UsU state must be detected!)
+    VARSET=$(F_USUVARVALID)
+    if [ "$VARSET" -eq 0 ];then F_MSGE 500 "ERROR: Cannot determine UsU state?! aborted.."; F_EXIT "$FUNCNAME" 3; fi
+
     # recheck valid image files
     # TODO
 
@@ -374,31 +460,33 @@ F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
     ARBOK=0
     KARB=$(F_CKARB $KDZTMP/extracteddz)
     DARB=$(F_CDARB)
-    F_ELOG "KARB: $KARB, DARB: $DARB"
+    F_LOG "KARB: $KARB, DARB: $DARB"
     # verify the internal functions do not generate crap
     [ -z "$KARB" -o -z "$DARB" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  Device ARB or KDZ ARB cannot be checked! ABORTED!!"
-    # verify ARB compat
-    [ "${DARB/:*}" -qe 0 ] && [ "$KARB" -ge "${DARB/:*}" ] && F_ELOG "Device and KDZ ARB are compatible" && ARBOK=1
+    # verify ARB
+    [ "$KARB" -eq "${DARB/:*}" ] && ARBOK=1 && ARBINC=0 && F_LOG "ARB is equal between KDZ and device"
+    [ "$KARB" -gt "${DARB/:*}" ] && ARBOK=1 && ARBINC=1 && F_MSGW 800 "ARB will be increased!\n\nThat means you can not rollback to previous versions once flashed!\n\nRead more about ARB here:\n\n<a href='https://bit.do/antirollg4'>ARB explained</a>"
+    [ "$KARB" -lt "${DARB/:*}" ] && ARBOK=0 && ARBINC=0 && F_MSGE 800 "The ARB of the KDZ you trying to flash is lower then your device! ABORTED!\n\nRead more about ARB here:\n\n<a href='https://bit.do/antirollg4'>ARB explained</a>"
     # a bulletproof method to avoid issues with any of the above (e.g. when KARB or DARB are not digits etc)
-    [ "$ARBOK" -ne 1 ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  ARB is NOT compatible with your device! ABORTED!"
+    [ "$ARBOK" -ne 1 ] && F_MSGE 500 "Issues regarding determining ARB! ABORTED!" && F_EXIT "$FUNCNAME: ARB check failed" 4
 
-    # manual verification by the user
+    # manual ARB verification by the user
     if [ -z "${CHKMRES/*:}" ] || [ -z "${CHKMRES/:*}" ]|| [ "${CHKMRES/:*}" == "unknown" ] || [ "${CHKMRES/*:}" != "${CHKMRES/:*}" ];then
-        FYAD --title="$YTITLE - CHECKUP" --text "\n  WARNING: <b><span color='#ff0000'>KDZ file and device information does not match!</span></b>\n  Device model:\t${CHKMRES/*:}\n  KDZ is for:\t\t${CHKMRES/:*}\n\n  ARB of your device <b>seems</b> to be compatible with the KDZ file\n  Device:\t$DARB\n  KDZ:\t$KARB\n\n  You can doublecheck <a href='http://tinyurl.com/antirollg4'>here</a>\n\n  Do you really want to continue and so FLASH now?" --button="Flash (may HARD BRICK)":0 --button=Cancel:1
+        FYAD --title="$YTITLE - CHECKUP" --image="$SICONS/salt_logo_128x128.png" --text "\n  WARNING: <b><span color='#ff0000'>KDZ file and device information does not match!</span></b>\n  Device model:\t${CHKMRES/*:}\n  KDZ is for:\t\t${CHKMRES/:*}\n\n  ARB of your device <b>seems</b> to be compatible with the KDZ file\n  Device:\t${DARB/:*}\n  KDZ:\t$KARB\n\n  You can doublecheck <a href='http://tinyurl.com/antirollg4'>here</a>\n\n  Do you really want to continue and so FLASH now?" --button="Flash (may HARD BRICK)":0 --button=Cancel:1
     else
-        $FYAD --title="$YTITLE - CHECKUP" --text "\n  KDZ <b>file and device</b> information match\n  Device model:\t${CHKMRES/*:}\n  KDZ is for:\t\t${CHKMRES/:*}\n\n  ARB of your device <b>seems</b> to be compatible with the KDZ file\n  Device:\t$DARB\n  KDZ:\t$KARB\n  You can doublecheck ARB <a href='http://tinyurl.com/antirollg4'>here</a>\n\n  Do you really want to continue and so FLASH now?" --button="Flash (on your own risk)":0 --button=Cancel:1
+        $FYAD --title="$YTITLE - CHECKUP" --image="$SICONS/salt_logo_128x128.png" --text "\n  KDZ <b>file and device</b> information match\n  Device model:\t${CHKMRES/*:}\n  KDZ is for:\t\t${CHKMRES/:*}\n\n  ARB of your device <b>seems</b> to be compatible with the KDZ file\n  Device:\t${DARB/:*}\n  KDZ:\t$KARB\n  You can doublecheck ARB <a href='http://tinyurl.com/antirollg4'>here</a>\n\n  Do you really want to continue and so FLASH now?" --button="Flash (on your own risk)":0 --button=Cancel:1
     fi
     # abort when needed
     [ $? -ne 0 ] && F_ERR $FUNCNAME 3 "\n  Aborted on user check verification"
 
     # If all the above is fine: FLASH
-    F_FLASHPART "$KDZTMP/extracteddz"
+    F_FLASHPART "$KDZTMP/extracteddz" auto
 
     # factory reset to avoid bootloop (cache gets deleted by FLASHPART already)
     # TODO: accept the taken user choice 
-    F_WIPEPART userdata ni
+    #F_WIPEPART userdata ni
 
-    F_MSG 400 "KDZ flashing completed. check the log for details (SALT main screen)"
+    F_MSG 600 "    KDZ flashing completed.\n    Check the log for details (Advanced Menu)"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_FLASHKDZ
 
@@ -420,6 +508,11 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     F_LOG "$FUNCNAME: IMGDIR=$IMGDIR"
 
     [ ! -d "$IMGDIR" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n Folder \n\n  $IMGDIR\n\n  does not exists?!"
+
+    # check device connection
+    F_CHKDEVCON    
+    VARSET=$(F_USUVARVALID)
+    if [ "$VARSET" -eq 0 ];then F_MSGE 500 "ERROR: Cannot determine UsU state?! aborted.."; F_EXIT "$FUNCNAME" 3; fi
     
     # create a list of *.image files and let the user choose
     IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name *.bin -or -name *.img -or -name *.image -or -name *.mbn | tr " " "_" |egrep -vi "(GPT|firehose|zeros)");do echo "${ifile##*/}";done | tr "\n" " ")
@@ -462,7 +555,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
         esac
     done
 
-    F_ELOG "($FUNCNAME) created yad list: $IRES"
+    F_LOG "($FUNCNAME) created yad list: $IRES"
 
     CHOOSENP=$(for files in $IRES;do echo -e "$files" ;done \
                 | $FYAD --height=800 --width=700 --title="$YTITLE - FOLDER" --text "\n  Select the partitions you want to flash\n  (the RECOMMENDED partitions to flash are CHECKED already!)\n\n  Hint: you can change the target partition here but do this only when you\n  <b>REALLY KNOW</b> what you're doing!\n" --list --checklist \
@@ -475,12 +568,12 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     CHCOUNT=$(echo "$CHOOSENP" |tr " " "\n" |grep -c :)
     [ $CHCOUNT -lt 1 ] && F_ERR $FUNCNAME 0 "No partition selected?"
 
-    F_ELOG "choosen partitions: $CHOOSENP -> $CHCOUNT"
+    F_LOG "choosen partitions: $CHOOSENP -> $CHCOUNT"
 
     SORTEDP=$(echo "$CHOOSENP" |tr " " "\n" | sort -t : -k 3n | cut -d ":" -f 1-2 | tr "\n" " " )
     CHCOUNT=$(echo "$SORTEDP" |tr " " "\n" |grep -c :)
 
-    F_ELOG "sorted partitions: $SORTEDP -> $CHCOUNT"
+    F_LOG "sorted partitions: $SORTEDP -> $CHCOUNT"
 
     # FLASH
     CNT=0
@@ -557,17 +650,13 @@ F_SHELL(){ F_LOG "$FUNCNAME: started"
 # start dialog for kdz extract
 F_STARTKDZ(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
-    F_ELOG $FUNCNAME started
 
     EXCHOICES=$($FYAD --title="$YTITLE - EXTRACT" --width=800 --always-print-result --text \
         "\n  This will extract any KDZ file for you with just a click\n" \
         --form \
-        --field="KDZ file":FL --file-filter="KDZ files (*.kdz)| *.kdz *.KDZ"\
-        --field="Target directory\nHINT: Requires 32GB of free data":DIR \
-        --field=:LBL \
-        --field="Remove useless userdata partition (leave checked if unsure)":CHK \
-        --field="Remove useless cache partition (leave checked if unsure)":CHK \
-        undef /tmp true true true\
+        --field="  KDZ file":FL --file-filter="KDZ files (*.kdz)| *.kdz *.KDZ"\
+        --field="  Target directory\nHINT: Ensure you have enough free disk space":DIR \
+        undef /tmp \
         )
     F_ELOG "returned: $EXCHOICES"
     KDZFILE=$(echo "$EXCHOICES" | cut -d '|' -f 1)
@@ -876,16 +965,177 @@ F_ADVMENU(){ F_LOG "$FUNCNAME: started"
     
     LGMODEL=$1
 
-    $FYAD --title="$YTITLE" --width=800 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n\n <b><span color='#ff0000'>THIS IS AN ADVANCED Menu</span></b>\n\nUse these options here with <b><span color='#ff0000'>CARE!</span></b>\n\n" \
-        --form \
+    $FYAD --title="$YTITLE" --width=1000 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n\n <b><span color='#ff0000'>THIS IS AN ADVANCED Menu</span></b>\n\nUse these options here with <b><span color='#ff0000'>CARE!</span></b>\n\n" \
+        --form --columns=2\
         --field="SALT debug log!$SICONS/log_16x16.png":FBTN "$SALTPATH/getlog" \
+        --field="Support / Credits!$SICONS/log_16x16.png":FBTN "bash -c F_ABOUT" \
         --field="Show your partitions!!This will just list your current partitions":FBTN "bash -c F_LISTPARTS" \
+        --field=:LBL True\
         --field="Open a shell!$SICONS/terminal_30x30.png!Open an adb-like shell while in download mode":FBTN "bash -c F_SHELL" \
-        --field="<span color='#ff0000'>Erase</span> partition(s)!!EXTREMELY DANGEROUS - CAN EASILY BRICK YOUR DEVICE":FBTN "bash -c F_DELPART" \
+        --field="<span color='#ff0000'>Wipe</span> partition(s)!!EXTREMELY DANGEROUS - CAN EASILY BRICK YOUR DEVICE":FBTN "bash -c F_DELPART" \
+        --field="Convert system.dat (ROM)!!Convert sparse Android data image (.dat) into filesystem ext4 image and mount it":FBTN "bash -c F_EXTRACTDAT" \
         --field="Unlock G4 (UsU)!$SICONS/salt_logo_30x30.png!Unofficial secureboot-off/steadfasterX Unlock":FBTN "bash -c 'F_DOUSU $LGMODEL'" \
         --button="Close"
 
 }; export -f F_ADVMENU
+
+# sparse Android data image (.dat) and it's transfer list 
+F_EXTRACTDAT(){ F_LOG "$FUNCNAME: started"
+    # takes no args
+
+    EXCHOICES=$($FYAD --title="$YTITLE - Choose ROM" --width=800 --always-print-result --text \
+        "\n  Choose your ROM zip file\n" \
+        --form \
+        --field="  ROM zip file":FL --file-filter="ROM (*.zip)| *.zip *.ZIP" undef\
+        --field="  Target directory":DIR "/tmp" \
+        --field="  Auto-Mount resulting image file":CHK true \
+        --field="  Mountpoint (don't touch unless you know why)" "/mnt/android_system" \
+        --button=Abort:99 \
+        --button=Next:0 \
+        )
+    [ $? -eq 99 ] && F_MSGW 500 "Aborted by user" && F_EXIT $FUNCNAME 42
+
+    F_LOG "returned: $EXCHOICES"
+    ZIPFILE=$(echo "$EXCHOICES" | cut -d '|' -f 1)
+    TARGDIR=$(echo "$EXCHOICES" | cut -d '|' -f 2)
+    MNTWANT=$(echo "$EXCHOICES" | cut -d '|' -f 3)
+    MNTPNT=$(echo "$EXCHOICES" | cut -d '|' -f 4)
+
+    F_ELOG "ZIPFILE = $ZIPFILE, TARGDIR = $TARGDIR"
+
+    [ ! -f "$ZIPFILE" ] && F_ERR "$FUNCNAME" 3 "$ZIPFILE does not exists or is not readable!"
+    [ ! -z "$TARGDIR" ] && [ ! -d "$TARGDIR" ] && echo mkdir -p $TARGDIR
+
+    EXCHOICES2=$(for i in $(unzip -Z1 "$ZIPFILE" '*.new*');do echo -e "false\n${i}" ;done | $FYAD --title="$YTITLE - Choose DAT" --width=800 --always-print-result --text \
+        "\n  The following dat file(s) has/have been found in your zip file\n  Choose the system dat file you wanna extract and convert\n" \
+        --list --radio-list \
+        --column="Selection":RD \
+        --column="Filename" \
+        --print-column=2 \
+        --button=Abort:99 \
+        --button=Next:0
+        )
+    [ $? -eq 99 ] && F_MSGW 500 "Aborted by user" && F_EXIT $FUNCNAME 42
+    F_LOG "returned: $EXCHOICES2"
+
+    EXFILE=$(echo "$EXCHOICES2" | cut -d '|' -f 1)
+    BRC=$(echo "$EXFILE" |grep -c "\.br")
+    if [ "$BRC" -eq 1 ];then
+        if [ ! -f "$BROTLI" ];then
+            F_MSGE 500 "You're trying to extract an Oreo 8.1 dat file\nwhich requires the Google tool <a href='https://github.com/google/brotli'>brotli</a>\n\nPlease install it first:\n\n\t- in FWUL/Arch/Manjaro:\n\t  sudo pacman -S brotli\n\n\t- on Ubuntu/Debian/Mint:\n\t  sudo apt-get install brotli" "--selectable-labels --height=400 --fixed"
+            F_EXIT $FUNCNAME 3
+        else
+            F_LOG "Brotli required and found!"
+        fi
+    fi
+
+    [ -z "$EXFILE" ] && F_MSGE 500 "No file choosen?!"
+
+    F_LOG "ZIPFILE = $ZIPFILE, TARGDIR = $TARGDIR, EXFILE = $EXFILE"
+
+    F_UNZIP "$ZIPFILE" "$TARGDIR" "$EXFILE system.transfer.list"
+    if [ $BRC -eq 0 ];then
+         F_CONVDAT "DAT" "${TARGDIR}/system.transfer.list" "${TARGDIR}/$EXFILE" "$TARGDIR"
+    else
+        F_CONVDAT "BR" "${TARGDIR}/system.transfer.list" "${TARGDIR}/$EXFILE" "$TARGDIR"
+        F_CONVDAT "DAT" "${TARGDIR}/system.transfer.list" "${TARGDIR}/system.new.dat" "$TARGDIR"
+    fi
+    if [ "$MNTWANT" == "TRUE" ];then
+        F_MOUNTIMG "$TARGDIR/system_ext4.img" "$MNTPNT"
+    else
+        F_MSGOK 600 "Image has been extracted!\nYou can find it here:\n\n<b>${TARGDIR}/</b>"
+    fi
+
+    F_LOG "$FUNCNAME ended"
+}; export -f F_EXTRACTDAT
+
+# mounting a given image file
+F_MOUNTIMG(){ F_LOG "$FUNCNAME: started with $@"
+    # takes 2 args
+    #
+    # required:
+    # 1 => filename to mount (full path)
+    # 2 => mountpoint
+    MFILE="$1"
+    MPNT="$2"
+
+    [ ! -f "$MFILE" ] && F_ERR "$FUNCNAME" 3 "$MFILE does not exists or is not readable!"
+    [ ! -d "$MPNT" ] && F_LOG "$FUNCNAME: mountpoint $MPNT does not exits.. will be created now!" && mkdir -p $MPNT
+
+    mount -v -o loop "$MFILE" $MPNT >> $LOG
+    if [ $? -eq 0 ]; then
+        $FYAD --width=500 --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - MOUNT" --text="  Image file:\n\t<b>$MFILE</b>\n\n  has been mounted to\n\t<b>$MNTPNT</b>\n\n" \
+            --form \
+            --field="Browse Image":FBTN "sudo -u $REALUSER xdg-open $MPNT" \
+            --field="Unmount Image":FBTN "umount -v $MPNT" \
+            --button=Close:0
+    else
+        F_MSGE 500 "system image could not be mounted to $MNTPNT"
+    fi
+    F_LOG "$FUNCNAME ended"
+};export -f F_MOUNTIMG
+
+# unzip files from a ZIP :P
+F_UNZIP(){ F_LOG "$FUNCNAME: started with '$@'"
+    # takes 3 args
+    #
+    # required:
+    # 1 => ZIP filename
+    # 2 => target directory
+    #
+    # optional:
+    # 3 => file(s) to extract
+
+    ZIPF="$1"
+    TARGD="$2"
+    ZFILE="$3"
+    [ ! -f "$ZIPF" ] && F_ERR "$FUNCNAME" 3 "$ZIPF does not exists or is not readable!"
+    if [ -z "$TARGD" ];then
+        F_ERR "$FUNCNAME" 3 "Missing target dir!"
+    else
+        [ ! -d "$TARGDIR" ]&& echo mkdir -p "$TARGDIR"
+    fi
+
+    F_LOG "Will extract $ZFILE from $ZIPF to $TARGD (overwriting mode!)"
+
+    unzip -o "$ZIPF" -d "$TARGD" $ZFILE 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - EXTRACT" --text="\n  Extracting:\n  <b>${ZIPF/*\/}</b>\n  Please be patient depending on your PC this can take a while...\n" --width=800 --progress --progress-text="extracting ${ZFILE} ..." --pulsate  --no-buttons --auto-close
+    [ $? -ne 0 ] && F_MSGE 500 "Error $? occured / Aborted by user while extracting $ZFILE" && F_EXIT $FUNCNAME 3
+    F_LOG "Extracting finished successfully"
+
+}; export -f F_UNZIP
+
+# convert an android sparse file
+F_CONVDAT(){ F_LOG "$FUNCNAME: started with $@"
+    # takes 4 args
+    #
+    # required:
+    # 1 => BR (brotli) or DAT (sda2img) mode
+    # 2 => transfer list (full path)
+    # 3 => sparse filename (full path)
+    # 4 => target directory
+
+    CMODE="$1"
+    TFLIST="$2"
+    SFIL="$3"
+    TDIR="$4"
+    RFILE="${TDIR}/system_ext4.img"
+
+    F_LOG "$FUNCNAME: $CMODE, $TFLIST, $SFIL, $TDIR, $RFILE"
+    [ ! -f "$TFLIST" -o ! -f "$SFIL" -o ! -d $TDIR ] && F_MSGE 500 "missing file! $TFLIST, $SFIL, $TDIR" && F_EXIT $FUNCNAME 3
+
+    case "$CMODE" in
+        DAT) F_LOG "DAT mode detected"
+             $PYTHONBIN $SDATBIN "$TFLIST" "$SFIL" "$RFILE" 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - CONVERT" --text="\n  Converting:\n  <b>${SFIL/*\/}</b>\n  Please be patient depending on your PC this can take a while...\n" --width=800 --progress --progress-text="converting ${SFIL} ..." --pulsate --no-buttons --auto-close
+        ;;
+        BR) F_LOG "BR mode detected"
+            echo 5 & $BROTLI -fd -o "${TDIR}/system.new.dat" "$SFIL" 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - CONVERT" --text="\n  Converting:\n  <b>${SFIL/*\/}</b>\n  Please be patient depending on your PC this can take a while...\n" --width=800 --progress --progress-text="converting ${SFIL} ..." --pulsate --no-buttons --auto-close 
+        ;;
+        *) F_MSGE 500 "no valid mode selected! ABORTED"; F_EXIT $FUNCNAME 3
+        ;;
+    esac
+    [ $? -ne 0 ] && F_MSGE 500 "Error $? occured / Aborted by user while converting $SFIL" && F_EXIT $FUNCNAME 3
+    F_LOG "Converting finished successfully"
+}; export -f F_CONVDAT
 
 # list your partitions nicely
 F_LISTPARTS(){ F_LOG "$FUNCNAME: started"
