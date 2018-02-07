@@ -118,7 +118,7 @@ F_MAIN(){
                     DEVARB="ARB_unknown"
                 fi
                 ;;
-                lafver) LAFVER=${i/*:/};;
+                lafver) export LAFVER=${i/*:/};;
                 imei) LGIMEI=${i/*:/};;
                 serial) LGSERIAL=${i/*:/};;
                 target_operator) LGOPER=${i/*:/};;
@@ -134,7 +134,7 @@ F_MAIN(){
             esac
         done
     fi
-    [ -z $LAFVER ] && LAFVER=no_device_found
+    [ -z $LAFVER ] && export LAFVER=no_device_found
     [ -z $LGUSUA ] && export LGUSU=no_device_found
     [ -z $LGIMEI ] && LGIMEI=no_device_found
     [ -z $LGSERIAL ] && LGSERIAL=no_device_found
