@@ -360,7 +360,7 @@ F_USUMODEL(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
     #
     (F_DUMPPART raw_resources /tmp/UsU 2>&1) >> $LOG
-    REMRR=$(dd if=/tmp/UsU/raw_resources skip=3145722 count=6 bs=1 2>>/dev/null)
+    REMRR=$(dd if=/tmp/UsU/raw_resources skip=3145722 count=6 bs=1 2>>/dev/null | strings)
     F_LOG "$FUNCNAME: USUMODEL=$REMRR"
     echo "${REMRR}"
     F_LOG "$FUNCNAME: ended"
