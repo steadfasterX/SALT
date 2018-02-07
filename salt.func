@@ -1128,7 +1128,7 @@ F_CONVDAT(){ F_LOG "$FUNCNAME: started with $@"
              $PYTHONBIN $SDATBIN "$TFLIST" "$SFIL" "$RFILE" 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - CONVERT" --text="\n  Converting:\n  <b>${SFIL/*\/}</b>\n  Please be patient depending on your PC this can take a while...\n" --width=800 --progress --progress-text="converting ${SFIL} ..." --pulsate --no-buttons --auto-close
         ;;
         BR) F_LOG "BR mode detected"
-            echo 5 & $BROTLI -fd -o "${TDIR}/system.new.dat" "$SFIL" 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - CONVERT" --text="\n  Converting:\n  <b>${SFIL/*\/}</b>\n  Please be patient depending on your PC this can take a while...\n" --width=800 --progress --progress-text="converting ${SFIL} ..." --pulsate --no-buttons --auto-close 
+            $BROTLI --force --decompress -o "${TDIR}/system.new.dat" "$SFIL" 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - CONVERT" --text="\n  Converting:\n  <b>${SFIL/*\/}</b>\n  Please be patient depending on your PC this can take a while...\n" --width=800 --progress --progress-text="converting ${SFIL} ..." --pulsate --no-buttons --auto-close 
         ;;
         *) F_MSGE 500 "no valid mode selected! ABORTED"; F_EXIT $FUNCNAME 3
         ;;
