@@ -1289,6 +1289,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     # takes 1 arg
     #
     # 1 => type of flashing
+    USUDIRECT=undef
 
     FLTYPE=$1
     case $FLTYPE in
@@ -1308,9 +1309,10 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
         ;;
         direct) F_LOG "$FUNCNAME: Will flash UsU directly to the device..."
             # once i get writing working in MM, N we can push the UsU file directly. We could do already on LP but ...
-            #USUF=$($FYAD --width=600 --title="$YTITLE - UsU" --text="\n    To minimize the risk of taken down by LG:\n    SALT does <b>not</b> come bundled with the UsU unlock file.\n\n    You have to download it manually and tell me the location:\n" \
-            #--form --field="    UsU unlock file":FL --file-filter="UsU file| aboot_UsU.img" \
-            #
+            USUWHERE=$($FYAD --width=600 --title="$YTITLE - UsU" --text="\n    To minimize the risk of taken down by LG:\n    SALT does <b>not</b> come bundled with the UsU unlock file.\n\n    You have to download it manually and tell me the location:\n" \
+                        --form --field="    UsU unlock file":FL --file-filter="UsU file| aboot_UsU.img" \
+                        --button=Next:0)
+            USUDIRECT=$(echo $USUWHERE |cut -d "|" -f1)
         ;;
         *) F_ELOG "$FUNCNAME: no valid FLTYPE choosen!!!"
            F_EXIT $FUNCNAME 2
@@ -1319,16 +1321,25 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
 
     # verify UsU file existence
     $FYAD --title="$YTITLE - VERIFY" --text="\n  SALT searches for the UsU file...\n" --width=500 --progress --progress-text="searching ..." --pulsate --no-buttons --auto-close &
-    PROGY=$!
- 
-    USUEX=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls '$USUSRC'\0' --rawshell)
-    F_LOG "$FUNCNAME: USUEX=$USUEX"
-    kill $PROGY
-
-    if [ -z "$USUEX" ];then 
-        F_MSGE 500 "   Oops?!\n\n   You have choosen\n\n   $USUSRC\n\n   but I can not find it...!\n\n   Try another method or ensure you stored it to the correct path."
-        ($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls /storage/external_SD/ /data/media/0/Download\0' --rawshell 2>&1) >> $LOG 
-        F_EXIT $FUNCNAME 5
+    PROGY=$! 
+    if [ "$FLTYPE" == "direct" ];then
+        if [ !  -f "$USUDIRECT" ];then
+            F_MSGE 500 "   Oops?!\n\n   You have choosen\n\n   $USUDIRECT\n\n   but I can not find it...!\n\n   Try another method or ensure you stored it to the correct path."
+            kill $PROGY
+            F_EXIT $FUNCNAME 3
+        else
+            F_LOG "USUDIRECT: $USUDIRECT"
+            kill $PROGY
+        fi
+    else
+        USUEX=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls '$USUSRC'\0' --rawshell)
+        F_LOG "$FUNCNAME: USUEX=$USUEX"
+        kill $PROGY
+        if [ -z "$USUEX" ];then 
+            F_MSGE 500 "   Oops?!\n\n   You have choosen\n\n   $USUSRC\n\n   but I can not find it...!\n\n   Try another method or ensure you stored it to the correct path."
+            ($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls /storage/external_SD/ /data/media/0/Download\0' --rawshell 2>&1) >> $LOG 
+            F_EXIT $FUNCNAME 5
+        fi
     fi
     
     # give feedback to the impatient users
@@ -1339,8 +1350,12 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     F_DUMPPART abootbak "/tmp/UsU/before"
     TESTPRE=$(sha256sum /tmp/UsU/before/abootbak | cut -d " " -f1)
     F_LOG "$FUNCNAME: abootbak before flashing: $TESTPRE"
-    F_LOG '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0'
-    $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0' --rawshell 2>&1 >> $LOG
+    if [ "$FLTYPE" == "direct" ];then
+        $PYTHONBIN $LAFPATH/partitions.py --restore $USUDIRECT abootbak --batch 2>> $LOG
+    else
+        F_LOG '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0'
+        $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0' --rawshell 2>&1 >> $LOG
+    fi
     F_DUMPPART abootbak "/tmp/UsU/after"
     TESTAFTER=$(sha256sum /tmp/UsU/after/abootbak | cut -d " " -f1)
     # verify test result
@@ -1365,9 +1380,12 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     F_DUMPPART aboot "/tmp/UsU/before"
     ABPRE=$(sha256sum /tmp/UsU/before/aboot|cut -d " " -f1)
     F_LOG "$FUNCNAME: aboot before flashing: $ABPRE"
-    F_LOG '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0'
-    $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0' --rawshell 2>&1 >> $LOG
-
+    if [ "$FLTYPE" == "direct" ];then
+        $PYTHONBIN $LAFPATH/partitions.py --restore $USUDIRECT aboot --batch 2>> $LOG
+    else
+        F_LOG '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0'
+        $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0' --rawshell 2>&1 >> $LOG
+    fi
     # verify real flashing
     F_DUMPPART aboot "/tmp/UsU/after"
     ABAFTER=$(sha256sum /tmp/UsU/after/aboot|cut -d " " -f1)
@@ -1415,13 +1433,26 @@ F_DOUSU(){ F_LOG "$FUNCNAME: started with this args: $@"
 
     F_LOG "$FUNCNAME: Answered: $A"
     if [ "$A" == "99" ];then
-        USUF=$($FYAD --width=800 --title="$YTITLE - UsU" --text="\n   UsU can be installed from either the internal storage or from an external SD card.\n   The paths for the UsU file are FIX and <b>can not</b> be changed:\n" \
+        if [ "$LAFVER" == "100001" ];then
+          USUF=$($FYAD --width=800 --title="$YTITLE - UsU" --text="\n   UsU can be installed from either the internal storage or from an external SD card.\n   The paths for the UsU file are FIX and <b>can not</b> be changed:\n" \
             --form --columns=2\
             --field='   Placed <b>directly</b> on the sdcard - no subfolder!':LBL true \
             --field='   Placed in <b>/data/media/0/Download</b>':LBL true \
             --field="UNLOCK by external SDcard":FBTN "bash -c 'F_USUFLASH sdcard'"\
             --field="UNLOCK by /data/media/0/Download":FBTN "bash -c 'F_USUFLASH internal'"\
             --button="Cancel":0)
+        else
+           USUF=$($FYAD --width=800 --title="$YTITLE - UsU" --text="\n   UsU can be installed from either the internal storage or from an external SD card.\n   The paths for the UsU file are FIX and <b>can not
+</b> be changed:\n" \
+            --form --columns=2\
+            --field='   Placed <b>directly</b> on the sdcard - no subfolder!':LBL true \
+            --field='   Placed in <b>/data/media/0/Download</b>':LBL true \
+            --field='   Transfer UsU directly from your <b>PC</b>':LBL true \
+            --field="UNLOCK by external SDcard":FBTN "bash -c 'F_USUFLASH sdcard'"\
+            --field="UNLOCK by /data/media/0/Download":FBTN "bash -c 'F_USUFLASH internal'"\
+            --field="UNLOCK by direct flash":FBTN "bash -c 'F_USUFLASH direct'"\
+            --button="Close":0)
+        fi
 
         if [ $? -eq 98 ];then
             USUFL="${USUF/\|/}"
