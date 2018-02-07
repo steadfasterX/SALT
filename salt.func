@@ -609,7 +609,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     fi
 
     # wipe cache
-    F_WIPEPART cache ni || F_MSGE 400 "Wiping cache ended with an error: $WIPERR\n\nCheck Debug Log in SALT main screen."
+    #F_WIPEPART cache ni || F_MSGE 400 "Wiping cache ended with an error: $WIPERR\n\nCheck Debug Log in SALT main screen."
     
     # sync filesystems
     F_SYNC || F_MSGE 400 "Syncing filesystems ended with an error: $WIPERR\n\nCheck Debug Log in SALT main screen.\nDO NOT REBOOT THE DEVICE!"
