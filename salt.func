@@ -226,7 +226,7 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
     [ -z "$LGTARGET" -o ! -d "$LGTARGET" ] && F_ERR $FUNCNAME 3 "Internal error: empty LGTARGET or directory not found"
 
     # ensure the target dir does not contain old image files
-    for old in $(find "${LGTARGET}/extracteddz" -maxdepth 1 -type f -name *.bin -or -name *.img -or -name *.image -or -name *.mbn); do F_LOG "$(rm -vf $old)"; done
+    for old in $(find "${LGTARGET}/extracteddz" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name '*.mbn'); do F_LOG "$(rm -vf $old)"; done
 
     # grab the partition list
     $FYAD --title="$YTITLE - PREPARE" --text "\n  Collecting KDZ information..." --width=400 --timeout=120 --timeout-indicator=right --no-buttons &
@@ -515,7 +515,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     if [ "$VARSET" -eq 0 ];then F_MSGE 500 "ERROR: Cannot determine UsU state?! aborted.."; F_EXIT "$FUNCNAME" 3; fi
     
     # create a list of *.image files and let the user choose
-    IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name *.bin -or -name *.img -or -name *.image -or -name *.mbn | tr " " "_" |egrep -vi "(GPT|firehose|zeros)");do echo "${ifile##*/}";done | tr "\n" " ")
+    IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name '*.mbn' | tr " " "_" |egrep -vi "(GPT|firehose|zeros)");do echo "${ifile##*/}";done | tr "\n" " ")
 
     F_ELOG "($FUNCNAME) image files: $IMGFILES"
 
@@ -817,7 +817,7 @@ F_VERIFYBAK(){ F_LOG "$FUNCNAME: started"
     VDIR=$1
     [ ! -d "$VDIR" ] && F_MSGE 650 "$VDIR does not exists!\nHow am I supposed to use these files existing only in your head?" && F_EXIT "$FUNCNAME no VDIR" 3
 
-    DIRFILES=$(for v in $(find "$VDIR" -maxdepth 1 -type f -name *.bin -or -name *.img -or -name *.image -or -name mmcblk0p* -or -name *.mbn | tr " " ","); do echo "$v";done)
+    DIRFILES=$(for v in $(find "$VDIR" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name 'mmcblk0p*' -or -name '*.mbn' | tr " " ","); do echo "$v";done)
 
     F_LOG "$FUNCNAME: detected files: $DIRFILES"
     CHCOUNT=$(echo "$DIRFILES" | egrep -c '^.+')
