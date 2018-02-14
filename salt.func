@@ -1295,24 +1295,35 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     case $FLTYPE in
         sdcard) F_LOG "$FUNCNAME: Will load UsU from the external SD card.."
             USUSRC=/storage/external_SD/aboot_UsU.img
+            DLMSRC=/storage/external_SD/laf_UsU.img
+            RRSRC=/storage/external_SD/rawres_UsU.img
             $FYAD --width=800 --title="$YTITLE - UsU from sdcard" \
-                --text="\n   Please do the following (without leaving download mode!):\n\n\t- take out the sdcard <b>now</b>\n\t- insert it in again\n\t- press 'Next'" \
+                --text="\n   Please do the following (without leaving download mode!):\n\n\t- take out the sdcard <b>now</b>\n\t- insert it in again\n\t- wait 5 sec\n\t- press 'Next'" \
                 --button="Next":0 \
                 --button=Abort:99
             [ $? -ne 0 ] && F_EXIT $FUNCNAME $?
         ;;
         internal) F_LOG "$FUNCNAME: Will load UsU from the internal storage.."
             USUSRC=/data/media/0/Download/aboot_UsU.img
+            DLMSRC=/data/media/0/Download/laf_UsU.img
+            RRSRC=/data/media/0/Download/rawres_UsU.img
             $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  umount /data\0' --debug --rawshell 2>&1 >> $LOG
             $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  mount -t ext4 /dev/block/bootdevice/by-name/userdata /data\0' --debug --rawshell 2>&1 >> $LOG
             F_LOG "$FUNCNAME: userdata mounting finished"
         ;;
         direct) F_LOG "$FUNCNAME: Will flash UsU directly to the device..."
-            # once i get writing working in MM, N we can push the UsU file directly. We could do already on LP but ...
-            USUWHERE=$($FYAD --width=600 --title="$YTITLE - UsU" --text="\n    To minimize the risk of taken down by LG:\n    SALT does <b>not</b> come bundled with the UsU unlock file.\n\n    You have to download it manually and tell me the location:\n" \
-                        --form --field="    UsU unlock file":FL --file-filter="UsU file| aboot_UsU.img" \
+            USUWHERE=$($FYAD --width=600 --title="$YTITLE - UsU" --text="\n    To minimize the risk of taken down by LG:\n    SALT does <b>not</b> come bundled with the UsU unlock files.\n\n    You have to download them manually and tell me the location:\n     1. <b><span color='#ff0000'> aboot </span></b>UsU file\n" \
+                        --form --field='    UsU unlock file (aboot UsU)':FL --file-filter='aboot UsU file | aboot_UsU.img' \
+                        --button=Next:0)
+            DLMWHERE=$($FYAD --width=600 --title="$YTITLE - UsU" --text="\n    2. <b><span color='#ff0000'> laf </span></b>UsU file\n" \
+                        --form --field='    UsU download mode file (laf UsU)':FL --file-filter='laf UsU file | laf_UsU.img' \
+                        --button=Next:0)
+            RRWHERE=$($FYAD --width=600 --title="$YTITLE - UsU" --text="\n    3. <b><span color='#ff0000'> rawres </span></b>UsU file\n" \
+                        --form --field='    UsU download mode file (rawres UsU)':FL --file-filter='rawres UsU file | rawres_UsU.img' \
                         --button=Next:0)
             USUDIRECT=$(echo $USUWHERE |cut -d "|" -f1)
+            DLMDIRECT=$(echo $DLMWHERE |cut -d "|" -f1)
+            RRDIRECT=$(echo $RRWHERE |cut -d "|" -f1)
         ;;
         *) F_ELOG "$FUNCNAME: no valid FLTYPE choosen!!!"
            F_EXIT $FUNCNAME 2
@@ -1320,42 +1331,48 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     esac
 
     # verify UsU file existence
-    $FYAD --title="$YTITLE - VERIFY" --text="\n  SALT searches for the UsU file...\n" --width=500 --progress --progress-text="searching ..." --pulsate --no-buttons --auto-close &
+    $FYAD --title="$YTITLE - VERIFY" --text="\n  SALT is searching for the UsU files ...\n" --width=500 --progress --progress-text="searching ..." --pulsate --no-buttons --auto-close &
     PROGY=$! 
     if [ "$FLTYPE" == "direct" ];then
-        if [ !  -f "$USUDIRECT" ];then
-            F_MSGE 500 "   Oops?!\n\n   You have choosen\n\n   $USUDIRECT\n\n   but I can not find it...!\n\n   Try another method or ensure you stored it to the correct path."
+        if [ !  -f "$USUDIRECT" ] || [ !  -f "$DLMDIRECT" ] || [ !  -f "$RRDIRECT" ];then
+            F_MSGE 700 "   Oops?!\n\n   You have choosen\n\n   $USUDIRECT (aboot)\n   $DLMDIRECT (laf)\n   $RRDIRECT (rawres)\n\n   but I can not find it...!\n\n   Try another method or ensure you stored it to the correct path."
             kill $PROGY
             F_EXIT $FUNCNAME 3
         else
-            F_LOG "USUDIRECT: $USUDIRECT"
+            F_LOG "USUDIRECT: $USUDIRECT , DLMDIRECT: $DLMDIRECT, RRDIRECT: $RRDIRECT"
             kill $PROGY
         fi
     else
         USUEX=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls '$USUSRC'\0' --rawshell)
-        F_LOG "$FUNCNAME: USUEX=$USUEX"
+        DLMEX=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls '$DLMSRC'\0' --rawshell)
+        RREX=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls '$RRSRC'\0' --rawshell)
+        F_LOG "$FUNCNAME: USUEX=$USUEX, DLMEX=$DLMEX, RREX=$RREX"
         kill $PROGY
-        if [ -z "$USUEX" ];then 
-            F_MSGE 500 "   Oops?!\n\n   You have choosen\n\n   $USUSRC\n\n   but I can not find it...!\n\n   Try another method or ensure you stored it to the correct path."
-            ($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls /storage/external_SD/ /data/media/0/Download\0' --rawshell 2>&1) >> $LOG 
+        if [ -z "$USUEX" ]||[ -z "$DLMEX"]||[ -z "$RREX"];then 
+            F_MSGE 700 "   Oops?!\n\n   You have choosen\n\n   $USUSRC\n   $DLMSRC\n   $RRSRC\n\n   but I can not find it...!\n\n   Try another method or ensure you stored it to the correct path."
+            ($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls /storage/external_SD/*.img /data/media/0/Download/*.img\0' --rawshell 2>&1) >> $LOG 
             F_EXIT $FUNCNAME 5
         fi
     fi
     
     # give feedback to the impatient users
-    $FYAD --title="$YTITLE - FLASHING" --text="\n  Fasten your seat belt!\n  SALT is flashing UsU ...\n" --width=500 --progress --progress-text="activating UsU ..." --pulsate --no-buttons --auto-close &
+    FLPBAR=/tmp/flbbar
+    echo 10> $FLPBAR
+    tail -f $FLPBAR | $FYAD --title="$YTITLE - FLASHING" --text="\n  Fasten your seat belt!\n  SALT is flashing UsU ...\n" --width=500 --progress --progress-text="activating UsU ..." --button="Close (WAIT until finished)":1 &
     PROGY=$!
     
     # verify writing in general (before actually writing to REAL aboot!!)
     F_DUMPPART abootbak "/tmp/UsU/before"
     TESTPRE=$(sha256sum /tmp/UsU/before/abootbak | cut -d " " -f1)
     F_LOG "$FUNCNAME: abootbak before flashing: $TESTPRE"
+    echo "#pre-checking ..." >> $FLPBAR
     if [ "$FLTYPE" == "direct" ];then
-        $PYTHONBIN $LAFPATH/partitions.py --restore $USUDIRECT abootbak --batch 2>> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py --restore "$USUDIRECT" abootbak --batch 1>> $FLPBAR 2>> $LOG
     else
         F_LOG '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0'
         $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0' --rawshell 2>&1 >> $LOG
     fi
+    echo "#verifying pre-check ..." >> $FLPBAR
     F_DUMPPART abootbak "/tmp/UsU/after"
     TESTAFTER=$(sha256sum /tmp/UsU/after/abootbak | cut -d " " -f1)
     # verify test result
@@ -1377,16 +1394,43 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     fi
 
     # real flash
+    echo "#flashing! ..." >> $FLPBAR
     F_DUMPPART aboot "/tmp/UsU/before"
+    F_DUMPPART laf "/tmp/UsU/before"
     ABPRE=$(sha256sum /tmp/UsU/before/aboot|cut -d " " -f1)
-    F_LOG "$FUNCNAME: aboot before flashing: $ABPRE"
+    DLMPRE=$(sha256sum /tmp/UsU/before/laf|cut -d " " -f1)
+    F_LOG "$FUNCNAME: aboot before flashing: $ABPRE, laf before: $DLMPRE"
     if [ "$FLTYPE" == "direct" ];then
-        $PYTHONBIN $LAFPATH/partitions.py --restore $USUDIRECT aboot --batch 2>> $LOG
+        F_LOG 'flashing aboot and laf directly...'
+        echo "#flashing UsU unlock ..." >> $FLPBAR
+        $PYTHONBIN $LAFPATH/partitions.py --restore "$USUDIRECT" aboot --batch 1>> $FLPBAR 2>> $LOG
+        echo "#flashing UsU laf ..." >> $FLPBAR
+        F_LOG "flashing laf from $DLMDIRECT ..."
+        $PYTHONBIN $LAFPATH/partitions.py --restore "$DLMDIRECT" laf --batch 1>> $FLPBAR 2>> $LOG
+
+        echo "#flashing UsU rawres ..." >> $FLPBAR
+        F_LOG "flashing rawres from $RRDIRECT ..."
+        $PYTHONBIN $LAFPATH/partitions.py --restore "$RRDIRECT" raw_resources --batch 1>> $FLPBAR 2>> $LOG
     else
-        F_LOG '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0'
+        F_LOG "flashing aboot from $USUSRC..."
+        echo "#flashing UsU unlock ..." >> $FLPBAR
         $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0' --rawshell 2>&1 >> $LOG
+        echo "#flashing UsU laf ..." >> $FLPBAR
+        F_LOG "flashing laf from $DLMSRC ..."
+        $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek=393216 bs=512\0' --rawshell 2>&1 >> $LOG
+
+        RRSEEKSTART=$($PYTHONBIN $LAFPATH/partitions.py --list --batch |grep "raw_resources:" |cut -d ":" -f 3)
+        $PYTHONBIN $LAFPATH/partitions.py --list --batch |grep "raw_resources:" >> $LOG 2>&1
+        if [ "$RRSEEKSTART" -lt 40000 ];then
+            F_MSGW 700 "Can not identify a valid seek start for rawres! SKIPPED!\nYou have to flash the TWRP zip to fully enable UsU"
+        else
+            echo "#flashing UsU rawres ..." >> $FLPBAR
+            F_LOG "flashing rawres from $RRSRC with seekstart: $RRSEEKSTART ..."
+            $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek='$SEEKSTART' bs=512\0' --rawshell 2>&1 >> $LOG
+        fi
     fi
     # verify real flashing
+    echo "#verifying UsU unlock ..." >> $FLPBAR
     F_DUMPPART aboot "/tmp/UsU/after"
     ABAFTER=$(sha256sum /tmp/UsU/after/aboot|cut -d " " -f1)
     F_LOG "$FUNCNAME: aboot after flashing: $ABAFTER"
@@ -1416,7 +1460,7 @@ F_DOUSU(){ F_LOG "$FUNCNAME: started with this args: $@"
     # 1 => model name
 
     UMOD=$1
-    USUVALIDS="@(*LS991*|*F500*|*H810*|*H812*|*H811*|*H815*|*H818*|*H819*|*US991*|*VS986*)"
+    USUVALIDS="@(LG-G4_UsU|*LS991*|*F500*|*H810*|*H812*|*H811*|*H815*|*H818*|*H819*|*US991*|*VS986*)"
 
     shopt -s extglob
 
