@@ -8,4 +8,14 @@ FUNCS="${0%/*}/salt.func"
 source $FUNCS
 
 F_LOG "getlog script started"
-cat $LOG | $FYAD --title="$YTITLE - DEBUGLOG" --width=800 --height=800 --wrap --text-info --button=Close:0 
+cat $LOG | $FYAD --title="$YTITLE - DEBUGLOG" --width=1000 --height=800 --wrap --text-info --button="Upload/Paste this log":99 --button=Close:0 
+
+if [ $? -eq 99 ];then
+    PASTEURL=$($WPASTE -s bpaste -e 1month $LOG)
+    echo "$PASTEURL" | grep http > /dev/null
+    if [ $? -eq 0 ];then
+        F_MSGOK 500 "Log uploaded successfully!\n\nPlease share this link:\n\n<a href=\"$PASTEURL\">$PASTEURL</a>" 
+    else
+        F_MSGE 500 "Error $PASTEURL while uploading logfile.."
+    fi
+fi
