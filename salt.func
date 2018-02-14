@@ -1422,12 +1422,13 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
 
         RRSEEKSTART=$($PYTHONBIN $LAFPATH/partitions.py --list --batch |grep "raw_resources:" |cut -d ":" -f 3)
         $PYTHONBIN $LAFPATH/partitions.py --list --batch |grep "raw_resources:" >> $LOG 2>&1
-        if [ "$RRSEEKSTART" -lt 40000 ];then
-            F_MSGW 700 "Can not identify a valid seek start for rawres! SKIPPED!\nYou have to flash the TWRP zip to fully enable UsU"
+        # G4 must have rr between sector 770000 and 870000
+        if [ "$RRSEEKSTART" -lt 770000 ] || [ "$RRSEEKSTART" -gt 870000 ];then
+            F_MSGW 700 "Can not identify a valid seek start for rawres! SKIPPED!\nYou have to flash the rawres_UsU.img in fastboot to fully enable UsU"
         else
             echo "#flashing UsU rawres ..." >> $FLPBAR
             F_LOG "flashing rawres from $RRSRC with seekstart: $RRSEEKSTART ..."
-            $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek='$SEEKSTART' bs=512\0' --rawshell 2>&1 >> $LOG
+            $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek='$RRSEEKSTART' bs=512\0' --rawshell 2>&1 >> $LOG
         fi
     fi
     # verify real flashing
