@@ -1,0 +1,60 @@
+#compdef wgetpaste
+
+# vim: set et sw=2 sts=2 ts=2 ft=zsh :
+# ZSH completion for `wgetpaste`, http://wgetpaste.zlin.dk
+# Written by Ingmar Vanhassel <ingmar@exherbo.org>
+
+
+(( ${+functions[_wgetpaste_services]} )) ||
+_wgetpaste_services()
+{
+  local -a _services
+  _services=( $(_call_program service wgetpaste --list-services --completions --verbose 2>/dev/null) )
+  _describe -t service 'what service should be used' \
+    _services
+}
+
+(( ${+functions[_wgetpaste_languages]} )) ||
+_wgetpaste_languages()
+{
+  local -a _languages
+  _languages=( ${(f)"$(_call_program language wgetpaste --list-languages --completions 2>/dev/null)"} )
+  _describe -t language 'what language to post as' \
+    _languages
+}
+
+(( ${+functions[_wgetpaste_expiration]} )) ||
+_wgetpaste_expiration()
+{
+  local -a _expiration
+  _expiration=( ${(f)"$(_call_program expiration wgetpaste --list-expiration --completions 2>/dev/null)"} )
+  _describe -t expiration 'when should your paste expire' \
+    _expiration
+}
+
+_arguments -s : \
+  '(--language -l)'{--language,-l}'[set language]:language:_wgetpaste_languages' \
+  '(--description -d)'{--description,-d}'[set description]:description: ' \
+  '(--nick -n)'{--nick,-n}'[set nick]:nick:_users' \
+  '(--service -s)'{--service,-s}'[set service to use]:service:_wgetpaste_services' \
+  '(--expiration -e)'{--expiration,-e}'[set when your paste should expire]:expiration:_wgetpaste_expiration' \
+  '(--list-services -S)'{--list-services,-S}'[list supported pastebin services]' \
+  '(--list-languages -L)'{--list-languages,-L}'[list languages supported by the specified service]' \
+  '(--list-expiration -E)'{--list-expiration,-E}'[list expiration setting supported by the specified service]' \
+  '(--tinyurl -u)'{--tinyurl,-u}'[convert input url to tinyurl]:url:_urls' \
+  '(--command -c)'{--command,-c}'[paste a command and its output]:command:_command' \
+  '(--info -i)'{--info,-i}'[append the output of `emerge --info`]' \
+  '(--info-only -I)'{--info-only,-I}'[paste the output of `emerge --info` only]' \
+  '(--xcut -x)'{--xcut,-x}'[read input from clipboard]' \
+  '(--xpaste -X)'{--xpaste,-X}'[write resulting url to the X primary selection buffer]' \
+  '(--xclippaste -C)'{--xclippaste,-C}'[write resulting url to the X clipboard selection buffer]' \
+  '(--raw -r)'{--raw,-r}'[show url for the raw paste]' \
+  '(--tee -t)'{--tee,-t}'[use tee to show what is being pasted]' \
+  '(--verbose -v)'{--verbose,-v}'[show wget stderr output if no url is received]' \
+  '--debug[be very verbose]' \
+  '(--help -h)'{--help,-h}'[show help and exit]' \
+  '(--ignore-configs,-g)'{--ignore-configs,-g}'[ignore /etc/wgetpaste.conf, ~/.wgetpaste.conf etc]' \
+  '--version[show version information and exit]' \
+  '*:file:_files' &&
+  return
+

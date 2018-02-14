@@ -19,6 +19,7 @@ FUNCS="${0%/*}/salt.func"
 source $FUNCS 
 [ $? -ne 0 ] && "ERROR: Missing requirement <$FUNCS>." && exit 3
 
+[ -f "$LOG" ] && echo "backing up old logfile...." && cp -f $LOG ${LOG}.old
 echo -e "$(date '+%F %T'): Starting $TNAME v${VERSION}!\n****************************************************\n" > $LOG
 
 # check requirements:
@@ -118,7 +119,7 @@ F_MAIN(){
                     DEVARB="ARB_unknown"
                 fi
                 ;;
-                lafver) LAFVER=${i/*:/};;
+                lafver) export LAFVER=${i/*:/};;
                 imei) LGIMEI=${i/*:/};;
                 serial) LGSERIAL=${i/*:/};;
                 target_operator) LGOPER=${i/*:/};;
@@ -134,7 +135,7 @@ F_MAIN(){
             esac
         done
     fi
-    [ -z $LAFVER ] && LAFVER=no_device_found
+    [ -z $LAFVER ] && export LAFVER=no_device_found
     [ -z $LGUSUA ] && export LGUSU=no_device_found
     [ -z $LGIMEI ] && LGIMEI=no_device_found
     [ -z $LGSERIAL ] && LGSERIAL=no_device_found
@@ -148,7 +149,7 @@ F_MAIN(){
     [ -z $ROMCOMP ] && ROMCOMP=no_device_found
     [ -z $DEVARB ] && DEVARB=no_ARB_info_found
     # overwrite model definition when UsU and model info available
-    [ ! -z $USUMODEL ] && LGMODEL=$USUMODEL
+    [ ! -z $USUMODEL ] && LGMODEL=$USUMODEL && LGSERIAL=${LGSERIAL/LGLS991/$LGMODEL}
 
     # make the decision whcih features should be enabled in the main GUI    
     #TODO: test all flash parts again then we can enable that one: if [ "$LAFVER" == "1000001" ]||[ $EXPERIMENTAL -eq 1 ];then FLASHMENU=1; else FLASHMENU=0;fi
