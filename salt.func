@@ -1460,7 +1460,7 @@ F_DOUSU(){ F_LOG "$FUNCNAME: started with this args: $@"
     # 1 => model name
 
     UMOD=$1
-    USUVALIDS="@(LG-G4_UsU|*LS991*|*F500*|*H810*|*H812*|*H811*|*H815*|*H818*|*H819*|*US991*|*VS986*)"
+    USUVALIDS="@(LG-G4_UsU|*LS991*|*F500*|*H810*|*H812*|*H811*|*H815*|*H819*|*US991*|*VS986*)"
 
     shopt -s extglob
 
