@@ -1440,6 +1440,10 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     kill $PROGY
     if [ "$ABAFTER" == "$USUHASH" ];then
         F_MSGOK 800 "   <b>CONGRATULATIONS!</b>\n\n   You're now secureboot off / unlocked!\n\n   Have fun and enjoy your unleashed phone :) !\n\n   <b>Whats next?</b>\n\n   Follow the guide at <a href='https://bit.do/unlockG4'>https://bit.do/unlockG4</a>\n\n   Basic steps are:\n\t- flash TWRP in fastboot\n\t- flash UsU baseband twrp package in TWRP\n\t- flash your custom ROM\n\n   <b><span color='#ff0000'>If you skip flashing the UsU baseband twrp package you will very likely bootloop!</span></b>" '--show-uri'
+        $FYAD --title="$YTITLE - Log upload" --width=700 --text "\n\n   Please upload your SALT logfile <b>NOW</b> to ensure important information will not get lost!\n   Click this button and then Upload:\n" \
+            --form \
+            --field="Upload SALT debug log!$SICONS/log_16x16.png":FBTN "$SALTPATH/getlog" \
+            --button=Close
     else
         if [ "$ABAFTER" == "$ABPRE" ];then
             F_LOG "$FUNCNAME: Expected HASH: $USUHASH but got $TESTAFTER"
