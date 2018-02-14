@@ -1320,7 +1320,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
                         --form --field='    UsU download mode file (laf UsU)':FL --file-filter='laf UsU file | laf_UsU.img' \
                         --button=Next:0)
             RRWHERE=$($FYAD --width=600 --title="$YTITLE - UsU" --text="\n    3. <b><span color='#ff0000'> rawres </span></b>UsU file\n" \
-                        --form --field='    UsU download mode file (rawres UsU)':FL --file-filter='rawres UsU file | rawres_UsU.img' \
+                        --form --field='    UsU misc. file (rawres UsU)':FL --file-filter='rawres UsU file | rawres_UsU.img' \
                         --button=Next:0)
             USUDIRECT=$(echo $USUWHERE |cut -d "|" -f1)
             DLMDIRECT=$(echo $DLMWHERE |cut -d "|" -f1)
@@ -1439,7 +1439,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     # verify the whole result
     kill $PROGY
     if [ "$ABAFTER" == "$USUHASH" ];then
-        F_MSGOK 800 "   <b>CONGRATULATIONS!</b>\n\n   You're now secureboot off / unlocked!\n\n   Have fun and enjoy your unleashed phone :) !\n\n   <b>Whats next?</b>\n\n   Follow the guide at <a href='https://bit.do/unlockG4'>https://bit.do/unlockG4</a>\n\n   Basic steps are:\n\t- flash TWRP in fastboot\n\t- flash UsU twrp package in TWRP\n\t- flash your custom ROM\n\n   <b><span color='#ff0000'>If you skip the UsU twrp package flashing you will very likely bootloop!</span></b>" '--show-uri'
+        F_MSGOK 800 "   <b>CONGRATULATIONS!</b>\n\n   You're now secureboot off / unlocked!\n\n   Have fun and enjoy your unleashed phone :) !\n\n   <b>Whats next?</b>\n\n   Follow the guide at <a href='https://bit.do/unlockG4'>https://bit.do/unlockG4</a>\n\n   Basic steps are:\n\t- flash TWRP in fastboot\n\t- flash UsU baseband twrp package in TWRP\n\t- flash your custom ROM\n\n   <b><span color='#ff0000'>If you skip flashing the UsU baseband twrp package you will very likely bootloop!</span></b>" '--show-uri'
     else
         if [ "$ABAFTER" == "$ABPRE" ];then
             F_LOG "$FUNCNAME: Expected HASH: $USUHASH but got $TESTAFTER"
