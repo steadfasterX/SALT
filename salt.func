@@ -518,28 +518,29 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     # create a list of *.image files and let the user choose
     IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name '*.mbn' | tr " " "_" |egrep -vi "(GPT|firehose|zeros)");do echo "${ifile##*/}";done | tr "\n" " ")
 
-    F_ELOG "($FUNCNAME) image files: $IMGFILES"
+    F_LOG "($FUNCNAME) image files: $IMGFILES"
 
     # give proper default choice for what to flash and what not
+    shopt -s extglob
     unset IRES
     for f in $IMGFILES;do
         AVIMG="${f/:*}"
         APART=$(echo "${f/*:}" | sed -e 's/\.image//g;s/\.img//g;s/\.bin//g;s/\.mbn//g;s/mmcblk0p\(.*\)/\1/g')
         case $APART in
-            grow|cache|userdata|modemst1|modemst2|persist|persistent|drm)
+            ${PUNNEEDED})
               if [ -z "$IRES" ];then IRES="false\n${AVIMG}\n${APART}\nunneeded\n99"; else IRES="$IRES false\n${AVIMG}\n${APART}\nunneeded\n99" ;fi
             ;;
-            rpm|rpmbak|tz|tzbak|sdi|sdibak|aboot|abootbak|pmic|pmicbak|hyp|hypbak|sbl1|sbl1bak|laf)
+            ${PBOOTL})
               if [ -z "$IRES" ];then IRES="true\n${AVIMG}\n${APART}\nbootloader\n1"; else IRES="$IRES true\n${AVIMG}\n${APART}\nbootloader\n1" ;fi
             ;;
-            misc|devinfo)
+            ${PDEVICE})
               if [ -z "$IRES" ];then 
                 IRES="false\n${AVIMG}\n${APART}</span>\n<span\tcolor='#ff0000'>dangerous</span>\n88"
               else 
                 IRES="$IRES false\n${AVIMG}\n${APART}\n<span\tcolor='#ff0000'>dangerous</span>\n88"
               fi
             ;;
-            modem|limits|mpt|apdp|msadp|dpo|fsg|fsc|ssd|keystore|DDR|sec|encrypt|eksst|rct|boot|recovery|sns|eri|raw_resources*|operatorlogging|carrier|cust|felicia|factory|fota|system)
+            ${PSYSTEM})
             if [ -z "$IRES" ];then
                 IRES="true\n${AVIMG}\n${APART}\n<span\tcolor='#558000'>safe-to-flash</span>\n2"
             else
@@ -562,9 +563,6 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
                 | $FYAD --height=800 --width=700 --title="$YTITLE - FOLDER" --text "\n  Select the partitions you want to flash\n  (the RECOMMENDED partitions to flash are CHECKED already!)\n\n  Hint: you can change the target partition here but do this only when you\n  <b>REALLY KNOW</b> what you're doing!\n" --list --checklist \
                         --column="Flash":CHK --column="Image File":TXT --column="Target partition" --column="Type" --editable --editable-cols="3" --column=sort_int --hide-column=5  --listen  \
                         --button=FLASH:0 --button=Abort:99 |cut -d "|" -f 2-3,5 | tr "|" ":" )
-    CERR=$?
-    F_LOG "CERR: $CERR"
-    [ $CERR -ne 0 ] && F_ERR $FUNCNAME 0 "No partition or aborted by user"
 
     CHCOUNT=$(echo "$CHOOSENP" |tr " " "\n" |grep -c :)
     [ $CHCOUNT -lt 1 ] && F_ERR $FUNCNAME 0 "No partition selected?"
@@ -576,44 +574,49 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 
     F_LOG "sorted partitions: $SORTEDP -> $CHCOUNT"
 
-    # FLASH
-    CNT=0
-    for img in $SORTEDP; do
-        CNT=$((CNT+1))
-        FFILE="$IMGDIR/${img/:*}"
-        FPART=${img/*:}
-        F_LOG "flashing: $FFILE to $FPART"
-
-	# inform yad which partition we flash
-	echo "#flashing: $FPART"
-
-        F_LOG "$FUNCNAME: $FPART starting"
-        $PYTHONBIN -u $LAFPATH/partitions.py --batch --restore "$FFILE" $FPART 2>>$LOG | sed -u -e "s%:\([0-9]*\):\([0-9]*\)%,#$FPART: \1 KB / \2 KB%g;s/,/\n/g"  2>>$LOG
-	FLASHERR=${PIPESTATUS[0]}
-	if [ $FLASHERR -eq 0 ];then
-		echo "100"
-                F_LOG "$FUNCNAME: $FPART finished"
-                [ $CNT -eq $CHCOUNT ] && echo '# ALL PARTITIONS FLASHED SUCCESSFULLY' && F_LOG "$FUNCNAME: All partitions flashed successfully"
-	else
-                F_LOG "$FUNCNAME: $FPART FAILED with $FLASHERR"
-		echo "# $FPART: FAILED"
-	        F_ERR $FUNCNAME 4 "\n  ERROR!\n\n  DO NOT REBOOT YOUR DEVICE!\n  FLASHING PROBLEM OCCURED!!!\n  while flashing:\n\n  <b>$FPART</b>" 
-	fi
-    done | $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if the progress bar does NOT get up to 100%: DO NOT REBOOT THE DEVICE!)\n\n" --width 900 --progress --button='Close (WAIT until all is flashed)':1
-    FLERR=${PIPESTATUS[0]}
-
-    # check result
-    if [ "$FLERR" -eq 0 ];then
-        F_MSGOK 400 "Flashing was successful!"
+    UANS=$(F_MSGW 700 "Will flash these partitions:\n\n$(echo $SORTEDP|tr ' ' '\n')" "--button=FLASH:99")
+    if [ $UANS -ne 99 ] || [ $CHCOUNT -eq 0 ] ;then
+        F_MSGE 500 "Aborted by user or no partitions selected"
     else
-        F_MSGE 400 "FLASHING ENDED WITH ERROR: $FLERR\n\nCheck Debug Log in SALT main screen!\nDO NOT REBOOT THE DEVICE TO AVOID HARD BRICK!!!!"
-    fi
-
-    # wipe cache
-    #F_WIPEPART cache ni || F_MSGE 400 "Wiping cache ended with an error: $WIPERR\n\nCheck Debug Log in SALT main screen."
+        # FLASH
+        CNT=0
+        for img in $SORTEDP; do
+            CNT=$((CNT+1))
+            FFILE="$IMGDIR/${img/:*}"
+            FPART=${img/*:}
+            F_LOG "flashing: $FFILE to $FPART"
     
-    # sync filesystems
-    F_SYNC || F_MSGE 400 "Syncing filesystems ended with an error: $WIPERR\n\nCheck Debug Log in SALT main screen.\nDO NOT REBOOT THE DEVICE!"
+      # inform yad which partition we flash
+      echo "#flashing: $FPART"
+    
+            F_LOG "$FUNCNAME: $FPART starting"
+            $PYTHONBIN -u $LAFPATH/partitions.py --batch --restore "$FFILE" $FPART 2>>$LOG | sed -u -e "s%:\([0-9]*\):\([0-9]*\)%,#$FPART: \1 KB / \2 KB%g;s/,/\n/g"  2>>$LOG
+      FLASHERR=${PIPESTATUS[0]}
+      if [ $FLASHERR -eq 0 ];then
+        echo "100"
+                    F_LOG "$FUNCNAME: $FPART finished"
+                    [ $CNT -eq $CHCOUNT ] && echo '# ALL PARTITIONS FLASHED SUCCESSFULLY' && F_LOG "$FUNCNAME: All partitions flashed successfully"
+      else
+                    F_LOG "$FUNCNAME: $FPART FAILED with $FLASHERR"
+        echo "# $FPART: FAILED"
+              F_ERR $FUNCNAME 4 "\n  ERROR!\n\n  DO NOT REBOOT YOUR DEVICE!\n  FLASHING PROBLEM OCCURED!!!\n  while flashing:\n\n  <b>$FPART</b>" 
+      fi
+        done | $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if the progress bar does NOT get up to 100%: DO NOT REBOOT THE DEVICE!)\n\n" --width 900 --progress --button='Close (WAIT until all is flashed)':1
+        FLERR=${PIPESTATUS[0]}
+    
+        # check result
+        if [ "$FLERR" -eq 0 ];then
+            F_MSGOK 400 "Flashing was successful!"
+        else
+            F_MSGE 400 "FLASHING ENDED WITH ERROR: $FLERR\n\nCheck Debug Log in SALT main screen!\nDO NOT REBOOT THE DEVICE TO AVOID HARD BRICK!!!!"
+        fi
+    
+        # wipe cache
+        #F_WIPEPART cache ni || F_MSGE 400 "Wiping cache ended with an error: $WIPERR\n\nCheck Debug Log in SALT main screen."
+        
+        # sync filesystems
+        F_SYNC || F_MSGE 400 "Syncing filesystems ended with an error: $WIPERR\n\nCheck Debug Log in SALT main screen.\nDO NOT REBOOT THE DEVICE!"
+    fi
     F_LOG "$FUNCNAME: ended"
 }; export -f F_FLASHPART
 
