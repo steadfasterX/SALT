@@ -1063,18 +1063,42 @@ F_MOUNTIMG(){ F_LOG "$FUNCNAME: started with $@"
     [ ! -f "$MFILE" ] && F_ERR "$FUNCNAME" 3 "$MFILE does not exists or is not readable!"
     [ ! -d "$MPNT" ] && F_LOG "$FUNCNAME: mountpoint $MPNT does not exits.. will be created now!" && mkdir -p $MPNT
 
-    mount -v -o loop "$MFILE" $MPNT >> $LOG
-    if [ $? -eq 0 ]; then
-        $FYAD --width=500 --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - MOUNT" --text="  Image file:\n\t<b>$MFILE</b>\n\n  has been mounted to\n\t<b>$MNTPNT</b>\n\n" \
-            --form \
-            --field="Browse Image":FBTN "sudo -u $REALUSER xdg-open $MPNT" \
-            --field="Unmount Image":FBTN "umount -v $MPNT" \
-            --button=Close:0
+    # check if the mnt point is in use
+    mount | grep "$MPNT" >> /dev/null
+    if [ $? -eq 0 ];then
+        F_MSGE 500 "Mountpoint $MPNT is in use! Unmount it first!\n\nABORTED."
     else
-        F_MSGE 500 "system image could not be mounted to $MNTPNT"
+        # mount
+        mount -v -o loop "$MFILE" $MPNT 2>&1 >> $LOG 
+        if [ $? -eq 0 ]; then
+            $FYAD --width=1000 --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - MOUNT" --text="  Image file:\n\t<b>$MFILE</b>\n\n  has been mounted to\n\t<b>$MNTPNT</b>\n\n" \
+                --form \
+                --field="Browse Image":FBTN "sudo -u $REALUSER xdg-open $MPNT" \
+                --field="Unmount Image":FBTN "bash -c 'F_UMNT $MPNT'" \
+                --button=Close:0
+        else
+            F_MSGE 500 "system image could not be mounted to $MNTPNT.\nCheck SALT logfile!"
+        fi
     fi
     F_LOG "$FUNCNAME ended"
 };export -f F_MOUNTIMG
+
+# unmount image/partitions, ..
+F_UMNT(){ F_LOG "$FUNCNAME: started with '$@'"
+    # takes 1 arg
+    #
+    # required:
+    # 1 => mountpoint to unmount
+    
+    MPNT="$1"
+    mount | grep "$MPNT" >> /dev/null
+    if [ $? -eq 0 ];then
+        umount -v "$MPNT" 2>&1 >> $LOG
+        if [ $? -eq 0 ];then F_MSGOK 500 "$MPNT unmounted!"; else F_MSGE 500 "Error on unmounting!\nCheck logfile in the advanced menu!";fi
+    else
+        F_MSGE 500 "Sorry but there is no mountpoint:\n\n$MPNT"
+    fi
+}; export -f F_UMNT
 
 # unzip files from a ZIP :P
 F_UNZIP(){ F_LOG "$FUNCNAME: started with '$@'"
