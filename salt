@@ -153,7 +153,18 @@ F_MAIN(){
 
     # make the decision whcih features should be enabled in the main GUI    
     #TODO: test all flash parts again then we can enable that one: if [ "$LAFVER" == "1000001" ]||[ $EXPERIMENTAL -eq 1 ];then FLASHMENU=1; else FLASHMENU=0;fi
-    if [ "$LAFVER" == "1000001" ]||[ $EXPERIMENTAL -eq 1 ];then FLASHMENU=0; else FLASHMENU=0;fi
+    #if [ "$LAFVER" == "1000001" ]||[ $EXPERIMENTAL -eq 1 ];then FLASHMENU=0; else FLASHMENU=0;fi
+    if [ "$LAFVER" != "1000001" ] && [ $EXPERIMENTAL -ne 1 ];then
+        F_MSGW 700 "Your device does <b>not</b> support direct flashing!\nFlashing functionality <b>disabled</b>!\n\nActivate flashing functionality by using a compatible LAF partition.\n\nYou can still use many of the features SALT offering - just not the flashing part." "--fixed --height=300"
+        F_LOG "Flashing functionality disabled bc: LAFVER = $LAFVER and/or EXPERIMENTAL = $EXPERIMENTAL"
+        FLASHMENU=0
+    else
+        #ATM: DISABLED! WITHOUT EXPERIMENTAL FLAG NO WAY TO OPEN IT
+        # FLASHMENU=1
+        FLASHMENU=0
+        F_LOG "Flashing functionality enabled bc: LAFVER = $LAFVER and/or EXPERIMENTAL = $EXPERIMENTAL"
+        F_LOG "HINT: Flashing temporarly NOT auto enabled (until all tests finished)!"
+    fi
 
     # main SALT screen depends on experimental flag .. and LAF version
     if [ $FLASHMENU -eq 0 ]&&[ $EXPERIMENTAL -ne 1 ];then
