@@ -971,7 +971,7 @@ F_ADVMENU(){ F_LOG "$FUNCNAME: started"
         --field="SALT debug log!$SICONS/log_16x16.png":FBTN "$SALTPATH/getlog" \
         --field="Support / Credits!$SICONS/log_16x16.png":FBTN "bash -c F_ABOUT" \
         --field="Show your partitions!!This will just list your current partitions":FBTN "bash -c F_LISTPARTS" \
-        --field=:LBL True\
+        --field="Mount an image!!This will let you mount android image files (system,userdata,..)":FBTN "bash -c F_MOUNTPARTS" \
         --field="Open a shell!$SICONS/terminal_30x30.png!Open an adb-like shell while in download mode":FBTN "bash -c F_SHELL" \
         --field="<span color='#ff0000'>Wipe</span> partition(s)!!EXTREMELY DANGEROUS - CAN EASILY BRICK YOUR DEVICE":FBTN "bash -c F_DELPART" \
         --field="Convert system.dat (ROM)!!Convert sparse Android data image (.dat) into filesystem ext4 image and mount it":FBTN "bash -c F_EXTRACTDAT" \
@@ -979,6 +979,32 @@ F_ADVMENU(){ F_LOG "$FUNCNAME: started"
         --button="Close"
 
 }; export -f F_ADVMENU
+
+# mount a partition menu
+F_MOUNTPARTS(){ F_LOG "$FUNCNAME: started"
+    # takes no args
+    
+    CHOICE=$($FYAD --title="$YTITLE - MOUNT" --width=800 --always-print-result --text \
+        "\n  Choose your image file you want to mount\n" \
+        --form \
+        --field="  Image file":FL --file-filter="ROM (*.img)| *.img *.IMG *.bin *.mbn *.image" undef\
+        --field="  Mountpoint (don't touch unless you know why)" "/mnt/salt_mnt" \
+        --button=Abort:99 \
+        --button=Next:0 \
+        )
+    [ $? -eq 99 ] && F_MSGW 500 "Aborted by user" && F_EXIT $FUNCNAME 42
+
+    F_LOG "returned: $CHOICE"
+    IMGFILE=$(echo "$CHOICE" | cut -d '|' -f 1)
+    MNTPNT=$(echo "$CHOICE" | cut -d '|' -f 2)
+
+    F_LOG "IMGFILE = $IMGFILE, MNTPNT = $MNTPNT"
+
+    [ ! -f "$IMGFILE" ] && F_ERR "$FUNCNAME" 3 "$IMGFILE does not exists or is not readable!"
+
+    F_MOUNTIMG "$IMGFILE" "$MNTPNT"
+  
+}; export -f F_MOUNTPARTS
 
 # sparse Android data image (.dat) and it's transfer list 
 F_EXTRACTDAT(){ F_LOG "$FUNCNAME: started"
