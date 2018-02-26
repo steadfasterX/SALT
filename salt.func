@@ -181,7 +181,7 @@ F_GETINFO(){ F_LOG "$FUNCNAME: started"
     IARB=$(F_CDARB)
     USU=$(F_CKUSU)
     ROMCOMP=$(F_ROMCOMP)
-    LAFVER=$($PYTHONBIN $LAFPATH/lglaf.py --proto --rawshell)
+    LAFVER=$(F_CHKLAFV)
 
     echo "usu:${USU}" \
       && echo "romcomp:$ROMCOMP" \
@@ -1511,6 +1511,38 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     fi
 
 }; export -f F_USUFLASH
+
+# check LAF protocol version
+F_CHKLAFV(){ F_LOG "$FUNCNAME: started with this args: $@"
+    # takes 1 arg
+    # returns:
+    #   no args: detected version | unknown (detect failed)
+    #   w arg: 0(ok) | 1(not ok) | unknown (detect failed)
+    #
+    # optional: 
+    # 1 => compare the detection with a max allowed version
+
+    MAXV="$1"
+    LAFV=$($PYTHONBIN $LAFPATH/lglaf.py --proto --rawshell)
+    if [ "$LAFV" -lt 1000001 -o "$LAFV" -gt 2000000 -z "$LAFV" -o $? -ne 0 ];then
+        F_LOG "$FUNCNAME: Unexpected error while retrieving LAF protocol version ($LAFV)"
+        echo "unknown"
+    else
+        F_LOG "$FUNCNAME: detected $LAFV"
+        if [ -z "$MAXV" ];then
+            F_LOG "$FUNCNAME: no comparison needed"
+            echo "$LAFV"
+        else
+            if [ "$LAFV" -le "$MAXV" ];then
+                F_LOG "$FUNCNAME: $LAFV is expected range ($MAXV)"
+                echo 0
+            else
+                F_LOG "$FUNCNAME: $LAFV is higher then expected ($MAXV)"
+                echo 1
+            fi
+        fi
+    fi
+}; export -f F_CHKLAFV
 
 # Unofficial steadfasterX Unlock
 F_DOUSU(){ F_LOG "$FUNCNAME: started with this args: $@"
