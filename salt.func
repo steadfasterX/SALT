@@ -1550,6 +1550,18 @@ F_DOUSU(){ F_LOG "$FUNCNAME: started with this args: $@"
     #
     # 1 => model name
 
+    # check device connection
+    F_CHKDEVCON
+
+    # UsU flashing in SALT will work only up to (including) LAF v4
+    RE=$(F_CHKLAFV 1000004)
+    if [ "$RE" == "0" ];then
+        F_LOG "$FUNCNAME: This laf version is supported!"
+    else
+        F_MSGE 600 "Oops!\n\nYour Download mode version is not supported!\n\nDowngrade to LP or MM!"
+        F_EXIT $FUNCNAME 4
+    fi
+
     UMOD=$1
     USUVALIDS="@(LG-G4_UsU|*LS991*|*F500*|*H810*|*H812*|*H811*|*H815*|*H819*|*US991*|*VS986*)"
 
