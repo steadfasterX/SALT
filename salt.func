@@ -179,9 +179,13 @@ F_GETINFO(){ F_LOG "$FUNCNAME: started"
     PBPP=$!
  
     IARB=$(F_CDARB)
+    F_LOG "$FUNCNAME: ARB $IARB"
     USU=$(F_CKUSU)
+    F_LOG "$FUNCNAME: USU $USU"
     ROMCOMP=$(F_ROMCOMP)
+    F_LOG "$FUNCNAME: ROMCOMP $ROMCOMP"
     LAFVER=$(F_CHKLAFV)
+    F_LOG "$FUNCNAME: LAFVER $LAFVER"
 
     echo "usu:${USU}" \
       && echo "romcomp:$ROMCOMP" \
@@ -362,7 +366,7 @@ F_USUMODEL(){ F_LOG "$FUNCNAME: started"
     #
     (F_DUMPPART raw_resources /tmp/UsU 2>&1) >> $LOG
     REMRR=$(dd if=/tmp/UsU/raw_resources skip=3145722 count=6 bs=1 2>>/dev/null | strings)
-    F_LOG "$FUNCNAME: USUMODEL=$REMRR"
+    F_LOG "$FUNCNAME: RR based USUMODEL=$REMRR"
     echo "${REMRR}"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_USUMODEL
@@ -1475,7 +1479,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
         F_LOG "flashing laf from $DLMSRC ..."
         $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek=393216 bs=512\0' --rawshell 2>&1 >> $LOG
 
-        RRSEEKSTART=$($PYTHONBIN $LAFPATH/partitions.py --list --batch |grep "raw_resources:" |cut -d ":" -f 3
+        RRSEEKSTART=$($PYTHONBIN $LAFPATH/partitions.py --list --batch |grep "raw_resources:" |cut -d ":" -f 3)
         F_LOG "FUNCNAME: raw resources from partition listing:"
         $PYTHONBIN $LAFPATH/partitions.py --list --batch |grep "raw_resources:" >> $LOG 2>&1
         # G4 must have rr between sector 770000 and 870000
