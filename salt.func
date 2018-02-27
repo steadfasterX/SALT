@@ -1451,29 +1451,32 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     echo "#flashing! ..." >> $FLPBAR
     F_DUMPPART aboot "/tmp/UsU/before"
     F_DUMPPART laf "/tmp/UsU/before"
+    F_DUMPPART raw_resources "/tmp/UsU/before"
     ABPRE=$(sha256sum /tmp/UsU/before/aboot|cut -d " " -f1)
     DLMPRE=$(sha256sum /tmp/UsU/before/laf|cut -d " " -f1)
-    F_LOG "$FUNCNAME: aboot before flashing: $ABPRE, laf before: $DLMPRE"
+    RRPRE=$(sha256sum /tmp/UsU/before/raw_resources|cut -d " " -f1)
+    F_LOG "$FUNCNAME: aboot before flashing: $ABPRE, laf before: $DLMPRE, rr before: $RRPRE"
     if [ "$FLTYPE" == "direct" ];then
         F_LOG 'flashing aboot and laf directly...'
         echo "#flashing UsU unlock ..." >> $FLPBAR
-        $PYTHONBIN $LAFPATH/partitions.py --restore "$USUDIRECT" aboot --batch 1>> $FLPBAR 2>> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py --debug --restore "$USUDIRECT" aboot --batch 1>> $FLPBAR 2>> $LOG
         echo "#flashing UsU laf ..." >> $FLPBAR
         F_LOG "flashing laf from $DLMDIRECT ..."
-        $PYTHONBIN $LAFPATH/partitions.py --restore "$DLMDIRECT" laf --batch 1>> $FLPBAR 2>> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py --debug --restore "$DLMDIRECT" laf --batch 1>> $FLPBAR 2>> $LOG
 
         echo "#flashing UsU rawres ..." >> $FLPBAR
         F_LOG "flashing rawres from $RRDIRECT ..."
-        $PYTHONBIN $LAFPATH/partitions.py --restore "$RRDIRECT" raw_resources --batch 1>> $FLPBAR 2>> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py --debug --restore "$RRDIRECT" raw_resources --batch 1>> $FLPBAR 2>> $LOG
     else
         F_LOG "flashing aboot from $USUSRC..."
         echo "#flashing UsU unlock ..." >> $FLPBAR
-        $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0' --rawshell 2>&1 >> $LOG
+        $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0' --rawshell 2>&1 >> $LOG
         echo "#flashing UsU laf ..." >> $FLPBAR
         F_LOG "flashing laf from $DLMSRC ..."
-        $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek=393216 bs=512\0' --rawshell 2>&1 >> $LOG
+        $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek=393216 bs=512\0' --rawshell 2>&1 >> $LOG
 
-        RRSEEKSTART=$($PYTHONBIN $LAFPATH/partitions.py --list --batch |grep "raw_resources:" |cut -d ":" -f 3)
+        RRSEEKSTART=$($PYTHONBIN $LAFPATH/partitions.py --list --batch |grep "raw_resources:" |cut -d ":" -f 3
+        F_LOG "FUNCNAME: raw resources from partition listing:"
         $PYTHONBIN $LAFPATH/partitions.py --list --batch |grep "raw_resources:" >> $LOG 2>&1
         # G4 must have rr between sector 770000 and 870000
         if [ "$RRSEEKSTART" -lt 770000 ] || [ "$RRSEEKSTART" -gt 870000 ];then
@@ -1481,18 +1484,27 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
         else
             echo "#flashing UsU rawres ..." >> $FLPBAR
             F_LOG "flashing rawres from $RRSRC with seekstart: $RRSEEKSTART ..."
-            $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek='$RRSEEKSTART' bs=512\0' --rawshell 2>&1 >> $LOG
+            $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek='$RRSEEKSTART' bs=512\0' --rawshell 2>&1 >> $LOG
         fi
     fi
     # verify real flashing
     echo "#verifying UsU unlock ..." >> $FLPBAR
     F_DUMPPART aboot "/tmp/UsU/after"
+    F_DUMPPART laf "/tmp/UsU/after"
+    F_DUMPPART raw_resources "/tmp/UsU/after"
     ABAFTER=$(sha256sum /tmp/UsU/after/aboot|cut -d " " -f1)
-    F_LOG "$FUNCNAME: aboot after flashing: $ABAFTER"
+    LAFAFTER=$(sha256sum /tmp/UsU/after/laf|cut -d " " -f1)
+    RRAFTER=$(sha256sum /tmp/UsU/after/raw_resources|cut -d " " -f1)
+    F_LOG "$FUNCNAME: after flashing:\naboot = $ABAFTER\nlaf = $LAFAFTER\nrr = $RRAFTER"
     
     # verify the whole result
     kill $PROGY
     if [ "$ABAFTER" == "$USUHASH" ];then
+
+        if [ "$LAFBEFORE" != "$LAFAFTER" ]||[ "$RRBEFORE" != "$RRAFTER" ];then
+            F_MSGW 700 "Some parts of UsU can't be flashed!\n\n$LAF: $LAFBEFORE vs. $LAFAFTER\nrawres: $RRBEFORE vs. $RRAFTER"
+        fi
+
         F_MSGOK 800 "   <b>CONGRATULATIONS!</b>\n\n   You're now secureboot off / unlocked!\n\n   Have fun and enjoy your unleashed phone :) !\n\n   <b>Whats next?</b>\n\n   Follow the guide at <a href='https://bit.do/unlockG4'>https://bit.do/unlockG4</a>\n\n   Basic steps are:\n\t- flash TWRP in fastboot\n\t- flash UsU baseband twrp package in TWRP\n\t- flash your custom ROM\n\n   <b><span color='#ff0000'>If you skip flashing the UsU baseband twrp package you will very likely bootloop!</span></b>" '--show-uri'
         $FYAD --title="$YTITLE - Log upload" --width=700 --text "\n\n   Please upload your SALT logfile <b>NOW</b> to ensure important information will not get lost!\n   Click this button and then Upload:\n" \
             --form \
@@ -1500,11 +1512,11 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
             --button=Close
     else
         if [ "$ABAFTER" == "$ABPRE" ];then
-            F_LOG "$FUNCNAME: Expected HASH: $USUHASH but got $TESTAFTER"
-            F_MSGE 800 "   Sorry but flashing seems to be blocked on your device.\n   Nothing has changed! Pls use the <b>QFIL</b> method instead."
+            F_LOG "$FUNCNAME: Expected HASH: $USUHASH but got $ABAFTER"
+            F_MSGE 800 "   Sorry but flashing seems to be blocked on your device.\n   Nothing has changed! Pls use the one of the other flashing methods."
             F_EXIT $FUNCNAME 2
         else
-            F_LOG "$FUNCNAME: Expected HASH: $USUHASH but got $TESTAFTER"
+            F_LOG "$FUNCNAME: Expected HASH: $USUHASH but got $ABAFTER"
             F_MSGE 500 "   This should never happen but if you see this\n   a VERY critical error happened!\n\n   DO NOT POWER OFF YOUR DEVICE!\n\n   Instead use LGup to flash a KDZ otherwise you may hard brick!"
             F_EXIT $FUNCNAME 2
         fi
