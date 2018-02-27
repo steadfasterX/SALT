@@ -11,12 +11,12 @@
 #
 ##########################################################################
 VARS="${0%/*}/salt.vars"
-HASHES="${0%/*}/salt.hashes"
+export HASHES="${0%/*}/salt.hashes"
 
-source $VARS
+source "$VARS"
 [ $? -ne 0 ]&& echo "ERROR: including $VARS" && exit 3
 
-source $HASHES
+source "$HASHES"
 [ $? -ne 0 ]&& echo "ERROR: including $HASHES" && exit 3
 
 ######################################################################################
@@ -1505,8 +1505,13 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     RRAFTER=$(sha256sum /tmp/UsU/after/raw_resources|cut -d " " -f1)
     F_LOG "$FUNCNAME: after flashing:\naboot = $ABAFTER\nlaf = $LAFAFTER\nrr = $RRAFTER"
 
-    source $HASHES
-    [ $? -ne 0 ] && echo "ERROR: including $HASHES" && F_EXIT $FUNCNAME 4
+    source "$HASHES"
+    if [ $? -ne 0 ];then
+        F_LOG "ERROR: including $HASHES"
+        F_MSGE 700 "Cannot included UsU hash table!\nABORTED!"
+        kill $PROGY
+        F_EXIT $FUNCNAME 4
+    fi
     F_LOG "UsU hashes included! LAF: $DLMHASH, rr: $RRHASH"
     
     # verify the whole result
