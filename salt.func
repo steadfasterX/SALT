@@ -1397,6 +1397,10 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
             kill $PROGY
             F_EXIT $FUNCNAME 3
         else
+            USUHASH=$(sha256sum "$USUDIRECT" |cut -d " " -f1)
+            DLMHASH=$(sha256sum "$DLMDIRECT" |cut -d " " -f1)
+            RRHASH=$(sha256sum "$RRDIRECT" |cut -d " " -f1)
+            F_LOG "$FUNCNAME: Hashes generated:\nUSUHASH=$USUHASH\nDLMHASH=$DLMHASH\nRRHASH=$RRHASH"
             F_LOG "USUDIRECT: $USUDIRECT , DLMDIRECT: $DLMDIRECT, RRDIRECT: $RRDIRECT"
             kill $PROGY
         fi
@@ -1405,6 +1409,12 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
         DLMEX=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls '$DLMSRC'\0' --rawshell)
         RREX=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls '$RRSRC'\0' --rawshell)
         F_LOG "$FUNCNAME: USUEX=$USUEX, DLMEX=$DLMEX, RREX=$RREX"
+
+        USUHASH=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  sha256sum '$USUSRC'\0' --rawshell |cut -d " " -f1)
+        DLMHASH=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  sha256sum '$DLMSRC'\0' --rawshell |cut -d " " -f1)
+        RRHASH=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  sha256sum '$RRSRC'\0' --rawshell |cut -d " " -f1)
+        F_LOG "$FUNCNAME: Hashes generated:\nUSUHASH=$USUHASH\nDLMHASH=$DLMHASH\nRRHASH=$RRHASH"
+
         kill $PROGY
         if [ -z "$USUEX" ]||[ -z "$DLMEX"]||[ -z "$RREX"];then 
             F_MSGE 700 "   Oops?!\n\n   You have choosen\n\n   $USUSRC\n   $DLMSRC\n   $RRSRC\n\n   but I can not find it...!\n\n   Try another method or ensure you stored it to the correct path."
@@ -1504,8 +1514,8 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     # verify the whole result
     kill $PROGY
     if [ "$ABAFTER" == "$USUHASH" ];then
-        if [ "$DLMPRE" != "$LAFAFTER" ]||[ "$RRPRE" != "$RRAFTER" ];then
-            F_MSGW 700 "Some parts of UsU can't be flashed!\nLAF: $DLMPRE vs. $LAFAFTER\nrawres: $RRPRE vs. $RRAFTER"
+        if [ "$DLMHASH" != "$LAFAFTER" ]||[ "$RRHASH" != "$RRAFTER" ];then
+            F_MSGW 700 "Some parts of UsU couldn't be flashed!\nLAF: $DLMHASH, $DLMPRE, $LAFAFTER\nrawres: $RRHASH, $RRPRE, $RRAFTER"
         fi
 
         F_MSGOK 800 "   <b>CONGRATULATIONS!</b>\n\n   You're now secureboot off / unlocked!\n\n   Have fun and enjoy your unleashed phone :) !\n\n   <b>Whats next?</b>\n\n   Follow the guide at <a href='https://bit.do/unlockG4'>https://bit.do/unlockG4</a>\n\n   Basic steps are:\n\t- flash TWRP in fastboot\n\t- flash UsU baseband twrp package in TWRP\n\t- flash your custom ROM\n\n   <b><span color='#ff0000'>If you skip flashing the UsU baseband twrp package you will very likely bootloop!</span></b>" '--show-uri'
