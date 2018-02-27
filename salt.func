@@ -1504,9 +1504,8 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     # verify the whole result
     kill $PROGY
     if [ "$ABAFTER" == "$USUHASH" ];then
-
-        if [ "$LAFBEFORE" != "$LAFAFTER" ]||[ "$RRBEFORE" != "$RRAFTER" ];then
-            F_MSGW 700 "Some parts of UsU can't be flashed!\n\n$LAF: $LAFBEFORE vs. $LAFAFTER\nrawres: $RRBEFORE vs. $RRAFTER"
+        if [ "$DLMPRE" != "$LAFAFTER" ]||[ "$RRPRE" != "$RRAFTER" ];then
+            F_MSGW 700 "Some parts of UsU can't be flashed!\nLAF: $DLMPRE vs. $LAFAFTER\nrawres: $RRPRE vs. $RRAFTER"
         fi
 
         F_MSGOK 800 "   <b>CONGRATULATIONS!</b>\n\n   You're now secureboot off / unlocked!\n\n   Have fun and enjoy your unleashed phone :) !\n\n   <b>Whats next?</b>\n\n   Follow the guide at <a href='https://bit.do/unlockG4'>https://bit.do/unlockG4</a>\n\n   Basic steps are:\n\t- flash TWRP in fastboot\n\t- flash UsU baseband twrp package in TWRP\n\t- flash your custom ROM\n\n   <b><span color='#ff0000'>If you skip flashing the UsU baseband twrp package you will very likely bootloop!</span></b>" '--show-uri'
