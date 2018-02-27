@@ -2,7 +2,7 @@
 #
 # SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
 #
-# Copyright (C): 2017, steadfasterX <steadfastX|boun.cr>
+# Copyright (C): 2017-2018, steadfasterX <steadfastX|boun.cr>
 #
 # global functions for SALT
 #
@@ -11,9 +11,13 @@
 #
 ##########################################################################
 VARS="${0%/*}/salt.vars"
+HASHES="${0%/*}/salt.hashes"
 
-source $VARS 
+source $VARS
 [ $? -ne 0 ]&& echo "ERROR: including $VARS" && exit 3
+
+source $HASHES
+[ $? -ne 0 ]&& echo "ERROR: including $HASHES" && exit 3
 
 ######################################################################################
 
@@ -1397,10 +1401,6 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
             kill $PROGY
             F_EXIT $FUNCNAME 3
         else
-            USUHASH=$(sha256sum "$USUDIRECT" |cut -d " " -f1)
-            DLMHASH=$(sha256sum "$DLMDIRECT" |cut -d " " -f1)
-            RRHASH=$(sha256sum "$RRDIRECT" |cut -d " " -f1)
-            F_LOG "$FUNCNAME: Hashes generated:\nUSUHASH=$USUHASH\nDLMHASH=$DLMHASH\nRRHASH=$RRHASH"
             F_LOG "USUDIRECT: $USUDIRECT , DLMDIRECT: $DLMDIRECT, RRDIRECT: $RRDIRECT"
             kill $PROGY
         fi
@@ -1409,12 +1409,6 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
         DLMEX=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls '$DLMSRC'\0' --rawshell)
         RREX=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls '$RRSRC'\0' --rawshell)
         F_LOG "$FUNCNAME: USUEX=$USUEX, DLMEX=$DLMEX, RREX=$RREX"
-
-        USUHASH=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  sha256sum '$USUSRC'\0' --rawshell |cut -d " " -f1)
-        DLMHASH=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  sha256sum '$DLMSRC'\0' --rawshell |cut -d " " -f1)
-        RRHASH=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  sha256sum '$RRSRC'\0' --rawshell |cut -d " " -f1)
-        F_LOG "$FUNCNAME: Hashes generated:\nUSUHASH=$USUHASH\nDLMHASH=$DLMHASH\nRRHASH=$RRHASH"
-
         kill $PROGY
         if [ -z "$USUEX" ]||[ -z "$DLMEX"]||[ -z "$RREX"];then 
             F_MSGE 700 "   Oops?!\n\n   You have choosen\n\n   $USUSRC\n   $DLMSRC\n   $RRSRC\n\n   but I can not find it...!\n\n   Try another method or ensure you stored it to the correct path."
@@ -1510,6 +1504,10 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     LAFAFTER=$(sha256sum /tmp/UsU/after/laf|cut -d " " -f1)
     RRAFTER=$(sha256sum /tmp/UsU/after/raw_resources|cut -d " " -f1)
     F_LOG "$FUNCNAME: after flashing:\naboot = $ABAFTER\nlaf = $LAFAFTER\nrr = $RRAFTER"
+
+    source $HASHES
+    [ $? -ne 0 ] && echo "ERROR: including $HASHES" && F_EXIT $FUNCNAME 4
+    F_LOG "UsU hashes included! LAF: $DLMHASH, rr: $RRHASH"
     
     # verify the whole result
     kill $PROGY
@@ -1517,7 +1515,6 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
         if [ "$DLMHASH" != "$LAFAFTER" ]||[ "$RRHASH" != "$RRAFTER" ];then
             F_MSGW 700 "Some parts of UsU couldn't be flashed!\nLAF: $DLMHASH, $DLMPRE, $LAFAFTER\nrawres: $RRHASH, $RRPRE, $RRAFTER"
         fi
-
         F_MSGOK 800 "   <b>CONGRATULATIONS!</b>\n\n   You're now secureboot off / unlocked!\n\n   Have fun and enjoy your unleashed phone :) !\n\n   <b>Whats next?</b>\n\n   Follow the guide at <a href='https://bit.do/unlockG4'>https://bit.do/unlockG4</a>\n\n   Basic steps are:\n\t- flash TWRP in fastboot\n\t- flash UsU baseband twrp package in TWRP\n\t- flash your custom ROM\n\n   <b><span color='#ff0000'>If you skip flashing the UsU baseband twrp package you will very likely bootloop!</span></b>" '--show-uri'
         $FYAD --title="$YTITLE - Log upload" --width=700 --text "\n\n   Please upload your SALT logfile <b>NOW</b> to ensure important information will not get lost!\n   Click this button and then Upload:\n" \
             --form \
@@ -1549,7 +1546,7 @@ F_CHKLAFV(){ F_LOG "$FUNCNAME: started with this args: $@"
 
     MAXV="$1"
     LAFV=$($PYTHONBIN $LAFPATH/lglaf.py --proto --rawshell)
-    if [ "$LAFV" -lt 1000001 -o "$LAFV" -gt 2000000 -z "$LAFV" -o $? -ne 0 ];then
+    if [ $? -ne 0 ]||[ -z "$LAFV" ]||[ "$LAFV" -lt 1000001 -o "$LAFV" -gt 2000000 ];then
         F_LOG "$FUNCNAME: Unexpected error while retrieving LAF protocol version ($LAFV)"
         echo "unknown"
     else
@@ -1588,6 +1585,7 @@ F_DOUSU(){ F_LOG "$FUNCNAME: started with this args: $@"
     fi
 
     UMOD=$1
+    export LGMODEL=$UMOD
     USUVALIDS="@(LG-G4_UsU|*LS991*|*F500*|*H810*|*H812*|*H811*|*H815*|*H819*|*US991*|*VS986*)"
 
     shopt -s extglob
