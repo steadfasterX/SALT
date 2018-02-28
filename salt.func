@@ -1646,12 +1646,12 @@ F_DOUSU(){ F_LOG "$FUNCNAME: started with this args: $@"
 F_VCHK(){ F_LOG "$FUNCNAME: started with this args: $@"
     # Takes no argument
     #
-    ONLVF=$($CURLB --connect-timeout 10 --stderr $LOG -s $VCHK | grep "VDIG=" | cut -d "=" -f 2)
+    ONLVF=$($CURLB --connect-timeout 10 --stderr $LOG -s $VCHK | grep "VDIG=" | cut -d "=" -f 2 | tr -d '"')
     ONLV=$(echo "$ONLVF" | sed 's/[\.-]//g')
-    CURVF=$(echo "$VDIG" | cut -d "=" -f 2)
+    CURVF=$(echo "$VDIG" | cut -d "=" -f 2 | tr -d '"')
     CURV=$(echo "$CURVF" | sed 's/[\.-]//g')
 
-    if [ "$ONLV" -gt "$CURV" ];then
+    if [ $ONLV -gt $CURV ];then
         F_LOG "$FUNCNAME: newer SALT version found ($ONLV / $ONLVF vs. $CURV / $CURVF)"
         UA=$(F_MSGW 700 "New SALT version available!\n\nYou:\t<b>$CURVF</b>\nOnline:\t<b>$ONLVF</b>\n\nDo you want to update now?" "--button=Update:99")
         if [ "$UA" == 99 ];then
