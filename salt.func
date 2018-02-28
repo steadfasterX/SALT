@@ -1651,7 +1651,10 @@ F_VCHK(){ F_LOG "$FUNCNAME: started with this args: $@"
     CURVF=$(echo "$VDIG" | cut -d "=" -f 2 | tr -d '"')
     CURV=$(echo "$CURVF" | sed 's/[\.-]//g')
 
-    if [ $ONLV -gt $CURV ];then
+    if [ -z "$ONLV" ]||[ -z "$CURV" ];then
+      F_LOG "$FUNCNAME: cannot check for new version:\nonline: $ONLV / $ONLVF\nhere: $CURV / $CURVF"
+    else
+      if [ $ONLV -gt $CURV ];then
         F_LOG "$FUNCNAME: newer SALT version found ($ONLV / $ONLVF vs. $CURV / $CURVF)"
         UA=$(F_MSGW 700 "New SALT version available!\n\nYou:\t<b>$CURVF</b>\nOnline:\t<b>$ONLVF</b>\n\nDo you want to update now?" "--button=Update:99")
         if [ "$UA" == 99 ];then
@@ -1659,8 +1662,9 @@ F_VCHK(){ F_LOG "$FUNCNAME: started with this args: $@"
             F_MSGOK 600 "Will close SALT now due to the update taken!\nJust re-open SALT afterwards."
             F_EXIT "After-Update-End" 0 full 
         fi
-    else
+      else
         F_LOG "$FUNCNAME: no newer SALT version found ($ONLV / $ONLVF vs. $CURV / $CURVF)"
+      fi
     fi
 }; export -f F_VCHK
 
