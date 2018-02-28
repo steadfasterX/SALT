@@ -29,6 +29,7 @@ if [ "${VERSION/*:}" == "TESTING" ];then
     export BROSALT=master
     export BROKDZ=master
     export BROLAF=g4-stable
+    export VCHK=https://raw.githubusercontent.com/steadfasterX/SALT/develop/salt.vars
 else
     export BRSALT=master
     export BRKDZ=master
@@ -36,10 +37,10 @@ else
     export BROSALT=develop
     export BROKDZ=develop
     export BROLAF=g4-develop
+    export VCHK=https://raw.githubusercontent.com/steadfasterX/SALT/master/salt.vars
 fi
 
 ######################################################################################
-
 
 # do not echo but write log entry
 F_LOG(){
@@ -699,7 +700,7 @@ F_UPDATE(){ F_LOG "$FUNCNAME: started"
             --button=Update:0 --button=Cancel:1 \
          )
 
-    [ $? -ne 0 ] && F_LOG "Aborted on user request" && F_EXIT
+    [ $? -ne 0 ] && F_LOG "Aborted on user request" && F_EXIT $FUNCNAME 4
 
     BRSALT=$(echo "$AA"| cut -d "|" -f 1)
     BRKDZ=$(echo "$AA"| cut -d "|" -f 2)
@@ -1508,7 +1509,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     source "$HASHES"
     if [ $? -ne 0 ];then
         F_LOG "ERROR: including $HASHES"
-        F_MSGE 700 "Cannot included UsU hash table!\nABORTED!"
+        F_MSGE 700 "Cannot include UsU hash table!\nABORTED!"
         kill $PROGY
         F_EXIT $FUNCNAME 4
     fi
@@ -1640,4 +1641,27 @@ F_DOUSU(){ F_LOG "$FUNCNAME: started with this args: $@"
     fi
 
 }; export -f F_DOUSU
+
+# new version check
+F_VCHK(){ F_LOG "$FUNCNAME: started with this args: $@"
+    # Takes no argument
+    #
+    ONLVF=$($CURLB --connect-timeout 10 --stderr $LOG -s $VCHK | grep "VDIG=" | cut -d "=" -f 2)
+    ONLV=$(echo "$ONLVF" | sed 's/[\.-]//g')
+    CURVF=$(echo "$VDIG" | cut -d "=" -f 2)
+    CURV=$(echo "$CURVF" | sed 's/[\.-]//g')
+
+    if [ "$ONLV" -gt "$CURV" ];then
+        F_LOG "$FUNCNAME: newer SALT version found ($ONLV / $ONLVF vs. $CURV / $CURVF)"
+        UA=$(F_MSGW 700 "New SALT version available!\n\nYou:\t<b>$CURVF</b>\nOnline:\t<b>$ONLVF</b>\n\nDo you want to update now?" "--button=Update:99")
+        if [ "$UA" == 99 ];then
+            (F_UPDATE)
+            F_MSGOK 600 "Will close SALT now due to the update taken!\nJust re-open SALT afterwards."
+            F_EXIT "After-Update-End" 0 full 
+        fi
+    else
+        F_LOG "$FUNCNAME: no newer SALT version found ($ONLV / $ONLVF vs. $CURV / $CURVF)"
+    fi
+}; export -f F_VCHK
+
 
