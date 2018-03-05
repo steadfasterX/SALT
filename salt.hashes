@@ -9,7 +9,7 @@ case "$LGMODEL" in
     export DLMHASH=ee7db724fe1df15f9941ecc474995484f7ab9f91acefb30af17504202abf42c6
     ;;
     H810)
-    export RRHASH=bb9f8df61474d25e71fa00722318cd387396ca1736605e1248821cc0de3d3af8
+    export RRHASH=b37195386ad983d2440baf77d7c985577b7d5c8b4ed5cc85e1dea9dc451a59ab
     export DLMHASH=ee7db724fe1df15f9941ecc474995484f7ab9f91acefb30af17504202abf42c6
     ;;
     H812)
