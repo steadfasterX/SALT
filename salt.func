@@ -1354,6 +1354,9 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     # 1 => type of flashing
     USUDIRECT=undef
 
+    # kill parent window
+    kill -s SIGUSR1 $YAD_PID >> $LOG 2>&1
+
     FLTYPE=$1
     case $FLTYPE in
         sdcard) F_LOG "$FUNCNAME: Will load UsU from the external SD card.."
@@ -1577,6 +1580,9 @@ F_DOUSU(){ F_LOG "$FUNCNAME: started with this args: $@"
     # Takes 1 argument
     #
     # 1 => model name
+
+    # kill parent window
+    kill -s SIGUSR1 $YAD_PID >> $LOG 2>&1
 
     # check device connection
     F_CHKDEVCON
