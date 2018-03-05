@@ -1378,18 +1378,23 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
             F_LOG "$FUNCNAME: userdata mounting finished"
         ;;
         direct) F_LOG "$FUNCNAME: Will flash UsU directly to the device..."
-            USUWHERE=$($FYAD --width=600 --title="$YTITLE - UsU" --text="\n    To minimize the risk of taken down by LG:\n    SALT does <b>not</b> come bundled with the UsU unlock files.\n\n    You have to download them manually and tell me the location:\n     1. <b><span color='#ff0000'> aboot </span></b>UsU file\n" \
+            USUWHERE=$($FYAD --image="$SICONS/salt_logo_64x64.png" --width=600 --title="$YTITLE - UsU" --text="\n    To minimize the risk of taken down by LG:\n    SALT does <b>not</b> come bundled with the UsU unlock files.\n\n    You have to download them manually and tell me the location:\n     1. <b><span color='#ff0000'> aboot </span></b>UsU file\n" \
                         --form --field='    UsU unlock file (aboot UsU)':FL --file-filter='aboot UsU file | aboot_UsU.img' \
                         --button=Next:0)
-            DLMWHERE=$($FYAD --width=600 --title="$YTITLE - UsU" --text="\n    2. <b><span color='#ff0000'> laf </span></b>UsU file\n" \
-                        --form --field='    UsU download mode file (laf UsU)':FL --file-filter='laf UsU file | laf_UsU.img' \
+            LASTDIR=$(echo $USUWHERE |cut -d "|" -f1 | sed 's#/aboot_UsU.img##g')
+            DLMWHERE=$($FYAD --image="$SICONS/salt_logo_64x64.png" --width=600 --title="$YTITLE - UsU" --text="\n    2. <b><span color='#ff0000'> laf </span></b>UsU file\n" \
+                        --form --field='    UsU download mode file (laf UsU)':FL --file-filter='laf UsU file | laf_UsU.img' "${LASTDIR}/laf_UsU.img"\
                         --button=Next:0)
-            RRWHERE=$($FYAD --width=600 --title="$YTITLE - UsU" --text="\n    3. <b><span color='#ff0000'> rawres </span></b>UsU file\n" \
-                        --form --field='    UsU misc. file (rawres UsU)':FL --file-filter='rawres UsU file | rawres_UsU.img' \
+            LASTDIR=$(echo $DLMWHERE |cut -d "|" -f1 | sed 's#/laf_UsU.img##g')
+            RRWHERE=$($FYAD  --image="$SICONS/salt_logo_64x64.png" --width=600 --title="$YTITLE - UsU" --text="\n    3. <b><span color='#ff0000'> rawres </span></b>UsU file\n" \
+                        --form --field='    UsU misc. file (rawres UsU)':FL --file-filter='rawres UsU file | rawres_UsU.img' "${LASTDIR}/rawres_UsU.img"\
                         --button=Next:0)
             USUDIRECT=$(echo $USUWHERE |cut -d "|" -f1)
+            USUSRC="$USUDIRECT"
             DLMDIRECT=$(echo $DLMWHERE |cut -d "|" -f1)
+            DLMSRC="$DLMDIRECT"
             RRDIRECT=$(echo $RRWHERE |cut -d "|" -f1)
+            RRSRC="$RRDIRECT"
         ;;
         *) F_ELOG "$FUNCNAME: no valid FLTYPE choosen!!!"
            F_EXIT $FUNCNAME 2
@@ -1397,7 +1402,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     esac
 
     # verify UsU file existence
-    $FYAD --title="$YTITLE - VERIFY" --text="\n  SALT is searching for the UsU files ...\n" --width=500 --progress --progress-text="searching ..." --pulsate --no-buttons --auto-close &
+    $FYAD --image="$SICONS/salt_logo_64x64.png" --title="$YTITLE - VERIFY" --text="\n  SALT is searching for the UsU files ...\n" --width=500 --progress --progress-text="searching ..." --pulsate --no-buttons --auto-close &
     PROGY=$! 
     if [ "$FLTYPE" == "direct" ];then
         if [ !  -f "$USUDIRECT" ] || [ !  -f "$DLMDIRECT" ] || [ !  -f "$RRDIRECT" ];then
@@ -1424,7 +1429,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     # give feedback to the impatient users
     FLPBAR=/tmp/flbbar
     echo 10> $FLPBAR
-    tail -f $FLPBAR | $FYAD --title="$YTITLE - FLASHING" --text="\n  Fasten your seat belt!\n  SALT is flashing UsU ...\n" --width=500 --progress --progress-text="activating UsU ..." --button="Close (WAIT until finished)":1 &
+    tail -f $FLPBAR | $FYAD --image="$SICONS/salt_logo_64x64.png" --title="$YTITLE - FLASHING" --text="\n  Fasten your seat belt!\n  SALT is flashing UsU ...\n" --width=500 --progress --progress-text="activating UsU ..." --button="Close (WAIT until finished)":1 &
     PROGY=$!
     
     # verify writing in general (before actually writing to REAL aboot!!)
@@ -1656,7 +1661,7 @@ F_DOUSU(){ F_LOG "$FUNCNAME: started with this args: $@"
         ;;
     esac
     
-    A=$(F_MSGW 900 "  You device ($UMOD) is supported by UsU!\n\n  This unlock works for any <b>G4</b> model out there but for <b>no other device!</b>\n\n  <b><span color='#ff0000'>Unlocking your device is a risk - always!</span></b>\n\n  You do this on your <b>own</b> risk and without any guarantees\n\n  I do my best to avoid damage but don't cry when this here fails for you.\n  Ensure you have taken at least a basic backup with SALT before proceeding!\n  That backup is your only chance for recovery!" "--button=UNLOCK:99")
+    A=$(F_MSGW 900 "  Your device ($UMOD) is supported by UsU!\n\n  This unlock works for any <b>G4</b> model out there but for <b>no other device!</b>\n\n  <b><span color='#ff0000'>Unlocking your device is a risk - always!</span></b>\n\n  You do this on your <b>own</b> risk and without any guarantees\n\n  I do my best to avoid damage but don't cry when this here fails for you.\n  Ensure you have taken at least a basic backup with SALT before proceeding!\n  That backup is your only chance for recovery!" "--button=UNLOCK:99 --fixed")
 
     F_LOG "$FUNCNAME: Answered: $A"
     if [ "$A" == "99" ];then
