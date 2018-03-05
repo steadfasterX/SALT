@@ -1460,7 +1460,8 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     fi
 
     # real flash
-    echo "#flashing! ..." >> $FLPBAR
+    echo 0 >> $FLPBAR
+    echo "#preparing flashing! ..." >> $FLPBAR
     F_DUMPPART aboot "/tmp/UsU/before"
     F_DUMPPART laf "/tmp/UsU/before"
     F_DUMPPART raw_resources "/tmp/UsU/before"
@@ -1496,7 +1497,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
         else
             echo "#flashing UsU rawres ..." >> $FLPBAR
             F_LOG "flashing rawres from $RRSRC with seekstart: $RRSEEKSTART ..."
-            $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek='$RRSEEKSTART' bs=512\0' --rawshell 2>&1 >> $LOG
+            $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$RRSRC' of=/dev/block/mmcblk0 seek='$RRSEEKSTART' bs=512\0' --rawshell 2>&1 >> $LOG
         fi
     fi
     # verify real flashing
