@@ -1,0 +1,43 @@
+# hash table
+
+# UsU hash for any model
+export USUHASH=f8e26b6df293d87aa40ca635a6407291495024bcf413a93302589c95e68b2b6a
+
+case "$LGMODEL" in
+    F500)
+    export RRHASH=346f47514751934b04352a6ad9ea8e474f2d35fbcbdcb86e06b1cebc94b66a43
+    export DLMHASH=ee7db724fe1df15f9941ecc474995484f7ab9f91acefb30af17504202abf42c6
+    ;;
+    H810)
+    export RRHASH=b37195386ad983d2440baf77d7c985577b7d5c8b4ed5cc85e1dea9dc451a59ab
+    export DLMHASH=ee7db724fe1df15f9941ecc474995484f7ab9f91acefb30af17504202abf42c6
+    ;;
+    H812)
+    export RRHASH=8b25d1aacb1888f073d59701f9119ec1574ebd796245cef5ef7cf7c82566b645
+    export DLMHASH=ee7db724fe1df15f9941ecc474995484f7ab9f91acefb30af17504202abf42c6
+    ;;
+    H815)
+    export RRHASH=f81757904e8c4f7890c03e35b89a695c4bd48f4256858918c57f9bad33621f77
+    export DLMHASH=ee7db724fe1df15f9941ecc474995484f7ab9f91acefb30af17504202abf42c6
+    ;;
+    H818)
+    export RRHASH=db13da298df82502ec331b74f46241a676cf03eaba73b4ffcc66800483d46983
+    export DLMHASH=ee7db724fe1df15f9941ecc474995484f7ab9f91acefb30af17504202abf42c6
+    ;;
+    H819)
+    export RRHASH=22ce9bae27f9f4db2224d137721028bf327a420834b8f97d28d789bc162a5dce
+    export DLMHASH=ee7db724fe1df15f9941ecc474995484f7ab9f91acefb30af17504202abf42c6
+    ;;
+    LS991)
+    export RRHASH=d38c87a7f68fd03445f24d7a4fafef2a23b578eead73dbafcb2fde82aef96e73
+    export DLMHASH=ee7db724fe1df15f9941ecc474995484f7ab9f91acefb30af17504202abf42c6
+    ;;
+    US991)
+    export RRHASH=7abeffe9fb582454fc0571a7dfd7c928988751372ad970c28cc0d32e58588bb6
+    export DLMHASH=ee7db724fe1df15f9941ecc474995484f7ab9f91acefb30af17504202abf42c6
+    ;;
+    VS986)
+    export RRHASH=4803d43a40a88ebab1b2fda6281b240ffa26c500d96b0cb5da705f5b9ac51d5c
+    export DLMHASH=ee7db724fe1df15f9941ecc474995484f7ab9f91acefb30af17504202abf42c6
+    ;;
+esac

@@ -2,7 +2,7 @@
 #
 # SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
 #
-# Copyright (C): 2017, steadfasterX <steadfastX|boun.cr>
+# Copyright (C): 2017-2018, steadfasterX <steadfastX|boun.cr>
 #
 # global functions for SALT
 #
@@ -11,9 +11,13 @@
 #
 ##########################################################################
 VARS="${0%/*}/salt.vars"
+export HASHES="${0%/*}/salt.hashes"
 
-source $VARS 
+source "$VARS"
 [ $? -ne 0 ]&& echo "ERROR: including $VARS" && exit 3
+
+source "$HASHES"
+[ $? -ne 0 ]&& echo "ERROR: including $HASHES" && exit 3
 
 ######################################################################################
 
@@ -25,6 +29,7 @@ if [ "${VERSION/*:}" == "TESTING" ];then
     export BROSALT=master
     export BROKDZ=master
     export BROLAF=g4-stable
+    export VCHK=https://raw.githubusercontent.com/steadfasterX/SALT/develop/salt.vars
 else
     export BRSALT=master
     export BRKDZ=master
@@ -32,10 +37,10 @@ else
     export BROSALT=develop
     export BROKDZ=develop
     export BROLAF=g4-develop
+    export VCHK=https://raw.githubusercontent.com/steadfasterX/SALT/master/salt.vars
 fi
 
 ######################################################################################
-
 
 # do not echo but write log entry
 F_LOG(){
@@ -179,9 +184,13 @@ F_GETINFO(){ F_LOG "$FUNCNAME: started"
     PBPP=$!
  
     IARB=$(F_CDARB)
+    F_LOG "$FUNCNAME: ARB $IARB"
     USU=$(F_CKUSU)
+    F_LOG "$FUNCNAME: USU $USU"
     ROMCOMP=$(F_ROMCOMP)
-    LAFVER=$($PYTHONBIN $LAFPATH/lglaf.py --proto --rawshell)
+    F_LOG "$FUNCNAME: ROMCOMP $ROMCOMP"
+    LAFVER=$(F_CHKLAFV)
+    F_LOG "$FUNCNAME: LAFVER $LAFVER"
 
     echo "usu:${USU}" \
       && echo "romcomp:$ROMCOMP" \
@@ -362,7 +371,7 @@ F_USUMODEL(){ F_LOG "$FUNCNAME: started"
     #
     (F_DUMPPART raw_resources /tmp/UsU 2>&1) >> $LOG
     REMRR=$(dd if=/tmp/UsU/raw_resources skip=3145722 count=6 bs=1 2>>/dev/null | strings)
-    F_LOG "$FUNCNAME: USUMODEL=$REMRR"
+    F_LOG "$FUNCNAME: RR based USUMODEL=$REMRR"
     echo "${REMRR}"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_USUMODEL
@@ -518,28 +527,29 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     # create a list of *.image files and let the user choose
     IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name '*.mbn' | tr " " "_" |egrep -vi "(GPT|firehose|zeros)");do echo "${ifile##*/}";done | tr "\n" " ")
 
-    F_ELOG "($FUNCNAME) image files: $IMGFILES"
+    F_LOG "($FUNCNAME) image files: $IMGFILES"
 
     # give proper default choice for what to flash and what not
+    shopt -s extglob
     unset IRES
     for f in $IMGFILES;do
         AVIMG="${f/:*}"
         APART=$(echo "${f/*:}" | sed -e 's/\.image//g;s/\.img//g;s/\.bin//g;s/\.mbn//g;s/mmcblk0p\(.*\)/\1/g')
         case $APART in
-            grow|cache|userdata|modemst1|modemst2|persist|persistent|drm)
+            ${PUNNEEDED})
               if [ -z "$IRES" ];then IRES="false\n${AVIMG}\n${APART}\nunneeded\n99"; else IRES="$IRES false\n${AVIMG}\n${APART}\nunneeded\n99" ;fi
             ;;
-            rpm|rpmbak|tz|tzbak|sdi|sdibak|aboot|abootbak|pmic|pmicbak|hyp|hypbak|sbl1|sbl1bak|laf)
+            ${PBOOTL})
               if [ -z "$IRES" ];then IRES="true\n${AVIMG}\n${APART}\nbootloader\n1"; else IRES="$IRES true\n${AVIMG}\n${APART}\nbootloader\n1" ;fi
             ;;
-            misc|devinfo)
+            ${PDEVICE})
               if [ -z "$IRES" ];then 
                 IRES="false\n${AVIMG}\n${APART}</span>\n<span\tcolor='#ff0000'>dangerous</span>\n88"
               else 
                 IRES="$IRES false\n${AVIMG}\n${APART}\n<span\tcolor='#ff0000'>dangerous</span>\n88"
               fi
             ;;
-            modem|limits|mpt|apdp|msadp|dpo|fsg|fsc|ssd|keystore|DDR|sec|encrypt|eksst|rct|boot|recovery|sns|eri|raw_resources*|operatorlogging|carrier|cust|felicia|factory|fota|system)
+            ${PSYSTEM})
             if [ -z "$IRES" ];then
                 IRES="true\n${AVIMG}\n${APART}\n<span\tcolor='#558000'>safe-to-flash</span>\n2"
             else
@@ -562,9 +572,6 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
                 | $FYAD --height=800 --width=700 --title="$YTITLE - FOLDER" --text "\n  Select the partitions you want to flash\n  (the RECOMMENDED partitions to flash are CHECKED already!)\n\n  Hint: you can change the target partition here but do this only when you\n  <b>REALLY KNOW</b> what you're doing!\n" --list --checklist \
                         --column="Flash":CHK --column="Image File":TXT --column="Target partition" --column="Type" --editable --editable-cols="3" --column=sort_int --hide-column=5  --listen  \
                         --button=FLASH:0 --button=Abort:99 |cut -d "|" -f 2-3,5 | tr "|" ":" )
-    CERR=$?
-    F_LOG "CERR: $CERR"
-    [ $CERR -ne 0 ] && F_ERR $FUNCNAME 0 "No partition or aborted by user"
 
     CHCOUNT=$(echo "$CHOOSENP" |tr " " "\n" |grep -c :)
     [ $CHCOUNT -lt 1 ] && F_ERR $FUNCNAME 0 "No partition selected?"
@@ -576,44 +583,49 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 
     F_LOG "sorted partitions: $SORTEDP -> $CHCOUNT"
 
-    # FLASH
-    CNT=0
-    for img in $SORTEDP; do
-        CNT=$((CNT+1))
-        FFILE="$IMGDIR/${img/:*}"
-        FPART=${img/*:}
-        F_LOG "flashing: $FFILE to $FPART"
-
-	# inform yad which partition we flash
-	echo "#flashing: $FPART"
-
-        F_LOG "$FUNCNAME: $FPART starting"
-        $PYTHONBIN -u $LAFPATH/partitions.py --batch --restore "$FFILE" $FPART 2>>$LOG | sed -u -e "s%:\([0-9]*\):\([0-9]*\)%,#$FPART: \1 KB / \2 KB%g;s/,/\n/g"  2>>$LOG
-	FLASHERR=${PIPESTATUS[0]}
-	if [ $FLASHERR -eq 0 ];then
-		echo "100"
-                F_LOG "$FUNCNAME: $FPART finished"
-                [ $CNT -eq $CHCOUNT ] && echo '# ALL PARTITIONS FLASHED SUCCESSFULLY' && F_LOG "$FUNCNAME: All partitions flashed successfully"
-	else
-                F_LOG "$FUNCNAME: $FPART FAILED with $FLASHERR"
-		echo "# $FPART: FAILED"
-	        F_ERR $FUNCNAME 4 "\n  ERROR!\n\n  DO NOT REBOOT YOUR DEVICE!\n  FLASHING PROBLEM OCCURED!!!\n  while flashing:\n\n  <b>$FPART</b>" 
-	fi
-    done | $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if the progress bar does NOT get up to 100%: DO NOT REBOOT THE DEVICE!)\n\n" --width 900 --progress --button='Close (WAIT until all is flashed)':1
-    FLERR=${PIPESTATUS[0]}
-
-    # check result
-    if [ "$FLERR" -eq 0 ];then
-        F_MSGOK 400 "Flashing was successful!"
+    UANS=$(F_MSGW 700 "Will flash these partitions:\n\n$(echo $SORTEDP|tr ' ' '\n')" "--button=FLASH:99")
+    if [ $UANS -ne 99 ] || [ $CHCOUNT -eq 0 ] ;then
+        F_MSGE 500 "Aborted by user or no partitions selected"
     else
-        F_MSGE 400 "FLASHING ENDED WITH ERROR: $FLERR\n\nCheck Debug Log in SALT main screen!\nDO NOT REBOOT THE DEVICE TO AVOID HARD BRICK!!!!"
-    fi
-
-    # wipe cache
-    #F_WIPEPART cache ni || F_MSGE 400 "Wiping cache ended with an error: $WIPERR\n\nCheck Debug Log in SALT main screen."
+        # FLASH
+        CNT=0
+        for img in $SORTEDP; do
+            CNT=$((CNT+1))
+            FFILE="$IMGDIR/${img/:*}"
+            FPART=${img/*:}
+            F_LOG "flashing: $FFILE to $FPART"
     
-    # sync filesystems
-    F_SYNC || F_MSGE 400 "Syncing filesystems ended with an error: $WIPERR\n\nCheck Debug Log in SALT main screen.\nDO NOT REBOOT THE DEVICE!"
+      # inform yad which partition we flash
+      echo "#flashing: $FPART"
+    
+            F_LOG "$FUNCNAME: $FPART starting"
+            $PYTHONBIN -u $LAFPATH/partitions.py --batch --restore "$FFILE" $FPART 2>>$LOG | sed -u -e "s%:\([0-9]*\):\([0-9]*\)%,#$FPART: \1 KB / \2 KB%g;s/,/\n/g"  2>>$LOG
+      FLASHERR=${PIPESTATUS[0]}
+      if [ $FLASHERR -eq 0 ];then
+        echo "100"
+                    F_LOG "$FUNCNAME: $FPART finished"
+                    [ $CNT -eq $CHCOUNT ] && echo '# ALL PARTITIONS FLASHED SUCCESSFULLY' && F_LOG "$FUNCNAME: All partitions flashed successfully"
+      else
+                    F_LOG "$FUNCNAME: $FPART FAILED with $FLASHERR"
+        echo "# $FPART: FAILED"
+              F_ERR $FUNCNAME 4 "\n  ERROR!\n\n  DO NOT REBOOT YOUR DEVICE!\n  FLASHING PROBLEM OCCURED!!!\n  while flashing:\n\n  <b>$FPART</b>" 
+      fi
+        done | $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if the progress bar does NOT get up to 100%: DO NOT REBOOT THE DEVICE!)\n\n" --width 900 --progress --button='Close (WAIT until all is flashed)':1
+        FLERR=${PIPESTATUS[0]}
+    
+        # check result
+        if [ "$FLERR" -eq 0 ];then
+            F_MSGOK 400 "Flashing was successful!"
+        else
+            F_MSGE 400 "FLASHING ENDED WITH ERROR: $FLERR\n\nCheck Debug Log in SALT main screen!\nDO NOT REBOOT THE DEVICE TO AVOID HARD BRICK!!!!"
+        fi
+    
+        # wipe cache
+        #F_WIPEPART cache ni || F_MSGE 400 "Wiping cache ended with an error: $WIPERR\n\nCheck Debug Log in SALT main screen."
+        
+        # sync filesystems
+        F_SYNC || F_MSGE 400 "Syncing filesystems ended with an error: $WIPERR\n\nCheck Debug Log in SALT main screen.\nDO NOT REBOOT THE DEVICE!"
+    fi
     F_LOG "$FUNCNAME: ended"
 }; export -f F_FLASHPART
 
@@ -688,7 +700,7 @@ F_UPDATE(){ F_LOG "$FUNCNAME: started"
             --button=Update:0 --button=Cancel:1 \
          )
 
-    [ $? -ne 0 ] && F_LOG "Aborted on user request" && F_EXIT
+    [ $? -ne 0 ] && F_LOG "Aborted on user request" && F_EXIT $FUNCNAME 4
 
     BRSALT=$(echo "$AA"| cut -d "|" -f 1)
     BRKDZ=$(echo "$AA"| cut -d "|" -f 2)
@@ -971,7 +983,7 @@ F_ADVMENU(){ F_LOG "$FUNCNAME: started"
         --field="SALT debug log!$SICONS/log_16x16.png":FBTN "$SALTPATH/getlog" \
         --field="Support / Credits!$SICONS/log_16x16.png":FBTN "bash -c F_ABOUT" \
         --field="Show your partitions!!This will just list your current partitions":FBTN "bash -c F_LISTPARTS" \
-        --field=:LBL True\
+        --field="Mount an image!!This will let you mount android image files (system,userdata,..)":FBTN "bash -c F_MOUNTPARTS" \
         --field="Open a shell!$SICONS/terminal_30x30.png!Open an adb-like shell while in download mode":FBTN "bash -c F_SHELL" \
         --field="<span color='#ff0000'>Wipe</span> partition(s)!!EXTREMELY DANGEROUS - CAN EASILY BRICK YOUR DEVICE":FBTN "bash -c F_DELPART" \
         --field="Convert system.dat (ROM)!!Convert sparse Android data image (.dat) into filesystem ext4 image and mount it":FBTN "bash -c F_EXTRACTDAT" \
@@ -979,6 +991,32 @@ F_ADVMENU(){ F_LOG "$FUNCNAME: started"
         --button="Close"
 
 }; export -f F_ADVMENU
+
+# mount a partition menu
+F_MOUNTPARTS(){ F_LOG "$FUNCNAME: started"
+    # takes no args
+    
+    CHOICE=$($FYAD --title="$YTITLE - MOUNT" --width=800 --always-print-result --text \
+        "\n  Choose your image file you want to mount\n" \
+        --form \
+        --field="  Image file":FL --file-filter="ROM (*.img)| *.img *.IMG *.bin *.mbn *.image" undef\
+        --field="  Mountpoint (don't touch unless you know why)" "/mnt/salt_mnt" \
+        --button=Abort:99 \
+        --button=Next:0 \
+        )
+    [ $? -eq 99 ] && F_MSGW 500 "Aborted by user" && F_EXIT $FUNCNAME 42
+
+    F_LOG "returned: $CHOICE"
+    IMGFILE=$(echo "$CHOICE" | cut -d '|' -f 1)
+    MNTPNT=$(echo "$CHOICE" | cut -d '|' -f 2)
+
+    F_LOG "IMGFILE = $IMGFILE, MNTPNT = $MNTPNT"
+
+    [ ! -f "$IMGFILE" ] && F_ERR "$FUNCNAME" 3 "$IMGFILE does not exists or is not readable!"
+
+    F_MOUNTIMG "$IMGFILE" "$MNTPNT"
+  
+}; export -f F_MOUNTPARTS
 
 # sparse Android data image (.dat) and it's transfer list 
 F_EXTRACTDAT(){ F_LOG "$FUNCNAME: started"
@@ -1063,18 +1101,42 @@ F_MOUNTIMG(){ F_LOG "$FUNCNAME: started with $@"
     [ ! -f "$MFILE" ] && F_ERR "$FUNCNAME" 3 "$MFILE does not exists or is not readable!"
     [ ! -d "$MPNT" ] && F_LOG "$FUNCNAME: mountpoint $MPNT does not exits.. will be created now!" && mkdir -p $MPNT
 
-    mount -v -o loop "$MFILE" $MPNT >> $LOG
-    if [ $? -eq 0 ]; then
-        $FYAD --width=500 --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - MOUNT" --text="  Image file:\n\t<b>$MFILE</b>\n\n  has been mounted to\n\t<b>$MNTPNT</b>\n\n" \
-            --form \
-            --field="Browse Image":FBTN "sudo -u $REALUSER xdg-open $MPNT" \
-            --field="Unmount Image":FBTN "umount -v $MPNT" \
-            --button=Close:0
+    # check if the mnt point is in use
+    mount | grep "$MPNT" >> /dev/null
+    if [ $? -eq 0 ];then
+        F_MSGE 500 "Mountpoint $MPNT is in use! Unmount it first!\n\nABORTED."
     else
-        F_MSGE 500 "system image could not be mounted to $MNTPNT"
+        # mount
+        mount -v -o loop "$MFILE" $MPNT 2>&1 >> $LOG 
+        if [ $? -eq 0 ]; then
+            $FYAD --width=1000 --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - MOUNT" --text="  Image file:\n\t<b>$MFILE</b>\n\n  has been mounted to\n\t<b>$MNTPNT</b>\n\n" \
+                --form \
+                --field="Browse Image":FBTN "sudo -u $REALUSER xdg-open $MPNT" \
+                --field="Unmount Image":FBTN "bash -c 'F_UMNT $MPNT'" \
+                --button=Close:0
+        else
+            F_MSGE 500 "system image could not be mounted to $MNTPNT.\nCheck SALT logfile!"
+        fi
     fi
     F_LOG "$FUNCNAME ended"
 };export -f F_MOUNTIMG
+
+# unmount image/partitions, ..
+F_UMNT(){ F_LOG "$FUNCNAME: started with '$@'"
+    # takes 1 arg
+    #
+    # required:
+    # 1 => mountpoint to unmount
+    
+    MPNT="$1"
+    mount | grep "$MPNT" >> /dev/null
+    if [ $? -eq 0 ];then
+        umount -v "$MPNT" 2>&1 >> $LOG
+        if [ $? -eq 0 ];then F_MSGOK 500 "$MPNT unmounted!"; else F_MSGE 500 "Error on unmounting!\nCheck logfile in the advanced menu!";fi
+    else
+        F_MSGE 500 "Sorry but there is no mountpoint:\n\n$MPNT"
+    fi
+}; export -f F_UMNT
 
 # unzip files from a ZIP :P
 F_UNZIP(){ F_LOG "$FUNCNAME: started with '$@'"
@@ -1292,6 +1354,9 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     # 1 => type of flashing
     USUDIRECT=undef
 
+    # kill parent window
+    kill -s SIGUSR1 $YAD_PID >> $LOG 2>&1
+
     FLTYPE=$1
     case $FLTYPE in
         sdcard) F_LOG "$FUNCNAME: Will load UsU from the external SD card.."
@@ -1313,18 +1378,23 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
             F_LOG "$FUNCNAME: userdata mounting finished"
         ;;
         direct) F_LOG "$FUNCNAME: Will flash UsU directly to the device..."
-            USUWHERE=$($FYAD --width=600 --title="$YTITLE - UsU" --text="\n    To minimize the risk of taken down by LG:\n    SALT does <b>not</b> come bundled with the UsU unlock files.\n\n    You have to download them manually and tell me the location:\n     1. <b><span color='#ff0000'> aboot </span></b>UsU file\n" \
+            USUWHERE=$($FYAD --image="$SICONS/salt_logo_64x64.png" --width=600 --title="$YTITLE - UsU" --text="\n    To minimize the risk of taken down by LG:\n    SALT does <b>not</b> come bundled with the UsU unlock files.\n\n    You have to download them manually and tell me the location:\n     1. <b><span color='#ff0000'> aboot </span></b>UsU file\n" \
                         --form --field='    UsU unlock file (aboot UsU)':FL --file-filter='aboot UsU file | aboot_UsU.img' \
                         --button=Next:0)
-            DLMWHERE=$($FYAD --width=600 --title="$YTITLE - UsU" --text="\n    2. <b><span color='#ff0000'> laf </span></b>UsU file\n" \
-                        --form --field='    UsU download mode file (laf UsU)':FL --file-filter='laf UsU file | laf_UsU.img' \
+            LASTDIR=$(echo $USUWHERE |cut -d "|" -f1 | sed 's#/aboot_UsU.img##g')
+            DLMWHERE=$($FYAD --image="$SICONS/salt_logo_64x64.png" --width=600 --title="$YTITLE - UsU" --text="\n    2. <b><span color='#ff0000'> laf </span></b>UsU file\n" \
+                        --form --field='    UsU download mode file (laf UsU)':FL --file-filter='laf UsU file | laf_UsU.img' "${LASTDIR}/laf_UsU.img"\
                         --button=Next:0)
-            RRWHERE=$($FYAD --width=600 --title="$YTITLE - UsU" --text="\n    3. <b><span color='#ff0000'> rawres </span></b>UsU file\n" \
-                        --form --field='    UsU misc. file (rawres UsU)':FL --file-filter='rawres UsU file | rawres_UsU.img' \
+            LASTDIR=$(echo $DLMWHERE |cut -d "|" -f1 | sed 's#/laf_UsU.img##g')
+            RRWHERE=$($FYAD  --image="$SICONS/salt_logo_64x64.png" --width=600 --title="$YTITLE - UsU" --text="\n    3. <b><span color='#ff0000'> rawres </span></b>UsU file\n" \
+                        --form --field='    UsU misc. file (rawres UsU)':FL --file-filter='rawres UsU file | rawres_UsU.img' "${LASTDIR}/rawres_UsU.img"\
                         --button=Next:0)
             USUDIRECT=$(echo $USUWHERE |cut -d "|" -f1)
+            USUSRC="$USUDIRECT"
             DLMDIRECT=$(echo $DLMWHERE |cut -d "|" -f1)
+            DLMSRC="$DLMDIRECT"
             RRDIRECT=$(echo $RRWHERE |cut -d "|" -f1)
+            RRSRC="$RRDIRECT"
         ;;
         *) F_ELOG "$FUNCNAME: no valid FLTYPE choosen!!!"
            F_EXIT $FUNCNAME 2
@@ -1332,7 +1402,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     esac
 
     # verify UsU file existence
-    $FYAD --title="$YTITLE - VERIFY" --text="\n  SALT is searching for the UsU files ...\n" --width=500 --progress --progress-text="searching ..." --pulsate --no-buttons --auto-close &
+    $FYAD --image="$SICONS/salt_logo_64x64.png" --title="$YTITLE - VERIFY" --text="\n  SALT is searching for the UsU files ...\n" --width=500 --progress --progress-text="searching ..." --pulsate --no-buttons --auto-close &
     PROGY=$! 
     if [ "$FLTYPE" == "direct" ];then
         if [ !  -f "$USUDIRECT" ] || [ !  -f "$DLMDIRECT" ] || [ !  -f "$RRDIRECT" ];then
@@ -1359,7 +1429,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     # give feedback to the impatient users
     FLPBAR=/tmp/flbbar
     echo 10> $FLPBAR
-    tail -f $FLPBAR | $FYAD --title="$YTITLE - FLASHING" --text="\n  Fasten your seat belt!\n  SALT is flashing UsU ...\n" --width=500 --progress --progress-text="activating UsU ..." --button="Close (WAIT until finished)":1 &
+    tail -f $FLPBAR | $FYAD --image="$SICONS/salt_logo_64x64.png" --title="$YTITLE - FLASHING" --text="\n  Fasten your seat belt!\n  SALT is flashing UsU ...\n" --width=500 --progress --progress-text="activating UsU ..." --button="Close (WAIT until finished)":1 &
     PROGY=$!
     
     # verify writing in general (before actually writing to REAL aboot!!)
@@ -1395,32 +1465,36 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     fi
 
     # real flash
-    echo "#flashing! ..." >> $FLPBAR
+    echo 0 >> $FLPBAR
+    echo "#preparing flashing! ..." >> $FLPBAR
     F_DUMPPART aboot "/tmp/UsU/before"
     F_DUMPPART laf "/tmp/UsU/before"
+    F_DUMPPART raw_resources "/tmp/UsU/before"
     ABPRE=$(sha256sum /tmp/UsU/before/aboot|cut -d " " -f1)
     DLMPRE=$(sha256sum /tmp/UsU/before/laf|cut -d " " -f1)
-    F_LOG "$FUNCNAME: aboot before flashing: $ABPRE, laf before: $DLMPRE"
+    RRPRE=$(sha256sum /tmp/UsU/before/raw_resources|cut -d " " -f1)
+    F_LOG "$FUNCNAME: aboot before flashing: $ABPRE, laf before: $DLMPRE, rr before: $RRPRE"
     if [ "$FLTYPE" == "direct" ];then
         F_LOG 'flashing aboot and laf directly...'
         echo "#flashing UsU unlock ..." >> $FLPBAR
-        $PYTHONBIN $LAFPATH/partitions.py --restore "$USUDIRECT" aboot --batch 1>> $FLPBAR 2>> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py --debug --restore "$USUDIRECT" aboot --batch 1>> $FLPBAR 2>> $LOG
         echo "#flashing UsU laf ..." >> $FLPBAR
         F_LOG "flashing laf from $DLMDIRECT ..."
-        $PYTHONBIN $LAFPATH/partitions.py --restore "$DLMDIRECT" laf --batch 1>> $FLPBAR 2>> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py --debug --restore "$DLMDIRECT" laf --batch 1>> $FLPBAR 2>> $LOG
 
         echo "#flashing UsU rawres ..." >> $FLPBAR
         F_LOG "flashing rawres from $RRDIRECT ..."
-        $PYTHONBIN $LAFPATH/partitions.py --restore "$RRDIRECT" raw_resources --batch 1>> $FLPBAR 2>> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py --debug --restore "$RRDIRECT" raw_resources --batch 1>> $FLPBAR 2>> $LOG
     else
         F_LOG "flashing aboot from $USUSRC..."
         echo "#flashing UsU unlock ..." >> $FLPBAR
-        $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0' --rawshell 2>&1 >> $LOG
+        $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0' --rawshell 2>&1 >> $LOG
         echo "#flashing UsU laf ..." >> $FLPBAR
         F_LOG "flashing laf from $DLMSRC ..."
-        $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek=393216 bs=512\0' --rawshell 2>&1 >> $LOG
+        $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek=393216 bs=512\0' --rawshell 2>&1 >> $LOG
 
         RRSEEKSTART=$($PYTHONBIN $LAFPATH/partitions.py --list --batch |grep "raw_resources:" |cut -d ":" -f 3)
+        F_LOG "FUNCNAME: raw resources from partition listing:"
         $PYTHONBIN $LAFPATH/partitions.py --list --batch |grep "raw_resources:" >> $LOG 2>&1
         # G4 must have rr between sector 770000 and 870000
         if [ "$RRSEEKSTART" -lt 770000 ] || [ "$RRSEEKSTART" -gt 870000 ];then
@@ -1428,18 +1502,48 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
         else
             echo "#flashing UsU rawres ..." >> $FLPBAR
             F_LOG "flashing rawres from $RRSRC with seekstart: $RRSEEKSTART ..."
-            $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek='$RRSEEKSTART' bs=512\0' --rawshell 2>&1 >> $LOG
+            $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$RRSRC' of=/dev/block/mmcblk0 seek='$RRSEEKSTART' bs=512\0' --rawshell 2>&1 >> $LOG
         fi
     fi
     # verify real flashing
     echo "#verifying UsU unlock ..." >> $FLPBAR
     F_DUMPPART aboot "/tmp/UsU/after"
+    F_DUMPPART laf "/tmp/UsU/after"
+    F_DUMPPART raw_resources "/tmp/UsU/after"
     ABAFTER=$(sha256sum /tmp/UsU/after/aboot|cut -d " " -f1)
-    F_LOG "$FUNCNAME: aboot after flashing: $ABAFTER"
+    LAFAFTER=$(sha256sum /tmp/UsU/after/laf|cut -d " " -f1)
+    RRAFTER=$(sha256sum /tmp/UsU/after/raw_resources|cut -d " " -f1)
+    F_LOG "$FUNCNAME: after flashing:\naboot = $ABAFTER\nlaf = $LAFAFTER\nrr = $RRAFTER"
+
+    source "$HASHES"
+    if [ $? -ne 0 ];then
+        F_LOG "ERROR: including $HASHES"
+        F_MSGE 700 "Cannot include UsU hash table!\nABORTED!"
+        kill $PROGY
+        F_EXIT $FUNCNAME 4
+    fi
+    F_LOG "UsU hashes included! LAF: $DLMHASH, rr: $RRHASH"
     
     # verify the whole result
     kill $PROGY
     if [ "$ABAFTER" == "$USUHASH" ];then
+        if [ "$DLMHASH" != "$LAFAFTER" ]||[ "$RRHASH" != "$RRAFTER" ];then
+            F_MSGW 700 "Some parts of UsU couldn't be flashed!\n\nLAF:\n$DLMHASH (wanted)\n$DLMPRE (before)\n$LAFAFTER (after)\n\nrawres:\n$RRHASH (wanted)\n$RRPRE (before)\n$RRAFTER (after)"
+            $FYAD --width=700 --fixed --image="$SICONS/salt_logo_64x64.png" --title="$YTITLE - FB WAY" \
+                --text "SALT will reboot your device now but it needs\n\n<b>YOU</b>\n\nto boot properly:\n\n<b>Before</b> pressing Continue:\n\npress the <b>Volume DOWN</b> button NOW\nand <b>keep</b> it pressed!!\n\nWhen you click continue wait until you see the fastboot mode\n(a black screen and a couple of lines).\nThen you can release that button." \
+                --button=Continue:99
+            if [ $? -eq 99 ];then
+                F_LOG "REBOOT INITIATED by USER!" && $PYTHONBIN ${LAFPATH}/lglaf.py -c '!CTRL RSET'
+                F_USUFLFB laf "${DLMSRC%/*}" "${DLMSRC##*/}"
+                F_USUFLFB raw_resources "${RRSRC%/*}" "${RRSRC##*/}"
+                $FYAD --title="$YTITLE - FB FLASH" --width=700 --fixed --image="$SICONS/salt_logo_64x64.png" --text "Good! Now press\n\n <b>Volume UP (!!)</b> button\n\nand <b>keep</b> it pressed until you see the download mode.\nThen press Continue." --button=Continue
+                fastboot reboot
+                # check device connection
+                F_CHKDEVCON
+            else
+                F_MSGE 600 "Aborted by user"
+            fi
+        fi
         F_MSGOK 800 "   <b>CONGRATULATIONS!</b>\n\n   You're now secureboot off / unlocked!\n\n   Have fun and enjoy your unleashed phone :) !\n\n   <b>Whats next?</b>\n\n   Follow the guide at <a href='https://bit.do/unlockG4'>https://bit.do/unlockG4</a>\n\n   Basic steps are:\n\t- flash TWRP in fastboot\n\t- flash UsU baseband twrp package in TWRP\n\t- flash your custom ROM\n\n   <b><span color='#ff0000'>If you skip flashing the UsU baseband twrp package you will very likely bootloop!</span></b>" '--show-uri'
         $FYAD --title="$YTITLE - Log upload" --width=700 --text "\n\n   Please upload your SALT logfile <b>NOW</b> to ensure important information will not get lost!\n   Click this button and then Upload:\n" \
             --form \
@@ -1447,11 +1551,11 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
             --button=Close
     else
         if [ "$ABAFTER" == "$ABPRE" ];then
-            F_LOG "$FUNCNAME: Expected HASH: $USUHASH but got $TESTAFTER"
-            F_MSGE 800 "   Sorry but flashing seems to be blocked on your device.\n   Nothing has changed! Pls use the <b>QFIL</b> method instead."
+            F_LOG "$FUNCNAME: Expected HASH: $USUHASH but got $ABAFTER"
+            F_MSGE 800 "   Sorry but flashing seems to be blocked on your device.\n   Nothing has changed! Pls use the one of the other flashing methods."
             F_EXIT $FUNCNAME 2
         else
-            F_LOG "$FUNCNAME: Expected HASH: $USUHASH but got $TESTAFTER"
+            F_LOG "$FUNCNAME: Expected HASH: $USUHASH but got $ABAFTER"
             F_MSGE 500 "   This should never happen but if you see this\n   a VERY critical error happened!\n\n   DO NOT POWER OFF YOUR DEVICE!\n\n   Instead use LGup to flash a KDZ otherwise you may hard brick!"
             F_EXIT $FUNCNAME 2
         fi
@@ -1459,13 +1563,91 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
 
 }; export -f F_USUFLASH
 
+# flashing UsU extra parts by fastboot (requires UsU already flashed)
+F_USUFLFB(){ F_LOG "$FUNCNAME: started with this args: $@"
+    # takes 3 args
+    #
+    # required:
+    # 1 => partition to flash
+    # 2 => full path to file (without filename)
+    # 3 => filename (without path)
+
+    FBP=$1
+    FBD="$2"
+    FBFN="$3"
+    FBF="${FBD}/${FBFN}"
+
+    F_LOG "$FUNCNAME: missing argument:\nFBP=$FBP, FBD=$FBD, FBFN=$FBFN\nFBF=$FBF"
+    [ -z "$FBP" -o -z "$FBD" -o -z "$FBFN" ] && F_MSGE 700 "Missing argument" && F_EXIT $FUNCNAME 3
+ 
+    while [ ! -f "$FBF" ];do
+        F_LOG "$FUNCNAME: missing $FBF"
+        FBFA=$($FYAD --image="$SICONS/salt_logo_64x64.png" --width=600 --fixed --title="$YTITLE - FB FLASH" --text="\n    Please tell me the location of the <b><span color='#ff0000'> $FBP </span></b>UsU file\n" \
+                     --form --field='    UsU file':FL --file-filter="UsU file ($FBFN)| $FBFN" \
+                     --button=Next:0 --button=Abort:99)
+        [ "$?" -eq 99 ] && F_EXIT $FUNCNAME 4
+        FBF=$(echo "$FBFA" | cut -d "|" -f 1)
+    done
+
+    F_LOG "$FUNCNAME: Will flash $FBF to $FBP"
+    fastboot flash $FBP "$FBF" 2>&1| sed 's/^/#/g'| tee -a $LOG | $FYAD --width=600 --image="$SICONS/salt_logo_64x64.png" --title="$YTITLE - FB FLASH" --text "\nFlashing $FBP..." --progress --progress-text="...waiting" --pulsate --autoclose --autokill
+}; export -f F_USUFLFB
+
+# check LAF protocol version
+F_CHKLAFV(){ F_LOG "$FUNCNAME: started with this args: $@"
+    # takes 1 arg
+    # returns:
+    #   no args: detected version | unknown (detect failed)
+    #   w arg: 0(ok) | 1(not ok) | unknown (detect failed)
+    #
+    # optional: 
+    # 1 => compare the detection with a max allowed version
+
+    MAXV="$1"
+    LAFV=$($PYTHONBIN $LAFPATH/lglaf.py --proto --rawshell)
+    if [ $? -ne 0 ]||[ -z "$LAFV" ]||[ "$LAFV" -lt 1000001 -o "$LAFV" -gt 2000000 ];then
+        F_LOG "$FUNCNAME: Unexpected error while retrieving LAF protocol version ($LAFV)"
+        echo "unknown"
+    else
+        F_LOG "$FUNCNAME: detected $LAFV"
+        if [ -z "$MAXV" ];then
+            F_LOG "$FUNCNAME: no comparison needed"
+            echo "$LAFV"
+        else
+            if [ "$LAFV" -le "$MAXV" ];then
+                F_LOG "$FUNCNAME: $LAFV is expected range ($MAXV)"
+                echo 0
+            else
+                F_LOG "$FUNCNAME: $LAFV is higher then expected ($MAXV)"
+                echo 1
+            fi
+        fi
+    fi
+}; export -f F_CHKLAFV
+
 # Unofficial steadfasterX Unlock
 F_DOUSU(){ F_LOG "$FUNCNAME: started with this args: $@"
     # Takes 1 argument
     #
     # 1 => model name
 
+    # kill parent window
+    kill -s SIGUSR1 $YAD_PID >> $LOG 2>&1
+
+    # check device connection
+    F_CHKDEVCON
+
+    # UsU flashing in SALT will work only up to (including) LAF v4
+    RE=$(F_CHKLAFV 1000004)
+    if [ "$RE" == "0" ];then
+        F_LOG "$FUNCNAME: This laf version is supported!"
+    else
+        F_MSGE 600 "Oops!\n\nYour Download mode version is not supported!\n\nDowngrade to LP or MM!"
+        F_EXIT $FUNCNAME 4
+    fi
+
     UMOD=$1
+    export LGMODEL=$UMOD
     USUVALIDS="@(LG-G4_UsU|*LS991*|*F500*|*H810*|*H812*|*H811*|*H815*|*H819*|*US991*|*VS986*)"
 
     shopt -s extglob
@@ -1479,7 +1661,7 @@ F_DOUSU(){ F_LOG "$FUNCNAME: started with this args: $@"
         ;;
     esac
     
-    A=$(F_MSGW 900 "  You device ($UMOD) is supported by UsU!\n\n  This unlock works for any <b>G4</b> model out there but for <b>no other device!</b>\n\n  <b><span color='#ff0000'>Unlocking your device is a risk - always!</span></b>\n\n  You do this on your <b>own</b> risk and without any guarantees\n\n  I do my best to avoid damage but don't cry when this here fails for you.\n  Ensure you have taken at least a basic backup with SALT before proceeding!\n  That backup is your only chance for recovery!" "--button=UNLOCK:99")
+    A=$(F_MSGW 900 "  Your device ($UMOD) is supported by UsU!\n\n  This unlock works for any <b>G4</b> model out there but for <b>no other device!</b>\n\n  <b><span color='#ff0000'>Unlocking your device is a risk - always!</span></b>\n\n  You do this on your <b>own</b> risk and without any guarantees\n\n  I do my best to avoid damage but don't cry when this here fails for you.\n  Ensure you have taken at least a basic backup with SALT before proceeding!\n  That backup is your only chance for recovery!" "--button=UNLOCK:99 --fixed")
 
     F_LOG "$FUNCNAME: Answered: $A"
     if [ "$A" == "99" ];then
@@ -1515,4 +1697,31 @@ F_DOUSU(){ F_LOG "$FUNCNAME: started with this args: $@"
     fi
 
 }; export -f F_DOUSU
+
+# new version check
+F_VCHK(){ F_LOG "$FUNCNAME: started with this args: $@"
+    # Takes no argument
+    #
+    ONLVF=$($CURLB --connect-timeout 10 --stderr $LOG -s $VCHK | grep "VDIG=" | cut -d "=" -f 2 | tr -d '"')
+    ONLV=$(echo "$ONLVF" | sed 's/[\.-]//g')
+    CURVF=$(echo "$VDIG" | cut -d "=" -f 2 | tr -d '"')
+    CURV=$(echo "$CURVF" | sed 's/[\.-]//g')
+
+    if [ -z "$ONLV" ]||[ -z "$CURV" ];then
+      F_LOG "$FUNCNAME: cannot check for new version:\nonline: $ONLV / $ONLVF\nhere: $CURV / $CURVF"
+    else
+      if [ $ONLV -gt $CURV ];then
+        F_LOG "$FUNCNAME: newer SALT version found ($ONLV / $ONLVF vs. $CURV / $CURVF)"
+        UA=$(F_MSGW 700 "New SALT version available!\n\nYou:\t<b>$CURVF</b>\nOnline:\t<b>$ONLVF</b>\n\nDo you want to update now?" "--button=Update:99")
+        if [ "$UA" == 99 ];then
+            (F_UPDATE)
+            F_MSGOK 600 "Will close SALT now due to the update taken!\nJust re-open SALT afterwards."
+            F_EXIT "After-Update-End" 0 full 
+        fi
+      else
+        F_LOG "$FUNCNAME: no newer SALT version found ($ONLV / $ONLVF vs. $CURV / $CURVF)"
+      fi
+    fi
+}; export -f F_VCHK
+
 
