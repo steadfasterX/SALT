@@ -1429,7 +1429,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     # give feedback to the impatient users
     FLPBAR=/tmp/flbbar
     echo 10> $FLPBAR
-    tail -f $FLPBAR | $FYAD --image="$SICONS/salt_logo_64x64.png" --title="$YTITLE - FLASHING" --text="\n  Fasten your seat belt!\n  SALT is flashing UsU ...\n" --width=500 --progress --progress-text="activating UsU ..." --button="Close (WAIT until finished)":1 &
+    tail -f $FLPBAR | $FYAD --image="$SICONS/salt_logo_64x64.png" --title="$YTITLE - FLASHING" --text="\n  Fasten your seat belt!\n  SALT is flashing UsU ...\n" --width=500 --progress --progress-text="activating UsU ..." --no-buttons --auto-close &
     PROGY=$!
     
     # verify writing in general (before actually writing to REAL aboot!!)
@@ -1486,6 +1486,10 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
         F_LOG "flashing rawres from $RRDIRECT ..."
         $PYTHONBIN $LAFPATH/partitions.py --debug --restore "$RRDIRECT" raw_resources --batch 1>> $FLPBAR 2>> $LOG
     else
+        # we have no progress indicator when flashing from the device storage so we need to pulsate..
+        kill $PROGY
+        tail -f $FLPBAR | $FYAD --image="$SICONS/salt_logo_64x64.png" --title="$YTITLE - FLASHING" --text="\n  Fasten your seat belt!\n  SALT is flashing UsU ...\n" --width=500 --progress --progress-text="starting ..." --pulsate --no-buttons --auto-close &
+        PROGY=$!
         F_LOG "flashing aboot from $USUSRC..."
         echo "#flashing UsU unlock ..." >> $FLPBAR
         $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0' --rawshell 2>&1 >> $LOG
@@ -1703,9 +1707,9 @@ F_VCHK(){ F_LOG "$FUNCNAME: started with this args: $@"
     # Takes no argument
     #
     ONLVF=$($CURLB --connect-timeout 10 --stderr $LOG -s $VCHK | grep "VDIG=" | cut -d "=" -f 2 | tr -d '"')
-    ONLV=$(echo "$ONLVF" | sed 's/[\.-]//g')
+    ONLV=$(echo "$ONLVF" | tr -d "." | cut -d "-" -f1)
     CURVF=$(echo "$VDIG" | cut -d "=" -f 2 | tr -d '"')
-    CURV=$(echo "$CURVF" | sed 's/[\.-]//g')
+    CURV=$(echo "$CURVF" | tr -d "." | cut -d "-" -f1)
 
     if [ -z "$ONLV" ]||[ -z "$CURV" ];then
       F_LOG "$FUNCNAME: cannot check for new version:\nonline: $ONLV / $ONLVF\nhere: $CURV / $CURVF"
