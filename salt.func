@@ -1703,9 +1703,9 @@ F_VCHK(){ F_LOG "$FUNCNAME: started with this args: $@"
     # Takes no argument
     #
     ONLVF=$($CURLB --connect-timeout 10 --stderr $LOG -s $VCHK | grep "VDIG=" | cut -d "=" -f 2 | tr -d '"')
-    ONLV=$(echo "$ONLVF" | sed 's/[\.-]//g')
+    ONLV=$(echo "$ONLVF" | tr -d "." | cut -d "-" -f1)
     CURVF=$(echo "$VDIG" | cut -d "=" -f 2 | tr -d '"')
-    CURV=$(echo "$CURVF" | sed 's/[\.-]//g')
+    CURV=$(echo "$CURVF" | tr -d "." | cut -d "-" -f1)
 
     if [ -z "$ONLV" ]||[ -z "$CURV" ];then
       F_LOG "$FUNCNAME: cannot check for new version:\nonline: $ONLV / $ONLVF\nhere: $CURV / $CURVF"
