@@ -23,9 +23,10 @@ source $FUNCS
 echo -e "$(date '+%F %T'): Starting $TNAME v${VERSION}!\n****************************************************\n" > $LOG
 
 # check requirements:
-[ ! -x $YAD ]&& F_ELOG "FATAL ERROR!! Missing requirement <yad>. Install YAD and try again!" && F_EXIT yad-missing 3
-[ ! -x $LAFTERM ] && F_ERR no-lafterminal 3 "\n  ERROR!\n\n  Missing xTerminal (usually xterm).\n  Install xterm or check salt.vars file."
-[ ! -x $GIT ] && F_ERR no-git 3 "\n  ERROR!\n\n  Missing GIT client.\n  Install git or check salt.vars file."
+[ ! -x $YAD ] && F_ELOG "FATAL ERROR!! Missing requirement <yad>. Install YAD and try again!" && F_EXIT "no-YAD" 3 full
+if [ ! -x $LAFTERM ];then F_MSGE 700 "Missing X terminal (usually xterm).\n  Install $LAFTERM or check salt.vars file."; F_EXIT "no-xterm" 3 full; fi 
+if [ ! -x $GIT ];then no-git 3 "\n  ERROR!\n\n  Missing GIT client.\n  Install $GIT or check salt.vars file." ; F_EXIT "no-git" 3 full; fi 
+if [ ! -x $FBBIN ];then F_MSGE 700 "Missing fastboot!\nInstall $FBBIN first (or better directly consider to use FWUL ...)!"; F_EXIT "no-fb" 3 full; fi 
 
 # check root:
 ME=$(id -u)
