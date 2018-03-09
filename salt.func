@@ -1541,7 +1541,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
                 F_USUFLFB laf "${DLMSRC%/*}" "${DLMSRC##*/}"
                 F_USUFLFB raw_resources "${RRSRC%/*}" "${RRSRC##*/}"
                 $FYAD --title="$YTITLE - FB FLASH" --width=700 --fixed --image="$SICONS/salt_logo_64x64.png" --text "Good! Now press\n\n <b>Volume UP (!!)</b> button\n\nand <b>keep</b> it pressed until you see the download mode.\nThen press Continue." --button=Continue
-                fastboot reboot
+                $FBBIN reboot
                 # check device connection
                 F_CHKDEVCON
             else
@@ -1585,7 +1585,7 @@ F_USUFLFB(){ F_LOG "$FUNCNAME: started with this args: $@"
     [ -z "$FBP" -o -z "$FBD" -o -z "$FBFN" ] && F_MSGE 700 "Missing argument" && F_EXIT $FUNCNAME 3
  
     while [ ! -f "$FBF" ];do
-        F_LOG "$FUNCNAME: missing $FBF"
+        F_LOG "$FUNCNAME: no FBF given >$FBF<"
         FBFA=$($FYAD --image="$SICONS/salt_logo_64x64.png" --width=600 --fixed --title="$YTITLE - FB FLASH" --text="\n    Please tell me the location of the <b><span color='#ff0000'> $FBP </span></b>UsU file\n" \
                      --form --field='    UsU file':FL --file-filter="UsU file ($FBFN)| $FBFN" \
                      --button=Next:0 --button=Abort:99)
@@ -1594,7 +1594,7 @@ F_USUFLFB(){ F_LOG "$FUNCNAME: started with this args: $@"
     done
 
     F_LOG "$FUNCNAME: Will flash $FBF to $FBP"
-    fastboot flash $FBP "$FBF" 2>&1| sed 's/^/#/g'| tee -a $LOG | $FYAD --width=600 --image="$SICONS/salt_logo_64x64.png" --title="$YTITLE - FB FLASH" --text "\nFlashing $FBP..." --progress --progress-text="...waiting" --pulsate --autoclose --autokill
+    $FBBIN flash $FBP "$FBF" 2>&1| sed 's/^/#/g'| tee -a $LOG | $FYAD --width=600 --image="$SICONS/salt_logo_64x64.png" --title="$YTITLE - FB FLASH" --text "\nFlashing $FBP..." --progress --progress-text="...waiting" --pulsate --autoclose --autokill
 }; export -f F_USUFLFB
 
 # check LAF protocol version
