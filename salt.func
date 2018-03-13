@@ -1650,6 +1650,25 @@ F_DOUSU(){ F_LOG "$FUNCNAME: started with this args: $@"
         F_EXIT $FUNCNAME 4
     fi
 
+    # UsU may NOT work with ARB > 2
+    ARB=$(F_CDARB)
+    DEVARBVAL=$(echo ${ARB}| cut -d ":" -f 1)
+    DEVARBEMPT=$(echo ${ARB}| cut -d ":" -f 2)
+
+    if [ $DEVARBEMPT -eq 0 ];then
+        DEVARB=$DEVARBVAL
+    else
+        DEVARB="ARB_unknown"
+        F_MSGE 700 "I cannot determine your ARB!\n\nUsU can be flashed only on ARB up to including 2!\n\nABORTED to avoid damage."
+        F_EXIT no-arb 3
+    fi
+    if [ "$DEVARB" -le 2 ];then
+        F_LOG "GOOD! Your ARB ($DEVARB) is compatible."
+    else
+        F_MSGE 700 "UsU can be flashed only on ARB up to including <b>2</b> !\n\nYour ARB is: <b>$DEVARB</b>\n\nABORTED to avoid damage."
+        F_EXIT arb-not-allowed 3
+    fi
+
     UMOD=$1
     export LGMODEL=$UMOD
     USUVALIDS="@(LG-G4_UsU|*LS991*|*F500*|*H810*|*H812*|*H811*|*H815*|*H819*|*US991*|*VS986*)"
