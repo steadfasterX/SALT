@@ -3,7 +3,7 @@
 #
 # SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
 #
-# Copyright (C): 2017, steadfasterX <steadfastX|boun.cr>
+# Copyright (C): 2017-2018, steadfasterX <steadfastX|boun.cr>
 #
 # LG KDZ MANAGER 
 # 
@@ -124,27 +124,27 @@ done
 # list partitions of a DZ file
 FK_LISTPARTS(){
     if [ "$BATCH" -eq 1 ];then
-        python2 ${KDZTOOLS}/undz -b -l -f ${KDZDIR}/extractedkdz/*.dz 2>>$LOG
+        python2 ${KDZTOOLS}/undz -b -l -f "${KDZDIR}/extractedkdz/*.dz" 2>>$LOG
     else
-        python2 ${KDZTOOLS}/undz -l -f ${KDZDIR}/extractedkdz/*.dz
+        python2 ${KDZTOOLS}/undz -l -f "${KDZDIR}/extractedkdz/*.dz"
     fi        
 }
 
 # extract a KDZ file
 FK_EXTRACTKDZ(){
     if [ "$BATCH" -eq 1 ];then
-        python2 ${KDZTOOLS}/unkdz -f "$FULLKDZ" -x -d ${KDZDIR}/extractedkdz 2>>$LOG
+        python2 ${KDZTOOLS}/unkdz -f "$FULLKDZ" -x -d "${KDZDIR}/extractedkdz" 2>>$LOG
     else
-        python2 ${KDZTOOLS}/unkdz -f "$FULLKDZ" -x -d ${KDZDIR}/extractedkdz
+        python2 ${KDZTOOLS}/unkdz -f "$FULLKDZ" -x -d "${KDZDIR}/extractedkdz"
     fi
 }
 
 # extract a DZ
 FK_EXTRACTPARTS(){
     if [ "$BATCH" -eq 1 ];then
-        python2 ${KDZTOOLS}/undz -b -s $SELPARTS -f ${KDZDIR}/extractedkdz/*.dz -d ${KDZDIR}/extracteddz
+        python2 ${KDZTOOLS}/undz -b -s $SELPARTS -f "${KDZDIR}/extractedkdz/*.dz" -d "${KDZDIR}/extracteddz"
     else
-        python2 ${KDZTOOLS}/undz -s $SELPARTS -f ${KDZDIR}/extractedkdz/*.dz -d ${KDZDIR}/extracteddz
+        python2 ${KDZTOOLS}/undz -s $SELPARTS -f "${KDZDIR}/extractedkdz/*.dz" -d "${KDZDIR}/extracteddz"
     fi
     # delete unneeded parse files
     rm -rvf ${KDZDIR}/extracteddz/*.params
@@ -159,21 +159,21 @@ if [ $LISTMODE -eq 1 ];then
 else
     # extract KDZ and DZ
     if [ $EXTRACT -eq 1 ];then
-        [ -z $KDZDIR ] && KDZDIR="$(echo ~/Downloads)"
+        [ -z "$KDZDIR" ] && KDZDIR="$(echo ~/Downloads)"
         echo -e "\nWill extract all files to: $KDZDIR"
         echo -e "\n\n***********\nWARNING:\n***********\nKDZ files contain the userdata image which can be very big (e.g. 23 GB on a LG G4)\nEnsure you have enough free disk space before continuing!\nYou can continue even when you have not enough free space but the result will be incomplete (still enough maybe)\n"
         [ "$BATCH" -eq 0 ] && read -p "I understood and want to continue (press ENTER)" DUMMY
     
         if [ $TESTMODE -eq 0 ];then
-            DZFILE=$(find ${KDZDIR}/extractedkdz/*.dz 2>/dev/null)
+            DZFILE=$(find "${KDZDIR}/extractedkdz/*.dz" 2>/dev/null)
             [ ! -f "$DZFILE" ] && FK_EXTRACTKDZ
             FK_EXTRACTPARTS
             # delete userdata partition when not needed
-            [ "$UDATA" -eq 0 ] && echo "You have selected to delete userdata partition" && rm -rfv ${KDZDIR}/extracteddz/userdata*
+            [ "$UDATA" -eq 0 ] && echo "You have selected to delete userdata partition" && rm -rfv "${KDZDIR}/extracteddz/userdata*"
             # delete cache partition when not needed
-            [ "$WCACHE" -eq 0 ] && echo "You have selected to delete cache partition" && rm -rfv ${KDZDIR}/extracteddz/cache*
+            [ "$WCACHE" -eq 0 ] && echo "You have selected to delete cache partition" && rm -rfv "${KDZDIR}/extracteddz/cache*"
             # clean DZ file
-            [ $DEBUG -eq 0 ] && rm -fv ${KDZDIR}/extractedkdz/*.dz
+            [ $DEBUG -eq 0 ] && rm -fv "${KDZDIR}/extractedkdz/*.dz"
         else
             echo "TESTMODE only:"
             echo "CMD: python2 ${KDZTOOLS}/unkdz -f $FULLKDZ -x -d ${KDZDIR}/extractedkdz"
@@ -201,13 +201,13 @@ else
         fi
         
         # flash
-        for part in $(find $IMGPATH -type f -name *.image|egrep -vi "($GREPOUT)");do
-            RMPATH=${part##*/}
-            REMPART=${RMPATH/\.image/}
+        for part in $(find "$IMGPATH" -type f -name *.image|egrep -vi "($GREPOUT)");do
+            RMPATH="${part##*/}"
+            REMPART="${RMPATH/\.image/}"
             echo -e "... flashing: $part to ${REMPART}"
             # redirecting the misleading error output (sorry dirty workaround atm..)
             if [ $TESTMODE -eq 0 ];then
-                sudo python2 ${LAFPATH}/partitions.py --restore $part $REMPART 2>/dev/null
+                sudo python2 ${LAFPATH}/partitions.py --restore "$part" $REMPART 2>/dev/null
             else
                 echo "TESTMODE only:"
                 echo "CMD: sudo python2 ${LAFPATH}/partitions.py --restore $part $REMPART"
