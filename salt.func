@@ -474,7 +474,7 @@ F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
 
     # test mode?
     if [ "$LGDRY" != "FALSE" ];then
-        ($KDZMGR --batch --flash $KDZTMP/extracteddz --test 2>&1) | tee -a $LOG | $FYAD --title="$YTITLE - FLASH" --text-info --text "\n  <b><span color='#009900'>FLASHING KDZ (TEST)...</span></b>\n" --listen --tail --height=600 --width=900 --wrap --fore=blue --button="Next":0
+        ($KDZMGR --batch --flash "$KDZTMP/extracteddz" --test 2>&1) | tee -a $LOG | $FYAD --title="$YTITLE - FLASH" --text-info --text "\n  <b><span color='#009900'>FLASHING KDZ (TEST)...</span></b>\n" --listen --tail --height=600 --width=900 --wrap --fore=blue --button="Next":0
         $FYAD --title="$YTITLE - FLASH" --text "\n  TEST run finished\n\n  Do you want to continue to FLASH in REAL now?" --button=FLASH:1 --button=Cancel:0
         [ $? -ne 1 ] && echo canceling.. && F_EXIT $FUNCNAME $?
     fi
