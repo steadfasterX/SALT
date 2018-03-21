@@ -19,6 +19,7 @@ FUNCS="${0%/*}/salt.func"
 source $FUNCS 
 [ $? -ne 0 ] && "ERROR: Missing requirement <$FUNCS>." && exit 3
 
+F_LOG "KDZMGR started.."
 
 F_HELP(){
     echo -e "\nCopyright (C) 2017-2018: steadfasterX <steadfastX | boun.cr>"
@@ -123,10 +124,11 @@ done
 
 # list partitions of a DZ file
 FK_LISTPARTS(){
+    DZFILE="$(echo ${KDZDIR}/extractedkdz/*.dz)"
     if [ "$BATCH" -eq 1 ];then
-        python2 ${KDZTOOLS}/undz -b -l -f "${KDZDIR}/extractedkdz/*.dz" 2>>$LOG
+        python2 ${KDZTOOLS}/undz -b -l -f "${DZFILE}" 2>>$LOG
     else
-        python2 ${KDZTOOLS}/undz -l -f "${KDZDIR}/extractedkdz/*.dz"
+        python2 ${KDZTOOLS}/undz -l -f "${DZFILE}"
     fi        
 }
 
@@ -141,10 +143,11 @@ FK_EXTRACTKDZ(){
 
 # extract a DZ
 FK_EXTRACTPARTS(){
+    DZFILE="$(echo ${KDZDIR}/extractedkdz/*.dz)"
     if [ "$BATCH" -eq 1 ];then
-        python2 ${KDZTOOLS}/undz -b -s $SELPARTS -f "${KDZDIR}/extractedkdz/*.dz" -d "${KDZDIR}/extracteddz"
+        python2 ${KDZTOOLS}/undz -b -s $SELPARTS -f "${DZFILE}" -d "${KDZDIR}/extracteddz"
     else
-        python2 ${KDZTOOLS}/undz -s $SELPARTS -f "${KDZDIR}/extractedkdz/*.dz" -d "${KDZDIR}/extracteddz"
+        python2 ${KDZTOOLS}/undz -s $SELPARTS -f "${DZFILE}" -d "${KDZDIR}/extracteddz"
     fi
     # delete unneeded parse files
     rm -rvf ${KDZDIR}/extracteddz/*.params
@@ -165,7 +168,7 @@ else
         [ "$BATCH" -eq 0 ] && read -p "I understood and want to continue (press ENTER)" DUMMY
     
         if [ $TESTMODE -eq 0 ];then
-            DZFILE=$(find "${KDZDIR}/extractedkdz/*.dz" 2>/dev/null)
+            DZFILE=$(find "${KDZDIR}/extractedkdz/" -name '.*\.dz' 2>/dev/null)
             [ ! -f "$DZFILE" ] && FK_EXTRACTKDZ
             FK_EXTRACTPARTS
             # delete userdata partition when not needed
@@ -216,3 +219,4 @@ else
     fi
 fi
 [ "$BATCH" -eq 0 ] && echo -e "\n\nAll done.\n\n"
+F_LOG "KDZMGR ended.."

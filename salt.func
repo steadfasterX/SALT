@@ -223,9 +223,11 @@ F_ROMCOMP(){ F_LOG "$FUNCNAME: started"
 
 # check the ARB of a KDZ file
 F_KDZARB(){  F_LOG "$FUNCNAME: started with $@"
-    # takes xx args, returns ARB value found
+    # takes 2 args, returns ARB value found
     #
-    #
+    # 1 => full path to kdz file
+    # 2 => full extract path
+
     LGKDZ="$1"
     LGTARGET="$2"
 
@@ -234,15 +236,20 @@ F_KDZARB(){  F_LOG "$FUNCNAME: started with $@"
 
  
     F_LOG "$FUNCNAME: cleanup.."
-    find "$LGTARGET" -type f -name 'sbl*' -or -name 'xbl*' -exec rm -vf {}\; >> $LOG 2>&1
+    find "$LGTARGET" -type f -name 'sbl*' -or -name 'xbl*' -exec rm -vf {}\\; >> $LOG 2>&1
     IRES=$($KDZMGR --batch --list -x "$LGKDZ" -d "$LGTARGET" 2>&1)
     ARBSLICE=$(echo "$IRES" |egrep "sbl|xbl"|head -n1|cut -d ":" -f 1)
-    F_LOG "$FUNCNAME: found ARB in slice $ARBSLICE.. extracting.."
-    $KDZMGR --batch -x "$LGKDZ" -d "$LGTARGET" --slice "$ARBSLICE" >> $LOG 2>&1
-    ARBFILE=$(find "$LGTARGET" -type f -name 'sbl*' -or -name 'xbl*')
-    F_LOG "$FUNCNAME: ARBFILE = $ARBFILE"
-    # get and print the ARB
-    F_CKARB "$ARBFILE"
+    if [ -z "$ARBSLICE" ];then
+        F_LOG "$FUNCNAME: no ARB or slice found >$ARBSLICE< .. skipping ARB detection .."
+        echo "arb-detect-error"
+    else
+        F_LOG "$FUNCNAME: found ARB in slice >$ARBSLICE< .. extracting.."
+        $KDZMGR --batch -x "$LGKDZ" -d "$LGTARGET" --slice "$ARBSLICE" >> $LOG 2>&1
+        ARBFILE=$(find "$LGTARGET" -type f -name 'sbl*' -or -name 'xbl*')
+        F_LOG "$FUNCNAME: ARBFILE = $ARBFILE"
+        # get and print the ARB
+        F_CKARB "$ARBFILE"
+    fi
 }; export -f F_KDZARB
 
 # extract a KDZ
@@ -301,15 +308,11 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
             --listen --no-selection \
             --button=Extract:0 \
             --button=Abort:3) | cut -d "|" -f 2,3 | tr "|" ":"| tr "\n" " ")
-        CERR=${PIPESTATUS[0]}
     fi
     F_LOG "CHOOSENP: $CHOOSENP"
 
-    F_LOG "CERR: $CERR"
-    [ $CERR -ne 0 ] && F_MSGE 400 "Aborted by user!" && F_EXIT $FUNCNAME $CERR
-
     CHCOUNT=$(echo "$CHOOSENP" |tr " " "\n" |grep -c :)
-    [ $CHCOUNT -lt 1 ] && F_MSGE 400 "No partition selected?" && F_EXIT $FUNCNAME $CHCOUNT
+    [ $CHCOUNT -lt 1 ] && F_MSGE 700 "No partition selected or aborted by user" && F_EXIT $FUNCNAME $CHCOUNT
 
     F_ELOG "choosen partitions: $CHOOSENP -> $CHCOUNT"
 
@@ -412,12 +415,15 @@ F_CKARB(){ F_LOG "$FUNCNAME: started"
 
     ARBFILE="$1"
 
-    [ ! -f "$ARBFILE" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\nMissing required file to check for ARB\n  (checked for: $ARBFILE)!"
-
-    KDZARB=$(strings "$ARBFILE" | grep "0 SW_ID" |cut -d " " -f 2 |tr -d "0")
-    [ -z "$KDZARB" ] && KDZARB=0
-    F_LOG "KDZARB=$KDZARB"
-    echo $KDZARB
+    if [ ! -f "$ARBFILE" ];then
+        F_MSGE 700 "Missing required file to check for ARB\n  (checked this filename: $ARBFILE)!"
+        echo "arb-detect-error"
+    else
+        KDZARB=$(strings "$ARBFILE" | grep "0 SW_ID" |cut -d " " -f 2 |tr -d "0")
+        [ -z "$KDZARB" ] && KDZARB=0
+        F_LOG "KDZARB=$KDZARB"
+        echo $KDZARB
+    fi
     F_LOG "$FUNCNAME: ended"
 }; export -f F_CKARB
 
@@ -470,7 +476,7 @@ F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
 
     # autoextract kdz without userdata and cache
     KDZTMP=/tmp
-    F_EXTRACTKDZ $LGKDZ $KDZTMP auto
+    F_EXTRACTKDZ "$LGKDZ" "$KDZTMP" auto
 
     # test mode?
     if [ "$LGDRY" != "FALSE" ];then
