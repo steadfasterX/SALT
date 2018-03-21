@@ -270,7 +270,8 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
     [ -z "$LGTARGET" -o ! -d "$LGTARGET" ] && F_ERR $FUNCNAME 3 "Internal error: empty LGTARGET or directory not found"
 
     # ensure the target dir does not contain old image files
-    for old in $(find "${LGTARGET}/extracteddz" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name '*.mbn'); do F_LOG "$(rm -vf $old)"; done
+    [ "${LGTARGET}/extracteddz" ] && rm -rf "${LGTARGET}/extracteddz"
+    [ "${LGTARGET}/extractekdz" ] && rm -rf "${LGTARGET}/extractedkdz"
 
     # grab the partition list
     $FYAD --title="$YTITLE - PREPARE" --text "\n  Collecting KDZ information..." --width=400 --timeout=120 --timeout-indicator=right --no-buttons &
