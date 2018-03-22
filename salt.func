@@ -1032,12 +1032,18 @@ F_ADVMENU(){ F_LOG "$FUNCNAME: started"
 
 # mount a partition menu
 F_MOUNTPARTS(){ F_LOG "$FUNCNAME: started"
-    # takes no args
+    # takes 1 arg
+    #
+    # optional:
+    # 1 => full path to image file
     
+    ISRC=undef
+    [ ! -z "$1" ] && ISRC="$1/click-here-2-select-a-file"
+ 
     CHOICE=$($FYAD --title="$YTITLE - MOUNT" --width=800 --always-print-result --text \
         "\n  Choose your image file you want to mount\n" \
         --form \
-        --field="  Image file":FL --file-filter="ROM (*.img)| *.img *.IMG *.bin *.mbn *.image" undef\
+        --field="  Image file":FL --file-filter="Image (*.img)| *.img *.IMG *.bin *.mbn *.image" "$ISRC"\
         --field="  Mountpoint (don't touch unless you know why)" "/mnt/salt_mnt" \
         --button=Abort:99 \
         --button=Next:0 \
