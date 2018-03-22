@@ -157,18 +157,23 @@ F_MAIN(){
     # make the decision whcih features should be enabled in the main GUI    
     #TODO: test all flash parts again then we can enable that one: if [ "$LAFVER" == "1000001" ]||[ $EXPERIMENTAL -eq 1 ];then FLASHMENU=1; else FLASHMENU=0;fi
     #if [ "$LAFVER" == "1000001" ]||[ $EXPERIMENTAL -eq 1 ];then FLASHMENU=0; else FLASHMENU=0;fi
-    if [ "$LAFVER" != "1000001" ] && [ $EXPERIMENTAL -ne 1 ];then
-        F_MSGW 700 "Your device does <b>not</b> support direct flashing!\nFlashing functionality <b>disabled</b>!\n\nActivate flashing functionality by flashing a SALT compatible LAF partition.\nDownload it right here for <b>any</b> G4 model (requires unlocked device + TWRP):\n\n<a href='https://www.androidfilehost.com/?fid=818070582850495147'>SALT-compatible-LAF_flash-in-twrp.zip</a>\n\nYou can still use many of the features SALT offering - just not the flashing part." "--fixed --height=300"
-        F_LOG "Flashing functionality disabled bc: LAFVER = $LAFVER and/or EXPERIMENTAL = $EXPERIMENTAL"
-        FLASHMENU=0
+    if [ $DEVCON -ne 11 ];then
+        if [ "$LAFVER" != "1000001" ] && [ $EXPERIMENTAL -ne 1 ];then
+            F_MSGW 700 "Your device does <b>not</b> support direct flashing!\nFlashing functionality <b>disabled</b>!\n\nActivate flashing functionality by flashing a SALT compatible LAF partition.\nDownload it right here for <b>any</b> G4 model (requires unlocked device + TWRP):\n\n<a href='https://www.androidfilehost.com/?fid=818070582850495147'>SALT-compatible-LAF_flash-in-twrp.zip</a>\n\nYou can still use many of the features SALT offering - just not the flashing part." "--fixed --height=300"
+            F_LOG "Flashing functionality disabled bc: LAFVER = $LAFVER and/or EXPERIMENTAL = $EXPERIMENTAL"
+            FLASHMENU=0
+        else
+            #ATM: DISABLED! WITHOUT EXPERIMENTAL FLAG NO WAY TO OPEN IT
+            # FLASHMENU=1
+            FLASHMENU=0
+            F_LOG "Flashing functionality enabled bc: LAFVER = $LAFVER and/or EXPERIMENTAL = $EXPERIMENTAL"
+            F_LOG "HINT: Flashing temporarly NOT auto enabled (until all tests finished)!"
+        fi
     else
-        #ATM: DISABLED! WITHOUT EXPERIMENTAL FLAG NO WAY TO OPEN IT
-        # FLASHMENU=1
-        FLASHMENU=0
-        F_LOG "Flashing functionality enabled bc: LAFVER = $LAFVER and/or EXPERIMENTAL = $EXPERIMENTAL"
-        F_LOG "HINT: Flashing temporarly NOT auto enabled (until all tests finished)!"
+            F_LOG "Flashing functionality disabled bc: DEVCON = $DEVCON (no device found and skipped pressed)"
+            FLASHMENU=0
     fi
-
+        
     # main SALT screen depends on experimental flag .. and LAF version
     if [ $FLASHMENU -eq 0 ]&&[ $EXPERIMENTAL -ne 1 ];then
       $FYAD --title="$YTITLE" --width=1100 --height=600 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://bit.do/SALTatXDA'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
