@@ -336,6 +336,10 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
         [ $CNT -eq $CHCOUNT ] && echo '# FINISHED!' >>/tmp/e && F_LOG "$FUNCNAME: Extract finished"
     done
     EXERR=$?
+
+    # ensure regular users can work with the backup
+    chown -Rv ${REALUSER} "$LGTARGET/extractedkdz" "$LGTARGET/extracteddz" >> $LOG
+
     # close yad listener
     kill $tail_pid
 
@@ -343,7 +347,8 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
         F_ERR $FUNCNAME $EXERR "ERROR occured or aborted by user!"
     else
         [ x"$AUTOM" != "xauto" ] && $FYAD --width="500" --title="$YTITLE - SUCCESS" --image="$SICONS/ok_64x64.png" --text "\nAll partitions extracted!\n" \
-            --button='Open target folder':"sudo -u $REALUSER xdg-open $LGTARGET/extracteddz" \
+            --button='Open target folder':"sudo -u $REALUSER xdg-open '$LGTARGET/extracteddz'" \
+            --button='Mount an image':"bash -c 'F_MOUNTPARTS $LGTARGET/extracteddz'" \
             --button=Close:0
     fi
     F_LOG "$FUNCNAME: ended"
@@ -839,7 +844,7 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     fi
 
     # ensure regular users can work with the backup
-    chown -Rv ${REALUSER} ${REALHOME}/salt_backup >> $LOG
+    chown -Rv ${REALUSER} "${REALHOME}/salt_backup" >> $LOG
 
     VERSUPP=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  md5sum /dev/block/bootdevice/by-name/\0' --rawshell 2>&1 | cut -d ' ' -f 1 | grep -vi Hello)
     if [ -z "$VERSUPP" ];then
@@ -1027,12 +1032,18 @@ F_ADVMENU(){ F_LOG "$FUNCNAME: started"
 
 # mount a partition menu
 F_MOUNTPARTS(){ F_LOG "$FUNCNAME: started"
-    # takes no args
+    # takes 1 arg
+    #
+    # optional:
+    # 1 => full path to image file
     
+    ISRC=undef
+    [ ! -z "$1" ] && ISRC="$1/click-here-2-select-a-file"
+ 
     CHOICE=$($FYAD --title="$YTITLE - MOUNT" --width=800 --always-print-result --text \
         "\n  Choose your image file you want to mount\n" \
         --form \
-        --field="  Image file":FL --file-filter="ROM (*.img)| *.img *.IMG *.bin *.mbn *.image" undef\
+        --field="  Image file":FL --file-filter="Image (*.img)| *.img *.IMG *.bin *.mbn *.image" "$ISRC"\
         --field="  Mountpoint (don't touch unless you know why)" "/mnt/salt_mnt" \
         --button=Abort:99 \
         --button=Next:0 \
