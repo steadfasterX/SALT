@@ -336,6 +336,10 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
         [ $CNT -eq $CHCOUNT ] && echo '# FINISHED!' >>/tmp/e && F_LOG "$FUNCNAME: Extract finished"
     done
     EXERR=$?
+
+    # ensure regular users can work with the backup
+    chown -Rv ${REALUSER} "$LGTARGET/extractedkdz" "$LGTARGET/extracteddz" >> $LOG
+
     # close yad listener
     kill $tail_pid
 
