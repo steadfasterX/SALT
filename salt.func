@@ -844,7 +844,7 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     fi
 
     # ensure regular users can work with the backup
-    chown -Rv ${REALUSER} ${REALHOME}/salt_backup >> $LOG
+    chown -Rv ${REALUSER} "${REALHOME}/salt_backup" >> $LOG
 
     VERSUPP=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  md5sum /dev/block/bootdevice/by-name/\0' --rawshell 2>&1 | cut -d ' ' -f 1 | grep -vi Hello)
     if [ -z "$VERSUPP" ];then
