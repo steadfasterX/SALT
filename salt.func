@@ -347,7 +347,7 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
         F_ERR $FUNCNAME $EXERR "ERROR occured or aborted by user!"
     else
         [ x"$AUTOM" != "xauto" ] && $FYAD --width="500" --title="$YTITLE - SUCCESS" --image="$SICONS/ok_64x64.png" --text "\nAll partitions extracted!\n" \
-            --button='Open target folder':"sudo -u $REALUSER xdg-open $LGTARGET/extracteddz" \
+            --button='Open target folder':"sudo -u $REALUSER xdg-open '$LGTARGET/extracteddz'" \
             --button='Mount an image':"bash -c 'F_MOUNTPARTS $LGTARGET/extracteddz'" \
             --button=Close:0
     fi
