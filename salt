@@ -132,7 +132,7 @@ F_MAIN(){
                 model_name) LGMODEL=${i/*:/};;
                 device_sw_version) LGSWV=${i/*:/};;
                 secure_device) LGSEC=${i/*:/};;
-                device_factory_version) LGFACV=${i/*:/};;
+                device_factory_version) LGFACV="$(echo ${i/*:/} | sed 's/^-/x/g')";;
                 target_country) LGCOUNTRY=${i/*:/};;
                 *) F_ELOG "unknown parameter: $i" ;;
             esac
