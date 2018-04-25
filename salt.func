@@ -301,14 +301,46 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
         CHOOSENP=$(echo -e "$IRESAUTO"| cut -d ":" -f 1-2)
     else
         IRESSORTED=$(echo -e "$IRESDATA\n$IRESEMPTY")
-        CHOOSENP=$((for slice in $IRESSORTED;do if [ "${slice/*:/}" == "data" ];then echo -e "true:$slice"; else echo -e "false:$slice";fi | tr ':' '\n' ;done | $FYAD --height=800 --width=1000 --title="$YTITLE - EXTRACT" --text "\n  This KDZ has an <a href='https://bit.do/antirollg4'>ARB</a> of:  <span color='#ff0000' size='large'><b>$KDZARB</b></span>\n\n  Select partition(s) to EXTRACT:\n" --list --checklist\
-            --column="Selection":CHK \
-            --column="#" \
-            --column="Partition":TXT \
-            --column="Type" \
-            --listen --no-selection \
-            --button=Extract:0 \
-            --button=Abort:3) | cut -d "|" -f 2,3 | tr "|" ":"| tr "\n" " ")
+        BTNRET=66
+        while [ "$BTNRET" -eq 77 -o "$BTNRET" -eq 66 ];do
+            if [ "$BTNRET" == 66 ];then
+              FCHOOSENP=$(for slice in $IRESSORTED;do if [ "${slice/*:/}" == "data" ];then echo -e "true:$slice"; else echo -e "false:$slice";fi | tr ':' '\n' ;done \
+                        | $FYAD --height=800 --width=1000 --title="$YTITLE - EXTRACT" \
+                        --text "\n  This KDZ has an <a href='https://bit.do/antirollg4'>ARB</a> of:  <span color='#ff0000' size='large'><b>$KDZARB</b></span>\n\n  Select partition(s) to EXTRACT:\n"\
+                        --list --checklist \
+                        --column="Selection":CHK \
+                        --column="#" \
+                        --column="Partition":TXT \
+                        --column="Type" \
+                        --listen --no-selection \
+                        --button="Deselect All":77 \
+                        --button=Extract:0 \
+                        --button=Abort:3)
+              BTNRET="${PIPESTATUS[0]}"
+              CHOOSENP=$(echo "$FCHOOSENP" | cut -d "|" -f 2,3 | tr "|" ":"| tr "\n" " ")
+              F_LOG "$FUNCNAME BTNRET: $BTNRET"
+            else 
+                if [ "$BTNRET" == 77 ];then
+                  FCHOOSENP=$(for slice in $IRESSORTED;do if [ "${slice/*:/}" == "data" ];then echo -e "false:$slice"; else echo -e "false:$slice";fi | tr ':' '\n' ;done \
+                            | $FYAD --height=800 --width=1000 --title="$YTITLE - EXTRACT" \
+                            --text "\n  This KDZ has an <a href='https://bit.do/antirollg4'>ARB</a> of:  <span color='#ff0000' size='large'><b>$KDZARB</b></span>\n\n  Select partition(s) to EXTRACT:\n"\
+                            --list --checklist \
+                            --column="Selection":CHK \
+                            --column="#" \
+                            --column="Partition":TXT \
+                            --column="Type" \
+                            --listen --no-selection \
+                            --button="Select All (with data)":66 \
+                            --button=Extract:0 \
+                            --button=Abort:3)
+                  BTNRET="${PIPESTATUS[0]}"
+                  CHOOSENP=$(echo "$FCHOOSENP" | cut -d "|" -f 2,3 | tr "|" ":"| tr "\n" " ")
+                  F_LOG "$FUNCNAME BTNRET: $BTNRET"
+                else
+                  break
+                fi
+            fi
+          done
     fi
     F_LOG "CHOOSENP: $CHOOSENP"
 
