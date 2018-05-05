@@ -1,13 +1,30 @@
 ##########################################################################
+## @file			salt.func
+## @brief			The heart of SALT - all global functions
+## @author			steadfasterX <steadfasterX -AT- gmail -DOT- com>
+## @date                        2017-2018
+## @copyright			LGPL v3
+## @details                     SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
+##
+## global functions for SALT
+##
+## include this with:
+## source salt.func
 #
-# SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
+##########################################################################
+# doxygen copy templates:
 #
-# Copyright (C): 2017-2018, steadfasterX <steadfastX|boun.cr>
+# # @var 
+# # @brief 
+# # @showinitializer
+# # @details 
 #
-# global functions for SALT
-#
-# include this with:
-# source salt.func
+# # @fn F_NAME()
+# # @brief ..
+# # @param 1 ..
+# # @return ..
+# # @exception ..
+# # @details ..
 #
 ##########################################################################
 VARS="${0%/*}/salt.vars"
@@ -834,36 +851,54 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     # takes no arguments
 
     # define backup type
-    $FYAD --width=450 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text "\n  Choose your backup type:\n  (Basic will just backup partitions up to $BMAXDEF MB\n  which is defined in BMAXDEF variable)" --button=Full:1 --button=Basic:2 --buttons-layout=center
+    $FYAD --width=550 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text "\n  Choose your backup type!\n\n  Basic:\twill just backup partitions up to a size of $BMAXDEF MB\n  Full:\tlike Basic but includes any size" --button=Full:1 --button=Basic:2 --buttons-layout=center
     BAKTYPE=$?
 
+    COMPLSIZE=0
     case $BAKTYPE in
         1) BAKTNAME=Full
             BMAX=0
+            for size in $($PYTHONBIN ${LAFPATH}/partitions.py --list --batch | cut -d ":" -f6 | $TRBIN "\n" " ");do
+                COMPLSIZE=$((COMPLSIZE + $size))
+            done
         ;;
         2) BAKTNAME=Basic
             BMAX=$((BMAXDEF * 1024))
+            for size in $($PYTHONBIN ${LAFPATH}/partitions.py --list --batch | cut -d ":" -f6 | $GREPBIN -v $BMAX | $TRBIN "\n" " ");do
+                if [ $size -le $BMAX ];then
+                    F_LOG "$FUNCNAME: DEBUG: adding $size to $COMPLSIZE"
+                    COMPLSIZE=$((COMPLSIZE + $size))
+                else
+                    F_LOG "$FUNCNAME: skipping $size as its smaller then $BMAX"
+                fi
+            done
         ;;
         *) F_EXIT $FUNCNAME $BAKTYPE
         ;;
     esac
-    F_LOG "$FUNCNAME: choosen backup type was $BAKTYPE, $BAKTNAME, $BMAX KB"
+    COMPLSIZEMB=$((COMPLSIZE / 1024))
+    F_LOG "$FUNCNAME: choosen backup type was $BAKTYPE, $BAKTNAME, $BMAX KB, backup size: $COMPLSIZEMB"
 
-    BANS=$($FYAD --width=800 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text="\n Backup your device in <b>$BAKTNAME</b> mode\n" --form \
-        --field="Target directory\n(ensure you have enough space)":CDIR "${REALHOME}/salt_backup" \
+    TFREE=0
+    while [ "$TFREE" -lt "$COMPLSIZEMB" ];do
+        BANS=$($FYAD --width=800 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text="\n Backup your device in <b>$BAKTNAME</b> mode.\n\n The choosen backup type will require: <span color='#ff0000'><b>$COMPLSIZEMB MB</b></span> of free disk space!\n\n" --form \
+        --field="Target directory":CDIR "${REALHOME}/salt_backup" \
         --button=Continue:0 --button=Abort:99)
+        BRET=$?
+        [ $BRET -ne 0 ] && F_EXIT "$FUNCNAME Aborted on users request" $BRET
+        BTDIR="${BANS/|*}"
+        F_LOG "$FUNCNAME: choosen target directory was $BTDIR"
 
-    BRET=$?
-    [ $BRET -ne 0 ] && F_EXIT "$FUNCNAME Aborted on users request" $BRET
+        [ ! -d "$BTDIR" ] && F_LOG "$FUNCNAME: Target dir <$BTDIR> does not exists. Will create it" && mkdir -p "$BTDIR"
 
-    BTDIR="${BANS/|*}"
-    F_LOG "$FUNCNAME: choosen target directory was $BTDIR"
+        # verify disk space
+        TFREE=$(F_CHKFREE "$BTDIR")
+        F_LOG "$FUNCNAME: TFREE $TFREE vs. $COMPLSIZEMB"
+        [ "$TFREE" -lt "$COMPLSIZEMB" ] && F_MSGE 500 "Wake up dude!\n\nThe target directoy:\n\n$BTDIR\n\n<span color='#ff0000'><b>HAS NOT ENOUGH FREE SPACE!</b></span>\n\nFree space:\t<b>$TFREE MB</b>\nRequired:\t<b>$COMPLSIZEMB MB</b>\n\nTry again!"
+    done
 
-    [ ! -d "$BTDIR" ] && F_LOG "$FUNCNAME: Target dir <$BTDIR> does not exists. Will create it" && mkdir -p "$BTDIR"
-
-    # TODO: check disk space
-    
-    $FYAD --width=500 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text "\n  READY! Click START to begin the backup now." --button=START:0 --button=Abort:2
+    F_LOG "$FUNCNAME: Target directory has enough free space!"
+    $FYAD --width=500 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text "\n  READY!\n\n  Free space:\t<b>$TFREE MB</b>\n  Required:\t<b>$COMPLSIZEMB MB</b>\n\n  Click START to begin the backup now. " --button=START:0 --button=Abort:2
     BRET=$?
     [ $BRET -ne 0 ] && F_EXIT "$FUNCNAME Aborted on users request" $BRET
 
@@ -887,7 +922,6 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
         F_LOG "$FUNCNAME: VERANS was $VERANS"
         [ "$VERANS" == "2" ] && F_VERIFYBAK "$BTDIR"
     fi
-
 }; export -f F_BACKUP
 
 # verify a backup folder with reality
@@ -1823,4 +1857,21 @@ F_VCHK(){ F_LOG "$FUNCNAME: started with this args: $@"
     fi
 }; export -f F_VCHK
 
+## @fn F_CHKFREE()
+## @brief check free disk space for a given folder
+## @param 1 the folder / mountpoint to check
+## @return free amount of disk space in MB
+## @exception when param1 does not exists or can not be opened
+F_CHKFREE(){ F_LOG "$FUNCNAME: started with this args: $@"
+    CKDIR="$1"
+    
+    if [ -d "$CKDIR" ];then
+        F_LOG "$FUNCNAME: valid dir specificed"
+        $DFBIN -m "$CKDIR" | $AWKBIN '{print $4}' | $EGREPBIN "[[:digit:]]"
+    else
+        F_LOG "$FUNCNAME: The specified directory $CKDIR does not exists"
+        echo 0
+    fi
+    F_LOG "$FUNCNAME: ended."
+}; export -f F_CHKFREE
 
