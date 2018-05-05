@@ -1,13 +1,30 @@
 ##########################################################################
+## @file			salt.func
+## @brief			The heart of SALT - all global functions
+## @author			steadfasterX <steadfasterX -AT- gmail -DOT- com>
+## @date                        2017-2018
+## @copyright			LGPL v3
+## @details                     SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
+##
+## global functions for SALT
+##
+## include this with:
+## source salt.func
 #
-# SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
+##########################################################################
+# doxygen copy templates:
 #
-# Copyright (C): 2017-2018, steadfasterX <steadfastX|boun.cr>
+# # @var 
+# # @brief 
+# # @showinitializer
+# # @details 
 #
-# global functions for SALT
-#
-# include this with:
-# source salt.func
+# # @fn F_NAME()
+# # @brief ..
+# # @param 1 ..
+# # @return ..
+# # @exception ..
+# # @details ..
 #
 ##########################################################################
 VARS="${0%/*}/salt.vars"
