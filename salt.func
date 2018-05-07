@@ -253,7 +253,7 @@ F_KDZARB(){  F_LOG "$FUNCNAME: started with $@"
 
  
     F_LOG "$FUNCNAME: cleanup.."
-    find "$LGTARGET" -type f -name 'sbl*' -or -name 'xbl*' -exec rm -vf {}\\; >> $LOG 2>&1
+    find "$LGTARGET" -type f -maxdepth 0 -name 'sbl*' -or -name 'xbl*' -exec rm -vf {}\\; >> $LOG 2>&1
     IRES=$($KDZMGR --batch --list -x "$LGKDZ" -d "$LGTARGET" 2>&1)
     ARBSLICE=$(echo "$IRES" |egrep "sbl|xbl"|head -n1|cut -d ":" -f 1)
     if [ -z "$ARBSLICE" ];then
@@ -262,7 +262,7 @@ F_KDZARB(){  F_LOG "$FUNCNAME: started with $@"
     else
         F_LOG "$FUNCNAME: found ARB in slice >$ARBSLICE< .. extracting.."
         $KDZMGR --batch -x "$LGKDZ" -d "$LGTARGET" --slice "$ARBSLICE" >> $LOG 2>&1
-        ARBFILE=$(find "$LGTARGET" -type f -name 'sbl*' -or -name 'xbl*')
+        ARBFILE=$(find "${LGTARGET}/extracteddz" -type f -maxdepth 0 -name 'sbl*' -or -name 'xbl*')
         F_LOG "$FUNCNAME: ARBFILE = $ARBFILE"
         # get and print the ARB
         F_CKARB "$ARBFILE"
