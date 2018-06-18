@@ -418,8 +418,8 @@ F_CDARB(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
     #
     DEVARBEMPTY=0
-    DEVARB=$($PYTHONBIN $LAFPATH/partitions.py --dump - sbl1 2>> $LOG| strings | grep "0 SW_ID" |cut -d " " -f 2 | head -n 1 | sed -e 's/0\{16,16\}/zero/g' | tr -d "0")
-    [ -z "$DEVARB" ] && DEVARB="0" && DEVARBEMPTY=1 && F_LOG "EMPTY ARB DETECTED:\n$($PYTHONBIN $LAFPATH/partitions.py --dump /tmp/sbl1.err sbl1 && strings /tmp/sbl1.err | grep -C 1 SW_ID |cut -d ' ' -f 2 | sed -e 's/0\{16,16\}/zero/g' 2>&1)" && F_LOG "Please send this log and the SBL1 dump in /tmp/sbl1.err" && F_LOG "$($PYTHONBIN $LAFPATH/partitions.py --list --debug 2>&1)" && F_LOG "$(lsusb -v)"
+    DEVARB=$($PYTHONBIN $LAFPATH/partitions.py --batch --dump - sbl1 2>> $LOG| strings | grep "0 SW_ID" |cut -d " " -f 2 | head -n 1 | sed -e 's/0\{16,16\}/zero/g' | tr -d "0")
+    [ -z "$DEVARB" ] && DEVARB="0" && DEVARBEMPTY=1 && F_LOG "EMPTY ARB DETECTED:\n$($PYTHONBIN $LAFPATH/partitions.py --batch --dump /tmp/sbl1.err sbl1 && strings /tmp/sbl1.err | grep -C 1 SW_ID 2>&1)" && F_LOG "Please send this log and the SBL1 dump in /tmp/sbl1.err" && F_LOG "$($PYTHONBIN $LAFPATH/partitions.py --list --debug 2>&1)" && F_LOG "$(lsusb -v)"
     [ "$DEVARB" == "zero" ] && DEVARB=0 && F_LOG "ARB valid and 0"
     F_LOG "$FUNCNAME: DEVARB=$DEVARB, DEVARBEMPTY=$DEVARBEMPTY"
     echo "${DEVARB}:${DEVARBEMPTY}"
