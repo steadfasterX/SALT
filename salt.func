@@ -1092,15 +1092,15 @@ F_ADVMENU(){ F_LOG "$FUNCNAME: started"
     
     LGMODEL=$1
 
-    $FYAD --title="$YTITLE" --width=1000 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n\n <b><span color='#ff0000'>THIS IS AN ADVANCED Menu</span></b>\n\nUse these options here with <b><span color='#ff0000'>CARE!</span></b>\n\n" \
+    $FYAD --title="$YTITLE" --width=1000 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n\n <b><span color='#ff0000'>THIS IS AN ADVANCED Menu</span></b>\n\nUse these options here with <b><span color='#ff0000'>CARE!</span></b>\n\n(mouse-over on a button for details)\n" \
         --form --columns=2\
         --field="SALT debug log!$SICONS/log_16x16.png":FBTN "$SALTPATH/getlog" \
         --field="Support / Credits!$SICONS/log_16x16.png":FBTN "bash -c F_ABOUT" \
-        --field="Show your partitions!!This will just list your current partitions":FBTN "bash -c F_LISTPARTS" \
-        --field="Mount an image!!This will let you mount android image files (system,userdata,..)":FBTN "bash -c F_MOUNTPARTS" \
+        --field="Convert an image (ZIP)!!Extract and convert sparse Android data images (.dat/.br) into a readable filesystem image and mount it":FBTN "bash -c F_EXTRACTDAT" \
+        --field="Mount an image file!!This will let you mount android image files (system,userdata,..)":FBTN "bash -c F_MOUNTPARTS" \
         --field="Open a shell!$SICONS/terminal_30x30.png!Open an adb-like shell while in download mode":FBTN "bash -c F_SHELL" \
         --field="<span color='#ff0000'>Wipe</span> partition(s)!!EXTREMELY DANGEROUS - CAN EASILY BRICK YOUR DEVICE":FBTN "bash -c F_DELPART" \
-        --field="Convert system.dat (ROM)!!Convert sparse Android data image (.dat) into filesystem ext4 image and mount it":FBTN "bash -c F_EXTRACTDAT" \
+        --field="Show your partitions!!This will just list your current partitions":FBTN "bash -c F_LISTPARTS" \
         --field="Unlock G4 (UsU)!$SICONS/salt_logo_30x30.png!Unofficial secureboot-off/steadfasterX Unlock":FBTN "bash -c 'F_DOUSU $LGMODEL'" \
         --button="Close"
 
@@ -1146,9 +1146,9 @@ F_EXTRACTDAT(){ F_LOG "$FUNCNAME: started"
         "\n  Choose your ROM zip file\n" \
         --form \
         --field="  ROM zip file":FL --file-filter="ROM (*.zip)| *.zip *.ZIP" undef\
-        --field="  Target directory":DIR "/tmp" \
+        --field="  Working directory":DIR "/tmp" \
         --field="  Auto-Mount resulting image file":CHK true \
-        --field="  Mountpoint (don't touch unless you know why)" "/mnt/android_system" \
+        --field="  Mountpoint (don't touch unless you know why)" "/mnt/android_image" \
         --button=Abort:99 \
         --button=Next:0 \
         )
@@ -1158,7 +1158,7 @@ F_EXTRACTDAT(){ F_LOG "$FUNCNAME: started"
     ZIPFILE=$(echo "$EXCHOICES" | cut -d '|' -f 1)
     TARGDIR=$(echo "$EXCHOICES" | cut -d '|' -f 2)
     MNTWANT=$(echo "$EXCHOICES" | cut -d '|' -f 3)
-    MNTPNT=$(echo "$EXCHOICES" | cut -d '|' -f 4)
+    CMNTPNT=$(echo "$EXCHOICES" | cut -d '|' -f 4)
 
     F_ELOG "ZIPFILE = $ZIPFILE, TARGDIR = $TARGDIR"
 
@@ -1181,7 +1181,7 @@ F_EXTRACTDAT(){ F_LOG "$FUNCNAME: started"
     BRC=$(echo "$EXFILE" |grep -c "\.br")
     if [ "$BRC" -eq 1 ];then
         if [ ! -f "$BROTLI" ];then
-            F_MSGE 500 "You're trying to extract an Oreo 8.1 dat file\nwhich requires the Google tool <a href='https://github.com/google/brotli'>brotli</a>\n\nPlease install it first:\n\n\t- in FWUL/Arch/Manjaro:\n\t  sudo pacman -S brotli\n\n\t- on Ubuntu/Debian/Mint:\n\t  sudo apt-get install brotli" "--selectable-labels --height=400 --fixed"
+            F_MSGE 500 "You're trying to extract an Oreo 8.1 dat file\nwhich requires the Google tool <a href='https://github.com/google/brotli'>brotli v1.x or higher!!!</a>\n\nPlease install it first:\n\n\t- in FWUL/Arch/Manjaro:\n\t  sudo pacman -S brotli\n\n\t- on Ubuntu/Debian/Mint:\n\t  sudo apt-get install brotli" "--selectable-labels --height=400 --fixed"
             F_EXIT $FUNCNAME 3
         else
             F_LOG "Brotli required and found!"
@@ -1190,17 +1190,20 @@ F_EXTRACTDAT(){ F_LOG "$FUNCNAME: started"
 
     [ -z "$EXFILE" ] && F_MSGE 500 "No file choosen?!"
 
-    F_LOG "ZIPFILE = $ZIPFILE, TARGDIR = $TARGDIR, EXFILE = $EXFILE"
+    CHIMGNAME="${EXFILE/\.*}"
+    MNTPNT="${CMNTPNT}_$CHIMGNAME"
 
-    F_UNZIP "$ZIPFILE" "$TARGDIR" "$EXFILE system.transfer.list"
+    F_LOG "ZIPFILE = $ZIPFILE, TARGDIR = $TARGDIR, EXFILE = $EXFILE, CHIMGNAME = $CHIMGNAME, MNTPNT = $MNTPNT"
+
+    F_UNZIP "$ZIPFILE" "$TARGDIR" "$EXFILE ${CHIMGNAME}.transfer.list"
     if [ $BRC -eq 0 ];then
-         F_CONVDAT "DAT" "${TARGDIR}/system.transfer.list" "${TARGDIR}/$EXFILE" "$TARGDIR"
+         F_CONVDAT "DAT" "${TARGDIR}/${CHIMGNAME}.transfer.list" "${TARGDIR}/$EXFILE" "$TARGDIR" "${CHIMGNAME}.converted.img"
     else
-        F_CONVDAT "BR" "${TARGDIR}/system.transfer.list" "${TARGDIR}/$EXFILE" "$TARGDIR"
-        F_CONVDAT "DAT" "${TARGDIR}/system.transfer.list" "${TARGDIR}/system.new.dat" "$TARGDIR"
+        F_CONVDAT "BR" "${TARGDIR}/${CHIMGNAME}.transfer.list" "${TARGDIR}/$EXFILE" "$TARGDIR" "${CHIMGNAME}.converted.img"
+        F_CONVDAT "DAT" "${TARGDIR}/${CHIMGNAME}.transfer.list" "${TARGDIR}/${CHIMGNAME}.new.dat" "$TARGDIR" "${CHIMGNAME}.converted.img"
     fi
     if [ "$MNTWANT" == "TRUE" ];then
-        F_MOUNTIMG "$TARGDIR/system_ext4.img" "$MNTPNT"
+        F_MOUNTIMG "$TARGDIR/${CHIMGNAME}.converted.img" "$MNTPNT"
     else
         F_MSGOK 600 "Image has been extracted!\nYou can find it here:\n\n<b>${TARGDIR}/</b>"
     fi
@@ -1296,22 +1299,24 @@ F_CONVDAT(){ F_LOG "$FUNCNAME: started with $@"
     # 2 => transfer list (full path)
     # 3 => sparse filename (full path)
     # 4 => target directory
+    # 5 => target image file name
 
     CMODE="$1"
     TFLIST="$2"
     SFIL="$3"
     TDIR="$4"
-    RFILE="${TDIR}/system_ext4.img"
+    IMGTYPE="${5/\.*}"
+    RFILE="${TDIR}/$5"
 
-    F_LOG "$FUNCNAME: $CMODE, $TFLIST, $SFIL, $TDIR, $RFILE"
-    [ ! -f "$TFLIST" -o ! -f "$SFIL" -o ! -d $TDIR ] && F_MSGE 500 "missing file! $TFLIST, $SFIL, $TDIR" && F_EXIT $FUNCNAME 3
+    F_LOG "$FUNCNAME: $CMODE, $TFLIST, $SFIL, $TDIR, $RFILE, $IMGTYPE"
+    [ ! -f "$TFLIST" -o ! -f "$SFIL" -o ! -d "$TDIR" ] && F_MSGE 500 "missing file! $TFLIST, $SFIL, $TDIR," && F_EXIT $FUNCNAME 3
 
     case "$CMODE" in
         DAT) F_LOG "DAT mode detected"
              $PYTHONBIN $SDATBIN "$TFLIST" "$SFIL" "$RFILE" 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - CONVERT" --text="\n  Converting:\n  <b>${SFIL/*\/}</b>\n  Please be patient depending on your PC this can take a while...\n" --width=800 --progress --progress-text="converting ${SFIL} ..." --pulsate --no-buttons --auto-close
         ;;
         BR) F_LOG "BR mode detected"
-            $BROTLI --force --decompress -o "${TDIR}/system.new.dat" "$SFIL" 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - CONVERT" --text="\n  Converting:\n  <b>${SFIL/*\/}</b>\n  Please be patient depending on your PC this can take a while...\n" --width=800 --progress --progress-text="converting ${SFIL} ..." --pulsate --no-buttons --auto-close 
+            $BROTLI --force --decompress -o "${TDIR}/${IMGTYPE}.new.dat" "$SFIL" 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - CONVERT" --text="\n  Converting:\n  <b>${SFIL/*\/}</b>\n  Please be patient depending on your PC this can take a while...\n" --width=800 --progress --progress-text="converting ${SFIL} ..." --pulsate --no-buttons --auto-close 
         ;;
         *) F_MSGE 500 "no valid mode selected! ABORTED"; F_EXIT $FUNCNAME 3
         ;;
