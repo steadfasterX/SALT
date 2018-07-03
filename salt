@@ -81,6 +81,7 @@ fi
 F_LOG "OS: $(cat /etc/*-release)"
 F_LOG "OS (lsb): $(lsb_release -a)"
 F_LOG "yad: $(yad --version)"
+F_LOG "summary:\n $(hostnamectl status |grep -v ID)\n"
 
 # check if device in dl mode connected
 DEVCON=99
