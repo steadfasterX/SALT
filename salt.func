@@ -397,7 +397,7 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
     EXERR=$?
 
     # ensure regular users can work with the backup
-    chown -Rv ${REALUSER} "$LGTARGET/extractedkdz" "$LGTARGET/extracteddz" >> $LOG
+    chown -Rv ${REALUSER} "$LGTARGET" >> $LOG
 
     # cleanup dz (but leave the dlls)
     rm -fv "$LGTARGET/extractedkdz/*.dz" >> $LOG
