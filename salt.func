@@ -36,6 +36,13 @@ source "$VARS"
 source "$HASHES"
 [ $? -ne 0 ]&& echo "ERROR: including $HASHES" && exit 3
 
+# set CR arg
+case $CRMODE in
+    yes) export CROPT="--cr yes";;
+    no) export CROPT="--cr no";;
+    *) export CROPT="";;
+esac
+  
 ######################################################################################
 
 # there is no need to change these as they get auto set by the VERSION var
@@ -75,6 +82,9 @@ F_ELOG(){
   echo -e "$(date '+%F %T'): $1" | tee -a $LOG
 
 }; export -f F_ELOG
+######################################################################################
+F_LOG "CR setting: $CRMODE = $CROPT"
+######################################################################################
 
 # print a message
 F_MSG(){ F_LOG "$FUNCNAME: started"
@@ -213,7 +223,7 @@ F_GETINFO(){ F_LOG "$FUNCNAME: started"
       && echo "romcomp:$ROMCOMP" \
       && echo "arb:${IARB}" \
       && echo "lafver:$LAFVER" \
-      && $PYTHONBIN $LAFPATH/lglaf.py -c '!INFO GPRO \x08\x0b\0\0' --rawshell \
+      && $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!INFO GPRO \x08\x0b\0\0' --rawshell \
        | $PYTHONBIN $LAFPATH/scripts/parse-props.py - \
        | egrep "(device_sw_version|model_name|secure_device|laf_sw_version|device_factory_version|target_country|battery_level|imei|target_operator|serial)" | tr "\n" " " | tr -d "'" 
     F_LOG "$FUNCNAME: $(kill $PBPP)"
@@ -224,8 +234,8 @@ F_GETINFO(){ F_LOG "$FUNCNAME: started"
 F_ROMCOMP(){ F_LOG "$FUNCNAME: started"
     # takes no arg
 
-    DEVTMO=$($PYTHONBIN $LAFPATH/partitions.py --list 2>&1 | grep -c carrier | tee -a $LOG)
-    DEVEUR=$($PYTHONBIN $LAFPATH/partitions.py --list 2>&1 | grep -c cust | tee -a $LOG)
+    DEVTMO=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list 2>&1 | grep -c carrier | tee -a $LOG)
+    DEVEUR=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list 2>&1 | grep -c cust | tee -a $LOG)
     F_LOG "UsU compatibility: $DEVTMO (0=h815, 1=h811)"
     if [ "$DEVTMO" == "1" ];then
         echo "H811"
@@ -234,7 +244,7 @@ F_ROMCOMP(){ F_LOG "$FUNCNAME: started"
     else
         echo "unknown"
         F_LOG "UsU compatibility: cannot be detected! full GPT:"
-        $PYTHONBIN $LAFPATH/partitions.py --list 2>&1 >> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list 2>&1 >> $LOG
     fi
 }; export -f F_ROMCOMP
 
@@ -425,8 +435,8 @@ F_CDARB(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
     #
     DEVARBEMPTY=0
-    DEVARB=$($PYTHONBIN $LAFPATH/partitions.py --batch --dump - sbl1 2>> $LOG| strings | grep "0 SW_ID" |cut -d " " -f 2 | head -n 1 | sed -e 's/0\{16,16\}/zero/g' | tr -d "0")
-    [ -z "$DEVARB" ] && DEVARB="0" && DEVARBEMPTY=1 && F_LOG "EMPTY ARB DETECTED:\n$($PYTHONBIN $LAFPATH/partitions.py --batch --dump /tmp/sbl1.err sbl1 && strings /tmp/sbl1.err | grep -C 1 SW_ID 2>&1)" && F_LOG "Please send this log and the SBL1 dump in /tmp/sbl1.err" && F_LOG "$($PYTHONBIN $LAFPATH/partitions.py --list --debug 2>&1)" && F_LOG "$(lsusb -v)"
+    DEVARB=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump - sbl1 2>> $LOG| strings | grep "0 SW_ID" |cut -d " " -f 2 | head -n 1 | sed -e 's/0\{16,16\}/zero/g' | tr -d "0")
+    [ -z "$DEVARB" ] && DEVARB="0" && DEVARBEMPTY=1 && F_LOG "EMPTY ARB DETECTED:\n$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump /tmp/sbl1.err sbl1 && strings /tmp/sbl1.err | grep -C 1 SW_ID 2>&1)" && F_LOG "Please send this log and the SBL1 dump in /tmp/sbl1.err" && F_LOG "$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list --debug 2>&1)" && F_LOG "$(lsusb -v)"
     [ "$DEVARB" == "zero" ] && DEVARB=0 && F_LOG "ARB valid and 0"
     F_LOG "$FUNCNAME: DEVARB=$DEVARB, DEVARBEMPTY=$DEVARBEMPTY"
     echo "${DEVARB}:${DEVARBEMPTY}"
@@ -447,7 +457,7 @@ F_DUMPPART(){ F_LOG "$FUNCNAME: started with $@"
     BFL="${BPTH}/${PNAME}"
 
     [ ! -d "$BPTH" ] && mkdir -p "$BPTH"
-    $PYTHONBIN $LAFPATH/partitions.py --batch --dump $BFL $PNAME
+    $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump $BFL $PNAME
 
 }; export -f F_DUMPPART
 
@@ -703,7 +713,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
       echo "#flashing: $FPART"
     
             F_LOG "$FUNCNAME: $FPART starting"
-            $PYTHONBIN -u $LAFPATH/partitions.py --batch --restore "$FFILE" $FPART 2>>$LOG | sed -u -e "s%:\([0-9]*\):\([0-9]*\)%,#$FPART: \1 KB / \2 KB%g;s/,/\n/g"  2>>$LOG
+            $PYTHONBIN -u $LAFPATH/partitions.py ${CROPT} --batch --restore "$FFILE" $FPART 2>>$LOG | sed -u -e "s%:\([0-9]*\):\([0-9]*\)%,#$FPART: \1 KB / \2 KB%g;s/,/\n/g"  2>>$LOG
       FLASHERR=${PIPESTATUS[0]}
       if [ $FLASHERR -eq 0 ];then
         echo "100"
@@ -736,7 +746,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 # check/ensure device is connected
 F_CHKDEVCON(){ F_LOG "$FUNCNAME: started"
     # takes no argument
-    $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  uname -m\0' --rawshell 2>&1 >> $LOG 
+    $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  uname -m\0' --rawshell 2>&1 >> $LOG 
     RET=${PIPESTATUS[0]}
     if [ $RET -ne 0 ];then
         RES=$(F_MSG 700 "NO DEVICE CONNECTED?\nIf you have connected your device ensure that it is in DOWNLOAD mode\n(<u>not</u> fastboot, <u>not</u> recovery, <u>not</u> booted Android)" "--image=$SICONS/warning_64x64.png --button=Example-Picture:99 --button=Skip:11 --button=Retry:22")
@@ -759,7 +769,7 @@ F_SHELL(){ F_LOG "$FUNCNAME: started"
     F_CHKDEVCON
     if [ $? -eq 0 ];then
         F_ELOG "device connected... Opening shell now!"
-        xterm -e "cd $LAFPATH && echo -e '\n*****************\nTYPE the word exit TO CLOSE THIS WINDOW\n*********************\n\n'; $PYTHONBIN $LAFPATH/lglaf.py"
+        xterm -e "cd $LAFPATH && echo -e '\n*****************\nTYPE the word exit TO CLOSE THIS WINDOW\n*********************\n\n'; $PYTHONBIN $LAFPATH/lglaf.py ${CROPT}"
     fi
     F_LOG "$FUNCNAME: ended"
 }; export -f F_SHELL
@@ -838,11 +848,11 @@ F_WIPEPART(){ F_LOG "$FUNCNAME: started with $@"
 
     if [ "$ITP" == "ni" ];then 
         F_LOG "$FUNCNAME: wiping $WPART in noninteractive mode"
-        $PYTHONBIN ${LAFPATH}/partitions.py --wipe $WPART 2>&1 | tee -a $LOG
+        $PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --wipe $WPART 2>&1 | tee -a $LOG
     else
         F_LOG "$FUNCNAME: wiping $WPART in interactive mode"
         F_MSG 400 "Do you really want to wipe out <b>$WPART</b>?" "--button=Yes:0 --button='wtf NO never':1"
-        [ $? -eq 0 ] && $PYTHONBIN ${LAFPATH}/partitions.py --wipe $WPART 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - WIPING" --width=800 --height=200 --text-info --listen --wrap --button=Close
+        [ $? -eq 0 ] && $PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --wipe $WPART 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - WIPING" --width=800 --height=200 --text-info --listen --wrap --button=Close
     fi
     F_SYNC
 }; export -f F_WIPEPART
@@ -852,7 +862,7 @@ F_LAFEXEC(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     # takes 1 argument
 
     EXECMD="$1"
-    RET=$($PYTHONBIN ${LAFPATH}/lglaf.py -c "'!EXEC  ${EXECMD}\0'" --rawshell)
+    RET=$($PYTHONBIN ${LAFPATH}/lglaf.py ${CROPT} -c "'!EXEC  ${EXECMD}\0'" --rawshell)
     echo $RET
 }; export -f F_LAFEXEC
 
@@ -875,13 +885,13 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     case $BAKTYPE in
         1) BAKTNAME=Full
             BMAX=0
-            for size in $($PYTHONBIN ${LAFPATH}/partitions.py --list --batch | cut -d ":" -f6 | $TRBIN "\n" " ");do
+            for size in $($PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --list --batch | cut -d ":" -f6 | $TRBIN "\n" " ");do
                 COMPLSIZE=$((COMPLSIZE + $size))
             done
         ;;
         2) BAKTNAME=Basic
             BMAX=$((BMAXDEF * 1024))
-            for size in $($PYTHONBIN ${LAFPATH}/partitions.py --list --batch | cut -d ":" -f6 | $GREPBIN -v $BMAX | $TRBIN "\n" " ");do
+            for size in $($PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --list --batch | cut -d ":" -f6 | $GREPBIN -v $BMAX | $TRBIN "\n" " ");do
                 if [ $size -le $BMAX ];then
                     F_LOG "$FUNCNAME: DEBUG: adding $size to $COMPLSIZE"
                     COMPLSIZE=$((COMPLSIZE + $size))
@@ -919,7 +929,7 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     BRET=$?
     [ $BRET -ne 0 ] && F_EXIT "$FUNCNAME Aborted on users request" $BRET
 
-    $PYTHONBIN ${LAFPATH}/extract-partitions.py --batch --outdir $BTDIR --max-size $BMAX 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - $BAKTNAME BACKUP" --text="\n  <b>SALT is backing up your device...</b>\n\n" --width 900 --progress --button='Close (WAIT until you see All finished)':0
+    $PYTHONBIN ${LAFPATH}/extract-partitions.py ${CROPT} --batch --outdir $BTDIR --max-size $BMAX 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - $BAKTNAME BACKUP" --text="\n  <b>SALT is backing up your device...</b>\n\n" --width 900 --progress --button='Close (WAIT until you see All finished)':0
     BERR=${PIPESTATUS[0]}
     if [ "$BERR" -ne 0 ];then
         F_MSGE 500 "Backup incomplete! Check the log."
@@ -930,7 +940,7 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     # ensure regular users can work with the backup
     chown -Rv ${REALUSER} "${REALHOME}/salt_backup" >> $LOG
 
-    VERSUPP=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  md5sum /dev/block/bootdevice/by-name/\0' --rawshell 2>&1 | cut -d ' ' -f 1 | grep -vi Hello)
+    VERSUPP=$($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  md5sum /dev/block/bootdevice/by-name/\0' --rawshell 2>&1 | cut -d ' ' -f 1 | grep -vi Hello)
     if [ -z "$VERSUPP" ];then
         F_MSGW 600 "\n  Your device/firmware does not support verification of the backup sorry." 
     else
@@ -987,10 +997,10 @@ F_VERIFYBAK(){ F_LOG "$FUNCNAME: started"
 
         if [ -z "$vfilerem" ];then
             vfilerem=$(echo "${vfileloc}" | tr "," " " | sed -e 's/mmcblk0p\(.*\)/\1/g')
-            REMFILE=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  md5sum /dev/block/bootdevice/by-num/p'${vfilerem}'\0' --rawshell 2>&1 | cut -d ' ' -f1)
+            REMFILE=$($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  md5sum /dev/block/bootdevice/by-num/p'${vfilerem}'\0' --rawshell 2>&1 | cut -d ' ' -f1)
         else
             LAFEXEC='!EXEC  md5sum /dev/block/bootdevice/by-name/${vfilerem}\0'
-            REMFILE=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  md5sum /dev/block/bootdevice/by-name/'${vfilerem}'\0' --rawshell 2>&1 | cut -d ' ' -f1)
+            REMFILE=$($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  md5sum /dev/block/bootdevice/by-name/'${vfilerem}'\0' --rawshell 2>&1 | cut -d ' ' -f1)
         fi
         F_LOG "$FUNCNAME: vfilerem: $vfilerem, REMFILE: $REMFILE"
         if [ -z "$LOCFILE" -o -z "$REMFILE" ];then
@@ -1105,23 +1115,25 @@ F_STARTKDZFL(){ F_LOG "$FUNCNAME: started"
 }; export -f F_STARTKDZFL
 
 # showing a advanced menu
-F_ADVMENU(){ F_LOG "$FUNCNAME: started"
+F_ADVMENU(){ F_LOG "$FUNCNAME: started with $@"
     # takes 1 arg
     #
     # 1 => LGMODEL
     
     LGMODEL=$1
+    F_LOG "$FUNCNAME: main YAD_PID is $YAD_PID"
 
     $FYAD --title="$YTITLE" --width=1000 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n\n <b><span color='#ff0000'>THIS IS AN ADVANCED Menu</span></b>\n\nUse these options here with <b><span color='#ff0000'>CARE!</span></b>\n\n(mouse-over on a button for details)\n" \
         --form --columns=2\
         --field="SALT debug log!$SICONS/log_16x16.png":FBTN "$SALTPATH/getlog" \
-        --field="Support / Credits!$SICONS/log_16x16.png":FBTN "bash -c F_ABOUT" \
+        --field="$CRBTN!$SICONS/cr_30x30.png!Change the detection of challenge/response: Auto, forced yes, forced no":FBTN "bash -c 'F_CRRESTART $YAD_PID $CRMODE'" \
         --field="Convert an image (ZIP)!!Extract and convert sparse Android data images (.dat/.br) into a readable filesystem image and mount it":FBTN "bash -c F_EXTRACTDAT" \
         --field="Mount an image file!!This will let you mount android image files (system,userdata,..)":FBTN "bash -c F_MOUNTPARTS" \
         --field="Open a shell!$SICONS/terminal_30x30.png!Open an adb-like shell while in download mode":FBTN "bash -c F_SHELL" \
         --field="<span color='#ff0000'>Wipe</span> partition(s)!!EXTREMELY DANGEROUS - CAN EASILY BRICK YOUR DEVICE":FBTN "bash -c F_DELPART" \
         --field="Show your partitions!!This will just list your current partitions":FBTN "bash -c F_LISTPARTS" \
         --field="Unlock G4 (UsU)!$SICONS/salt_logo_30x30.png!Unofficial secureboot-off/steadfasterX Unlock":FBTN "bash -c 'F_DOUSU $LGMODEL'" \
+        --button="Support / Licensing / Credits!$SICONS/log_16x16.png":"bash -c F_ABOUT" \
         --button="Close"
 
 }; export -f F_ADVMENU
@@ -1368,7 +1380,7 @@ F_LISTPARTS(){ F_LOG "$FUNCNAME: started"
 F_GETPARTS(){ F_LOG "$FUNCNAME: started"
     # takes no args
 
-    PARTLIST=$($PYTHONBIN $LAFPATH/partitions.py --list --batch)
+    PARTLIST=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list --batch)
 
     # make preselections
     unset IRES
@@ -1475,7 +1487,7 @@ F_DELPART(){ F_LOG "$FUNCNAME: started"
         echo "#${w/:*}"
         sleep 2
         echo 40
-        ($PYTHONBIN $LAFPATH/partitions.py --wipe ${w/:*} 2>&1) >> $LOG
+        ($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --wipe ${w/:*} 2>&1) >> $LOG
         if [ $? -ne 0 ];then
             echo "#ERROR: while wiping ${w/:*}"
             F_MSGE 600 "ERROR while wiping ${w/:*} !! " && F_EXIT $FUNCNAME 4
@@ -1518,8 +1530,8 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
             USUSRC=/data/media/0/Download/aboot_UsU.img
             DLMSRC=/data/media/0/Download/laf_UsU.img
             RRSRC=/data/media/0/Download/rawres_UsU.img
-            $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  umount /data\0' --debug --rawshell 2>&1 >> $LOG
-            $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  mount -t ext4 /dev/block/bootdevice/by-name/userdata /data\0' --debug --rawshell 2>&1 >> $LOG
+            $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  umount /data\0' --debug --rawshell 2>&1 >> $LOG
+            $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  mount -t ext4 /dev/block/bootdevice/by-name/userdata /data\0' --debug --rawshell 2>&1 >> $LOG
             F_LOG "$FUNCNAME: userdata mounting finished"
         ;;
         direct) F_LOG "$FUNCNAME: Will flash UsU directly to the device..."
@@ -1559,14 +1571,14 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
             kill $PROGY
         fi
     else
-        USUEX=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls '$USUSRC'\0' --rawshell)
-        DLMEX=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls '$DLMSRC'\0' --rawshell)
-        RREX=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls '$RRSRC'\0' --rawshell)
+        USUEX=$($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  ls '$USUSRC'\0' --rawshell)
+        DLMEX=$($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  ls '$DLMSRC'\0' --rawshell)
+        RREX=$($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  ls '$RRSRC'\0' --rawshell)
         F_LOG "$FUNCNAME: USUEX=$USUEX, DLMEX=$DLMEX, RREX=$RREX"
         kill $PROGY
         if [ -z "$USUEX" ]||[ -z "$DLMEX"]||[ -z "$RREX"];then 
             F_MSGE 700 "   Oops?!\n\n   You have choosen\n\n   $USUSRC\n   $DLMSRC\n   $RRSRC\n\n   but I can not find it...!\n\n   Try another method or ensure you stored it to the correct path."
-            ($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls /storage/external_SD/*.img /data/media/0/Download/*.img\0' --rawshell 2>&1) >> $LOG 
+            ($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  ls /storage/external_SD/*.img /data/media/0/Download/*.img\0' --rawshell 2>&1) >> $LOG 
             F_EXIT $FUNCNAME 5
         fi
     fi
@@ -1583,10 +1595,10 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     F_LOG "$FUNCNAME: abootbak before flashing: $TESTPRE"
     echo "#pre-checking ..." >> $FLPBAR
     if [ "$FLTYPE" == "direct" ];then
-        $PYTHONBIN $LAFPATH/partitions.py --restore "$USUDIRECT" abootbak --batch 1>> $FLPBAR 2>> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --restore "$USUDIRECT" abootbak --batch 1>> $FLPBAR 2>> $LOG
     else
         F_LOG '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0'
-        $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0' --rawshell 2>&1 >> $LOG
+        $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0' --rawshell 2>&1 >> $LOG
     fi
     echo "#verifying pre-check ..." >> $FLPBAR
     F_DUMPPART abootbak "/tmp/UsU/after"
@@ -1622,14 +1634,14 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     if [ "$FLTYPE" == "direct" ];then
         F_LOG 'flashing aboot and laf directly...'
         echo "#flashing UsU unlock ..." >> $FLPBAR
-        $PYTHONBIN $LAFPATH/partitions.py --debug --restore "$USUDIRECT" aboot --batch 1>> $FLPBAR 2>> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --debug --restore "$USUDIRECT" aboot --batch 1>> $FLPBAR 2>> $LOG
         echo "#flashing UsU laf ..." >> $FLPBAR
         F_LOG "flashing laf from $DLMDIRECT ..."
-        $PYTHONBIN $LAFPATH/partitions.py --debug --restore "$DLMDIRECT" laf --batch 1>> $FLPBAR 2>> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --debug --restore "$DLMDIRECT" laf --batch 1>> $FLPBAR 2>> $LOG
 
         echo "#flashing UsU rawres ..." >> $FLPBAR
         F_LOG "flashing rawres from $RRDIRECT ..."
-        $PYTHONBIN $LAFPATH/partitions.py --debug --restore "$RRDIRECT" raw_resources --batch 1>> $FLPBAR 2>> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --debug --restore "$RRDIRECT" raw_resources --batch 1>> $FLPBAR 2>> $LOG
     else
         # we have no progress indicator when flashing from the device storage so we need to pulsate..
         kill $PROGY
@@ -1637,21 +1649,21 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
         PROGY=$!
         F_LOG "flashing aboot from $USUSRC..."
         echo "#flashing UsU unlock ..." >> $FLPBAR
-        $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0' --rawshell 2>&1 >> $LOG
+        $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0' --rawshell 2>&1 >> $LOG
         echo "#flashing UsU laf ..." >> $FLPBAR
         F_LOG "flashing laf from $DLMSRC ..."
-        $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek=393216 bs=512\0' --rawshell 2>&1 >> $LOG
+        $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --debug -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek=393216 bs=512\0' --rawshell 2>&1 >> $LOG
 
-        RRSEEKSTART=$($PYTHONBIN $LAFPATH/partitions.py --list --batch |grep "raw_resources:" |cut -d ":" -f 3)
+        RRSEEKSTART=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list --batch |grep "raw_resources:" |cut -d ":" -f 3)
         F_LOG "FUNCNAME: raw resources from partition listing:"
-        $PYTHONBIN $LAFPATH/partitions.py --list --batch |grep "raw_resources:" >> $LOG 2>&1
+        $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list --batch |grep "raw_resources:" >> $LOG 2>&1
         # G4 must have rr between sector 770000 and 870000
         if [ "$RRSEEKSTART" -lt 770000 ] || [ "$RRSEEKSTART" -gt 870000 ];then
             F_MSGW 700 "Can not identify a valid seek start for rawres! SKIPPED!\nYou have to flash the rawres_UsU.img in fastboot to fully enable UsU"
         else
             echo "#flashing UsU rawres ..." >> $FLPBAR
             F_LOG "flashing rawres from $RRSRC with seekstart: $RRSEEKSTART ..."
-            $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$RRSRC' of=/dev/block/mmcblk0 seek='$RRSEEKSTART' bs=512\0' --rawshell 2>&1 >> $LOG
+            $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --debug -c '!EXEC  dd if='$RRSRC' of=/dev/block/mmcblk0 seek='$RRSEEKSTART' bs=512\0' --rawshell 2>&1 >> $LOG
         fi
     fi
     # verify real flashing
@@ -1682,7 +1694,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
                 --text "SALT will reboot your device now but it needs\n\n<b>YOU</b>\n\nto boot properly:\n\n<b>Before</b> pressing Continue:\n\npress the <b>Volume DOWN</b> button NOW\nand <b>keep</b> it pressed!!\n\nWhen you click continue wait until you see the fastboot mode\n(a black screen and a couple of lines).\nThen you can release that button." \
                 --button=Continue:99
             if [ $? -eq 99 ];then
-                F_LOG "REBOOT INITIATED by USER!" && $PYTHONBIN ${LAFPATH}/lglaf.py -c '!CTRL RSET'
+                F_LOG "REBOOT INITIATED by USER!" && $PYTHONBIN ${LAFPATH}/lglaf.py ${CROPT} -c '!CTRL RSET'
                 F_USUFLFB laf "${DLMSRC%/*}" "${DLMSRC##*/}"
                 F_USUFLFB raw_resources "${RRSRC%/*}" "${RRSRC##*/}"
                 $FYAD --title="$YTITLE - FB FLASH" --width=700 --fixed --image="$SICONS/salt_logo_64x64.png" --text "Good! Now press\n\n <b>Volume UP (!!)</b> button\n\nand <b>keep</b> it pressed until you see the download mode.\nThen press Continue." --button=Continue
@@ -1753,7 +1765,7 @@ F_CHKLAFV(){ F_LOG "$FUNCNAME: started with this args: $@"
     # 1 => compare the detection with a max allowed version
 
     MAXV="$1"
-    LAFV=$($PYTHONBIN $LAFPATH/lglaf.py --proto --rawshell)
+    LAFV=$($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --proto --rawshell)
     if [ $? -ne 0 ]||[ -z "$LAFV" ]||[ "$LAFV" -lt 1000001 -o "$LAFV" -gt 2000000 ];then
         F_LOG "$FUNCNAME: Unexpected error while retrieving LAF protocol version ($LAFV)"
         echo "unknown"
@@ -1909,4 +1921,34 @@ F_CHKFREE(){ F_LOG "$FUNCNAME: started with this args: $@"
     fi
     F_LOG "$FUNCNAME: ended."
 }; export -f F_CHKFREE
+
+## @fn F_CRRESTART()
+## @brief change the CR mode in fix order!
+## @param 1 The main SALT window pid (required for killing it)
+## @param 2 The mode you currently have: Auto|yes|no
+## @exception when param1 does not exists
+F_CRRESTART(){ F_LOG "$FUNCNAME: started with this args: $@"
+    MAIN_YAD_PID=$1
+    CURRENTCR="$2"
+    F_LOG "$FUNCNAME: YAD_PID is $MAIN_YAD_PID"
+ 
+    [ -z "$CURRENTCR" -o -z "$MAIN_YAD_PID" ] && F_EXIT "$FUNCNAME: missing parameter CURRENTCR or MAIN_YAD_PID" 0
+
+    case $CURRENTCR in
+        Auto)export CRMODE=yes;;
+        yes)export CRMODE=no;;
+        no)export CRMODE=Auto;;
+    esac
+
+    F_LOG "$FUNCNAME: Will change CR from $CURRENTCR to $CRMODE"
+    # kill parent windows
+    kill -s SIGUSR1 $YAD_PID >> $LOG 2>&1
+    kill -s SIGUSR1 $MAIN_YAD_PID >> $LOG 2>&1
+    
+    F_LOG "$FUNCNAME: Will restart SALT now like that: $FULLCMD"
+    $FULLCMD
+    F_LOG "$FUNCNAME: ended."
+}; export -f F_CRRESTART
+
+
 
