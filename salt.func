@@ -773,7 +773,7 @@ F_STARTKDZ(){ F_LOG "$FUNCNAME: started"
         --form \
         --field="  KDZ file":FL --file-filter="KDZ files (*.kdz)| *.kdz *.KDZ"\
         --field="  Target directory\nHINT: Ensure you have enough free disk space":DIR \
-        undef /tmp \
+        undef /tmp/salt_kdz \
         )
     F_ELOG "returned: $EXCHOICES"
     KDZFILE=$(echo "$EXCHOICES" | cut -d '|' -f 1)
