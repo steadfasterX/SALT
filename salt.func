@@ -396,11 +396,15 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
     done
     EXERR=$?
 
-    # ensure regular users can work with the backup
-    chown -Rv ${REALUSER} "$LGTARGET" >> $LOG
-
     # cleanup dz (but leave the dlls)
     rm -fv "$LGTARGET/extractedkdz/*.dz" >> $LOG
+
+    # ensure regular users can work with the extracted stuff
+    if [ "$LGTARGET" != "/tmp" ] && [ "$LGTARGET" != "/" ];then
+        chown -Rv ${REALUSER} "$LGTARGET" >> $LOG
+    else
+        chown -Rv ${REALUSER} "$LGTARGET/extractedkdz" "$LGTARGET/extracteddz" >> $LOG
+    fi
 
     # close yad listener
     kill $tail_pid
