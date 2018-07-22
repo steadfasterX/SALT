@@ -881,6 +881,8 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     $FYAD --width=550 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text "\n  Choose your backup type!\n\n  Basic:\twill just backup partitions up to a size of $BMAXDEF MB\n  Full:\tlike Basic but includes any size" --button=Full:1 --button=Basic:2 --buttons-layout=center
     BAKTYPE=$?
 
+    F_LOG "$FUNCNAME: DEBUG: List partitions:\n$($PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --list --batch)"
+
     COMPLSIZE=0
     case $BAKTYPE in
         1) BAKTNAME=Full
@@ -900,11 +902,10 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
                 fi
             done
         ;;
-        *) F_EXIT $FUNCNAME $BAKTYPE
+        *) F_EXIT "$FUNCNAME $BAKTYPE" 3
         ;;
     esac
     COMPLSIZEMB=$((COMPLSIZE / 1024))
-    F_LOG "$FUNCNAME: choosen backup type was $BAKTYPE, $BAKTNAME, $BMAX KB, backup size: $COMPLSIZEMB"
 
     TFREE=0
     while [ "$TFREE" -lt "$COMPLSIZEMB" ];do
@@ -924,6 +925,9 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
         [ "$TFREE" -lt "$COMPLSIZEMB" ] && F_MSGE 500 "Wake up dude!\n\nThe target directoy:\n\n$BTDIR\n\n<span color='#ff0000'><b>HAS NOT ENOUGH FREE SPACE!</b></span>\n\nFree space:\t<b>$TFREE MB</b>\nRequired:\t<b>$COMPLSIZEMB MB</b>\n\nTry again!"
     done
 
+    [ "$COMPLSIZEMB" -eq 0 -o -z "$COMPLSIZEMB" ] && F_MSGE 500 "Calculated target size is too small!\nUpload and share the debug log!" && F_EXIT "$FUNCNAME" 4
+ 
+    F_LOG "$FUNCNAME: choosen backup type was $BAKTYPE, $BAKTNAME, $BMAX KB, backup size: $COMPLSIZEMB, backup path: $BTDIR"
     F_LOG "$FUNCNAME: Target directory has enough free space!"
     $FYAD --width=500 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text "\n  READY!\n\n  Free space:\t<b>$TFREE MB</b>\n  Required:\t<b>$COMPLSIZEMB MB</b>\n\n  Click START to begin the backup now. " --button=START:0 --button=Abort:2
     BRET=$?
