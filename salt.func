@@ -1271,6 +1271,7 @@ F_MOUNTIMG(){ F_LOG "$FUNCNAME: started with $@"
             $FYAD --width=1000 --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - MOUNT" --text="  Image file:\n\t<b>$MFILE</b>\n\n  has been mounted to\n\t<b>$MNTPNT</b>\n\n" \
                 --form \
                 --field="Browse Image":FBTN "sudo -u $REALUSER xdg-open $MPNT" \
+                --field="Browse Image (root)":FBTN "xdg-open $MPNT" \
                 --field="Unmount Image":FBTN "bash -c 'F_UMNT $MPNT'" \
                 --button=Close:0
         else
