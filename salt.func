@@ -583,10 +583,10 @@ F_VERIFYDARB(){
     # manual ARB verification by the user
     if [ -z "${CHKMRES/*:}" ] || [ -z "${CHKMRES/:*}" ]|| [ "${CHKMRES/:*}" == "unknown" ] || [ "${CHKMRES/*:}" != "${CHKMRES/:*}" ];then
         F_LOG "$FUNCNAME: file and device model does not match!!!"
-        F_MSGW 800 "WARNING: <b><span color='#ff0000'>file and device model does not match!</span></b>\nDevice model:\t${CHKMRES/:*}\nFiles are for:\t\t${CHKMRES/*:}\n\nARB of your device <b>seems</b> to be compatible with the files\nDevice:\t${DARB/:*}\nFiles:\t$KARB\n\nYou can doublecheck <a href='https://bit.do/antirollg4'>here</a>\n\nDo you really want to continue and so FLASHing now?" "--button=Continue-may-HARDBRICK:99"
+        F_MSGW 800 "WARNING: <b><span color='#ff0000'>file and device model does not match!</span></b>\nDevice model:\t${CHKMRES/:*}\nFiles are for:\t\t${CHKMRES/*:}\n\nARB of your device compared with the files\nDevice:\t${DARB/:*}\nFiles:\t$KARB\n\nYou can doublecheck some known ARB <a href='https://bit.do/antirollg4'>here</a>\n\nDo you really want to continue and so FLASHing now?" "--button=Continue-may-HARDBRICK:99"
     else
         F_LOG "$FUNCNAME: file and device model does match"
-        F_MSGOK 800 "<b>file and device</b> information match\nDevice model:\t${CHKMRES/:*}\nFiles are for:\t\t${CHKMRES/*:}\n\nARB of your device <b>seems</b> to be compatible with the files\nDevice:\t${DARB/:*}\nFiles:\t$KARB\nYou can doublecheck ARB <a href='http://bit.do/antirollg4'>here</a>\n\n  Do you really want to continue and so FLASHing now?" "--button=Continue:99"
+        F_MSGOK 800 "<b>file and device</b> information match\nDevice model:\t${CHKMRES/:*}\nFiles are for:\t\t${CHKMRES/*:}\n\nARB of your device compared with the files\nDevice:\t${DARB/:*}\nFiles:\t$KARB\nYou can doublecheck some known ARB <a href='http://bit.do/antirollg4'>here</a>\n\n  Do you really want to continue and so FLASHing now?" "--button=Continue:99"
     fi
 }; export -f F_VERIFYDARB
 
@@ -797,10 +797,10 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     F_LOG "sorted partitions: $SORTEDP -> $CHCOUNT"
 
     # verify ARB and model
-    RET=$(F_VERIFYDARB "$IMGDIR")
+    ARET=$(F_VERIFYDARB "$IMGDIR")
     
     # abort when needed
-    [ "$RET" != "99" ] && F_ERR $FUNCNAME 3 "Aborted on user check verification"
+    [ "$ARET" != "99" ] && F_ERR $FUNCNAME 3 "Aborted on user check verification ($ARET)"
 
     UANS=$(F_MSGW 700 "Keep in mind that SALT flashes the partitions in RAW format which will take usually longer then i.e. when using LGup.\n(RAW means every single bit gets copied - so even unused disk space)\n\nSALT is ready and will flash these partitions:\n\n$(echo $SORTEDP | sed 's/\ /, /g')" "--button=FLASH:99")
     if [ $UANS -ne 99 ] || [ $CHCOUNT -eq 0 ] ;then
