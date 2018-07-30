@@ -827,7 +827,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
       else
                     F_LOG "$FUNCNAME: $FPART FAILED with $FLASHERR"
         echo "# $FPART: FAILED"
-              F_ERR $FUNCNAME 4 "\n  ERROR!\n\n  DO NOT REBOOT YOUR DEVICE!\n  FLASHING PROBLEM OCCURED!!!\n  while flashing:\n\n  <b>$FPART</b>" 
+              F_ERR $FUNCNAME 4 "DO NOT REBOOT YOUR DEVICE!\n  FLASHING PROBLEM OCCURED!!!\n  while flashing:\n\n  <b>$FPART</b>\n\nClick this button, then Upload: " 0 "--form --field=Upload-SALT-log!$SICONS/log_16x16.png:FBTN $SALTPATH/getlog" 
       fi
         done | $FYAD --image="$SICONS/salt_logo_64x64.png" --title="$YTITLE - FLASHING" --text="\n <b>Lean back, take a cup of coffee or sleep a bit. SALT is flashing now ...</b>\n (DO NOT REBOOT THE DEVICE while flashing or when an error occurs!)\n\n" --width 900 --progress --button='Close (WAIT until all is flashed)':1
         FLERR=${PIPESTATUS[0]}
@@ -836,10 +836,13 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
         if [ "$FLERR" -eq 0 ];then
             F_MSGOK 400 "Flashing was successful!"
         else
-            F_MSGE 400 "FLASHING ENDED WITH ERROR: $FLERR\n\nCheck Debug Log in SALT main screen!\nDO NOT REBOOT THE DEVICE TO AVOID HARD BRICK!!!!"
+            F_MSGE 800 "FLASHING ENDED WITH ERROR: $FLERR\n\nCheck Debug Log in SALT main screen!\nDO NOT REBOOT THE DEVICE TO AVOID HARD BRICK!!!!\n\nIf you haven't already uploaded the debug log click this button, then Upload:\n" "--form --field=Upload-SALT-log!$SICONS/log_16x16.png:FBTN $SALTPATH/getlog" 
         fi
     
+        # TODO: md5 verify?        
+        
         # wipe cache
+        # disabled as it will clear the partition but not format it - leading into a non booting device until formatted manually
         #F_WIPEPART cache ni || F_MSGE 400 "Wiping cache ended with an error: $WIPERR\n\nCheck Debug Log in SALT main screen."
         
         # sync filesystems
