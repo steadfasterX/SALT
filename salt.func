@@ -729,13 +729,57 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
         esac
     done
 
-    F_LOG "($FUNCNAME) created yad list: $IRES"
+    F_LOG "$FUNCNAME: created yad list: $IRES"
 
-    CHOOSENP=$(for files in $IRES;do echo -e "$files" ;done \
-                | $FYAD --height=800 --width=700 --title="$YTITLE - FOLDER" --text "\n  Select the partitions you want to flash\n  (the RECOMMENDED partitions to flash are CHECKED already!)\n\n  Hint: you can change the target partition here but do this only when you\n  <b>REALLY KNOW</b> what you're doing!\n" --list --checklist \
-                        --column="Flash":CHK --column="Image File":TXT --column="Target partition" --column="Type" --editable --editable-cols="3" --column=sort_int --hide-column=5  --listen  \
-                        --button=FLASH:0 --button=Abort:99 |cut -d "|" -f 2-3,5 | tr "|" ":" )
+    BTNRET=66
+    while [ "$BTNRET" -eq 77 -o "$BTNRET" -eq 66 ];do
+        if [ "$BTNRET" == 66 ];then
+          FCHOOSENP=$(for files in $IRES;do echo -e "$files" ;done \
+                      | $FYAD --height=800 --width=700 --title="$YTITLE - FOLDER" --text "\n  Select the partitions you want to flash\n  (the RECOMMENDED partitions to flash are CHECKED already!)\n\n\t<i>bootloader:</i>\t\twhen flashing ensure you select <b>ALL</b> parts of it - otherwise hard brick\n\t<i>dangerous:</i>\t\tcan reset unlocked devices, loosing IMEI etc!\n\t<i>unknown-type:</i>\tmeaning of that partition is unknown, use with care!\n\n  Hint: you can change the target partition by a double click - but do this only when you\n  <b>REALLY</b> know what you're doing!\n" \
+                        --list --checklist \
+                        --column="Flash":CHK \
+                        --column="Image File":TXT \
+                        --column="Target partition" \
+                        --column="Type" \
+                        --editable \
+                        --editable-cols="3" \
+                        --column=sort_int \
+                        --hide-column=5 \
+                        --listen \
+                        --button="Deselect All":77 \
+                        --button=FLASH:0 \
+                        --button=Abort:99 )
+          BTNRET="${PIPESTATUS[0]}"
+          CHOOSENP=$(echo "$FCHOOSENP" | cut -d "|" -f 2-5 | tr "|" ":" | tr "\n" " ")
+          F_LOG "$FUNCNAME BTNRET: $BTNRET"
+        else 
+            if [ "$BTNRET" == 77 ];then
+              FCHOOSENP=$(for files in $IRES;do echo -e "${files/true/false}" ;done \
+                         | $FYAD --height=800 --width=700 --title="$YTITLE - FOLDER" --text "\n  Select the partitions you want to flash\n  (the RECOMMENDED partitions to flash are CHECKED already!)\n\n\t<i>bootloader:</i>\t\twhen flashing ensure you select <b>ALL</b> parts of it - otherwise hard brick\n\t<i>dangerous:</i>\t\tcan reset unlocked devices, loosing IMEI etc!\n\t<i>unknown-type:</i>\tmeaning of that partition is unknown, use with care!\n\n  Hint: you can change the target partition by a double click - but do this only when you\n  <b>REALLY</b> know what you're doing!\n" \
+                            --list --checklist \
+                            --column="Flash":CHK \
+                            --column="Image File":TXT \
+                            --column="Target partition" \
+                            --column="Type" \
+                            --editable \
+                            --editable-cols="3" \
+                            --column=sort_int \
+                            --hide-column=5 \
+                            --listen \
+                            --button="Select default":66 \
+                            --button=FLASH:0 \
+                            --button=Abort:99)
+              BTNRET="${PIPESTATUS[0]}"
+              CHOOSENP=$(echo "$FCHOOSENP" | cut -d "|" -f 2-5 | tr "|" ":" | tr "\n" " ")
+              F_LOG "$FUNCNAME BTNRET: $BTNRET"
+            else
+              break
+            fi
+        fi
+    done
 
+    [ $BTNRET -ne 0 ] && F_MSGE 500 "Aborted by user" && F_EXIT "$FUNCNAME aborted by user" 3
+    
     CHCOUNT=$(echo "$CHOOSENP" |tr " " "\n" |grep -c :)
     [ $CHCOUNT -lt 1 ] && F_ERR $FUNCNAME 0 "No partition selected?"
 
