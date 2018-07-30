@@ -627,29 +627,12 @@ F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
     # recheck valid image files
     # TODO
 
-    # check device model
-    CHKMRES=$(F_CHKMODEL "$LGKDZ")
-    
-    # check ARB
-    ARBOK=0
-    KARB=$(F_CKARB "$KDZTMP/extracteddz/sbl1.image")
-    DARB=$(F_CDARB)
-    F_LOG "KARB: $KARB, DARB: $DARB"
-    # verify the internal functions do not generate crap
-    [ -z "$KARB" -o -z "$DARB" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  Device ARB or KDZ ARB cannot be checked! ABORTED!!"
-    # verify ARB
-    [ "$KARB" -eq "${DARB/:*}" ] && ARBOK=1 && ARBINC=0 && F_LOG "ARB is equal between KDZ and device"
-    [ "$KARB" -gt "${DARB/:*}" ] && ARBOK=1 && ARBINC=1 && F_MSGW 800 "ARB will be increased!\n\nThat means you can not rollback to previous versions once flashed!\n\nRead more about ARB here:\n\n<a href='https://bit.do/antirollg4'>ARB explained</a>"
-    [ "$KARB" -lt "${DARB/:*}" ] && ARBOK=0 && ARBINC=0 && F_MSGE 800 "The ARB of the KDZ you trying to flash is lower then your device! ABORTED!\n\nRead more about ARB here:\n\n<a href='https://bit.do/antirollg4'>ARB explained</a>"
-    # a bulletproof method to avoid issues with any of the above (e.g. when KARB or DARB are not digits etc)
-    [ "$ARBOK" -ne 1 ] && F_MSGE 500 "Issues regarding determining ARB! ABORTED!" && F_EXIT "$FUNCNAME: ARB check failed" 4
+    # verify ARB and model
+    RET=$(F_VERIFYDARB "$KDZTMP/extracteddz")
 
-    # manual ARB verification by the user
-    if [ -z "${CHKMRES/*:}" ] || [ -z "${CHKMRES/:*}" ]|| [ "${CHKMRES/:*}" == "unknown" ] || [ "${CHKMRES/*:}" != "${CHKMRES/:*}" ];then
-        FYAD --title="$YTITLE - CHECKUP" --image="$SICONS/salt_logo_128x128.png" --text "\n  WARNING: <b><span color='#ff0000'>KDZ file and device information does not match!</span></b>\n  Device model:\t${CHKMRES/*:}\n  KDZ is for:\t\t${CHKMRES/:*}\n\n  ARB of your device <b>seems</b> to be compatible with the KDZ file\n  Device:\t${DARB/:*}\n  KDZ:\t$KARB\n\n  You can doublecheck <a href='http://tinyurl.com/antirollg4'>here</a>\n\n  Do you really want to continue and so FLASH now?" --button="Flash (may HARD BRICK)":0 --button=Cancel:1
-    else
-        $FYAD --title="$YTITLE - CHECKUP" --image="$SICONS/salt_logo_128x128.png" --text "\n  KDZ <b>file and device</b> information match\n  Device model:\t${CHKMRES/*:}\n  KDZ is for:\t\t${CHKMRES/:*}\n\n  ARB of your device <b>seems</b> to be compatible with the KDZ file\n  Device:\t${DARB/:*}\n  KDZ:\t$KARB\n  You can doublecheck ARB <a href='http://tinyurl.com/antirollg4'>here</a>\n\n  Do you really want to continue and so FLASH now?" --button="Flash (on your own risk)":0 --button=Cancel:1
-    fi
+    # abort when needed
+    [ "$RET" != "99" ] && F_ERR $FUNCNAME 3 "\n  Aborted on user check verification"
+
     # abort when needed
     [ $? -ne 0 ] && F_ERR $FUNCNAME 3 "\n  Aborted on user check verification"
 
@@ -657,7 +640,8 @@ F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
     F_FLASHPART "$KDZTMP/extracteddz" auto
 
     # factory reset to avoid bootloop (cache gets deleted by FLASHPART already)
-    # TODO: accept the taken user choice 
+    # TODO: accept the taken user choice
+    # DISABLED as WIPEPART will just clear the partition and do not FORMAT it (will produce bootloops etc) 
     #F_WIPEPART userdata ni
 
     F_MSG 600 "    KDZ flashing completed.\n    Check the log for details (Advanced Menu)"
