@@ -544,6 +544,52 @@ F_USUVARVALID(){ F_LOG "$FUNCNAME: started"
     if [ "$LGUSU" == "yes" -o "$LGUSU" == "no" ];then echo 1; else echo 0; fi
  } ; export -f F_USUVARVALID
 
+# verify device ARB and model results against folder / files ARB and model
+# returns returncode of users choice or errors
+F_VERIFYDARB(){
+    F_LOG "$FUNCNAME: started with $@"
+    IMGDIR="$1"
+    
+    CHKMRES=unknown
+    
+    # check device model of the given files
+    DFIL=$(find "$IMGDIR" -name 'misc.*' | head -n 1 | grep misc \
+      || find "$IMGDIR" -name 'aboot*' | head -n 1 | grep aboot \
+      || find "$IMGDIR" -name 'mpt*' | head -n 1 | grep mpt \
+      || echo ERROR)
+    [ "$DFIL" != "ERROR" ] && F_LOG "$FUNCNAME: Will use $DFIL for model check" && CHKMRES=$(F_CHKMODEL "$DFIL")
+
+    # check ARB
+    ARBOK=0
+    AFIL=$(find "$IMGDIR" -name 'sbl1.*' | head -n 1 | grep sbl1 \
+      || find "$IMGDIR" -name 'rpm*' | head -n 1 | grep rpm \
+      || find "$IMGDIR" -name 'tz*' | head -n 1 | grep tz \
+      || find "$IMGDIR" -name 'aboot*' | head -n 1 | grep aboot \
+      || echo ERROR)
+    [ "$AFIL" != "ERROR" ] && F_LOG "$FUNCNAME: Will use $AFIL for ARB check" && KARB=$(F_CKARB "$AFIL")
+    
+    ARBOK=0
+    DARB=$(F_CDARB)
+    F_LOG "$FUNCNAME: KARB: $KARB, DARB: $DARB, \nCHKMRES: ${CHKMRES/*:} VS. ${CHKMRES/:*}"
+    # verify the internal functions do not generate crap
+    [ -z "$KARB" -o -z "$DARB" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  Device ARB or file-based ARB cannot be checked! ABORTED!!"
+    # verify ARB
+    [ "$KARB" -eq "${DARB/:*}" ] && ARBOK=1 && ARBINC=0 && F_LOG "$FUNCNAME: ARB is equal between files and device"
+    [ "$KARB" -gt "${DARB/:*}" ] && ARBOK=1 && ARBINC=1 && F_MSGW 800 "ARB will be increased!\n\nThat means you can not rollback to previous versions once flashed!\n\nRead more about ARB here:\n\n<a href='https://bit.do/antirollg4'>ARB explained</a>"
+    [ "$KARB" -lt "${DARB/:*}" ] && ARBOK=0 && ARBINC=0 && F_MSGE 800 "The ARB of the files you are trying to flash is LOWER then your device!!! ABORTED!\n\nRead more about ARB here:\n\n<a href='https://bit.do/antirollg4'>ARB explained</a>"
+    # a bulletproof method to avoid issues with any of the above (e.g. when KARB or DARB are not digits etc)
+    [ "$ARBOK" -ne 1 ] && F_MSGE 500 "Issues regarding determining ARB! ABORTED!" && F_EXIT "$FUNCNAME: ARB check failed" 4
+
+    # manual ARB verification by the user
+    if [ -z "${CHKMRES/*:}" ] || [ -z "${CHKMRES/:*}" ]|| [ "${CHKMRES/:*}" == "unknown" ] || [ "${CHKMRES/*:}" != "${CHKMRES/:*}" ];then
+        F_LOG "$FUNCNAME: file and device model does not match!!!"
+        F_MSGW 800 "WARNING: <b><span color='#ff0000'>file and device model does not match!</span></b>\nDevice model:\t${CHKMRES/:*}\nFiles are for:\t\t${CHKMRES/*:}\n\nARB of your device <b>seems</b> to be compatible with the files\nDevice:\t${DARB/:*}\nFiles:\t$KARB\n\nYou can doublecheck <a href='https://bit.do/antirollg4'>here</a>\n\nDo you really want to continue and so FLASHing now?" "--button=Continue-may-HARDBRICK:99"
+    else
+        F_LOG "$FUNCNAME: file and device model does match"
+        F_MSGOK 800 "<b>file and device</b> information match\nDevice model:\t${CHKMRES/:*}\nFiles are for:\t\t${CHKMRES/*:}\n\nARB of your device <b>seems</b> to be compatible with the files\nDevice:\t${DARB/:*}\nFiles:\t$KARB\nYou can doublecheck ARB <a href='http://bit.do/antirollg4'>here</a>\n\n  Do you really want to continue and so FLASHing now?" "--button=Continue:99"
+    fi
+}; export -f F_VERIFYDARB
+
 # flash a KDZ
 F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
     # takes 5 arguments
