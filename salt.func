@@ -796,6 +796,12 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 
     F_LOG "sorted partitions: $SORTEDP -> $CHCOUNT"
 
+    # verify ARB and model
+    RET=$(F_VERIFYDARB "$IMGDIR")
+    
+    # abort when needed
+    [ "$RET" != "99" ] && F_ERR $FUNCNAME 3 "Aborted on user check verification"
+
     UANS=$(F_MSGW 700 "Will flash these partitions:\n\n$(echo $SORTEDP|tr ' ' '\n')" "--button=FLASH:99")
     if [ $UANS -ne 99 ] || [ $CHCOUNT -eq 0 ] ;then
         F_MSGE 500 "Aborted by user or no partitions selected"
