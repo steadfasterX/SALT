@@ -785,6 +785,12 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 
     F_LOG "choosen partitions: $CHOOSENP -> $CHCOUNT"
 
+    BLWARN=$(echo "$CHOOSENP"|tr " " "\n" | egrep -c "(bootloader|dangerous)" )
+    if [ "$BLWARN" -gt 0 ];then
+      RET=$(F_MSGW 600 "You have choosen\n\n\t<b>$BLWARN</b>\n\nfiles marked as bootloader or/and dangerous.\nFlashing those should only be done when you know what you do!" "--button=I-think-I-know-what-I-do:88")
+      [ "$RET" != "88" ] && F_ERR $FUNCNAME 3 "Aborted by user"
+    fi
+    
     SORTEDP=$(echo "$CHOOSENP" |tr " " "\n" | sort -t : -k 3n | cut -d ":" -f 1-2 | tr "\n" " " )
     CHCOUNT=$(echo "$SORTEDP" |tr " " "\n" |grep -c :)
 
