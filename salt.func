@@ -504,7 +504,7 @@ F_CKARB(){ F_LOG "$FUNCNAME: started"
         F_MSGE 700 "Missing required file to check for ARB\n  (checked this filename: $ARBFILE)!"
         echo "arb-detect-error"
     else
-        KDZARB=$(strings "$ARBFILE" | grep "0 SW_ID" |cut -d " " -f 2 |tr -d "0")
+        KDZARB=$(strings "$ARBFILE" | egrep "[0-9] SW_ID" |cut -d " " -f 2 | cut -d "0" -f 8 |tr -d "0")
         [ -z "$KDZARB" ] && KDZARB=0
         F_LOG "KDZARB=$KDZARB"
         echo $KDZARB
