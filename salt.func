@@ -802,7 +802,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     # abort when needed
     [ "$RET" != "99" ] && F_ERR $FUNCNAME 3 "Aborted on user check verification"
 
-    UANS=$(F_MSGW 700 "Will flash these partitions:\n\n$(echo $SORTEDP|tr ' ' '\n')" "--button=FLASH:99")
+    UANS=$(F_MSGW 700 "Keep in mind that SALT flashes the partitions in RAW format which will take usually longer then i.e. when using LGup.\n(RAW means every single bit gets copied - so even unused disk space)\n\nSALT is ready and will flash these partitions:\n\n$(echo $SORTEDP | sed 's/\ /, /g')" "--button=FLASH:99")
     if [ $UANS -ne 99 ] || [ $CHCOUNT -eq 0 ] ;then
         F_MSGE 500 "Aborted by user or no partitions selected"
     else
@@ -829,7 +829,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
         echo "# $FPART: FAILED"
               F_ERR $FUNCNAME 4 "\n  ERROR!\n\n  DO NOT REBOOT YOUR DEVICE!\n  FLASHING PROBLEM OCCURED!!!\n  while flashing:\n\n  <b>$FPART</b>" 
       fi
-        done | $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if the progress bar does NOT get up to 100%: DO NOT REBOOT THE DEVICE!)\n\n" --width 900 --progress --button='Close (WAIT until all is flashed)':1
+        done | $FYAD --image="$SICONS/salt_logo_64x64.png" --title="$YTITLE - FLASHING" --text="\n <b>Lean back, take a cup of coffee or sleep a bit. SALT is flashing now ...</b>\n (DO NOT REBOOT THE DEVICE while flashing or when an error occurs!)\n\n" --width 900 --progress --button='Close (WAIT until all is flashed)':1
         FLERR=${PIPESTATUS[0]}
     
         # check result
@@ -843,7 +843,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
         #F_WIPEPART cache ni || F_MSGE 400 "Wiping cache ended with an error: $WIPERR\n\nCheck Debug Log in SALT main screen."
         
         # sync filesystems
-        F_SYNC || F_MSGE 400 "Syncing filesystems ended with an error: $WIPERR\n\nCheck Debug Log in SALT main screen.\nDO NOT REBOOT THE DEVICE!"
+        F_SYNC || F_MSGE 400 "Syncing filesystems ended with an error: $WIPERR\n\nCheck and upload the debug Log in SALT advanced menu.\nDO NOT REBOOT THE DEVICE!"
     fi
     F_LOG "$FUNCNAME: ended"
 }; export -f F_FLASHPART
