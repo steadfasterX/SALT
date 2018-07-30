@@ -688,7 +688,11 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
               if [ -z "$IRES" ];then IRES="false\n${AVIMG}\n${APART}\nunneeded\n99"; else IRES="$IRES false\n${AVIMG}\n${APART}\nunneeded\n99" ;fi
             ;;
             ${PBOOTL})
-              if [ -z "$IRES" ];then IRES="true\n${AVIMG}\n${APART}\nbootloader\n1"; else IRES="$IRES true\n${AVIMG}\n${APART}\nbootloader\n1" ;fi
+              if [ -z "$IRES" ];then
+                IRES="true\n${AVIMG}\n${APART}</span>\n<span\tcolor='#ff0000'>bootloader</span>\n1"
+              else
+                IRES="$IRES true\n${AVIMG}\n${APART}\n<span\tcolor='#ff0000'>bootloader</span>\n1"
+              fi
             ;;
             ${PDEVICE})
               # dangerous partitions contain device specific stuff, e.g. your IMEI and will not get written by a regular KDZ flash!
