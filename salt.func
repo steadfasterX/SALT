@@ -528,7 +528,7 @@ F_CHKMODEL(){ F_LOG "$FUNCNAME: started"
            model_name) LGMODEL=${i/*:/};;
         esac
     done
-    KDZMODEL=$(dd if=$KFILE bs=512 count=10000 2>&1| strings | egrep -m1 'LG-[L|H|V]')
+    KDZMODEL=$(dd if=$KFILE bs=512 count=10000 2>&1| strings | egrep -m1 -o '(LGLS[0-9]{3})|(LGVS[0-9]{3})|(LG-[H|F][0-9]{3})')
     if [ -z "$KDZMODEL" ] ;then
         RES="${LGMODEL}:unknown"
     else
