@@ -145,7 +145,7 @@ F_MSGW(){ F_LOG "$FUNCNAME: started"
     # optional:
     # 3 => yad stuff
 
-    $FYAD --width="$1" --title="$YTITLE - SUCCESS" --image="$SICONS/warning_64x64.png" --text "\n$2" $3 --button=Close:0
+    $FYAD --width="$1" --title="$YTITLE - WARNING" --image="$SICONS/warning_64x64.png" --text "\n$2" $3 --button=Close:0
     RES=$?
     F_LOG "$2"
     F_LOG $RES
@@ -162,10 +162,12 @@ F_ERR(){ F_LOG "$FUNCNAME: started"
   # optional (4 requires at least an empty 3):
   #   3 => the message to show
   #   4 => the expected error code (if missing we expect 0)
+  #   5 => yad code for F_MSGE (requires at least emtpy 3 and 4)
   CALLER=$1
   ERRCODE=$2
   MSG="$3"
   EXPECTED=$4
+  YADSTUFF="$5"
 
   [ -z "$EXPECTED" ] && EXPECTED=0
   
@@ -175,7 +177,7 @@ F_ERR(){ F_LOG "$FUNCNAME: started"
   fi
   if [ "$ERRCODE" != "$EXPECTED" ];then
     F_ELOG "ERROR: $ERRCODE occurred in $CALLER (expected $EXPECTED, got $ERRCODE)"
-    [ ! -z "$MSG" ] && F_MSGE 400 "$MSG"
+    [ ! -z "$MSG" ] && F_MSGE 800 "$MSG" "$YADSTUFF"
     F_EXIT "${CALLER}->${FUNCNAME}" 4
   else
     echo "OK: $CALLER"
@@ -433,7 +435,8 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
 # check device for for antirollback bullshit (I'm still pissed off how a vendor is doing this! I mean HARDBRICK a phone ?? wtf LG?)
 F_CDARB(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
-    #
+    # returns: <ARB>:<detection-success>
+
     DEVARBEMPTY=0
     DEVARB=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump - sbl1 2>> $LOG| strings | grep "0 SW_ID" |cut -d " " -f 2 | head -n 1 | sed -e 's/0\{16,16\}/zero/g' | tr -d "0")
     [ -z "$DEVARB" ] && DEVARB="0" && DEVARBEMPTY=1 && F_LOG "EMPTY ARB DETECTED:\n$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump /tmp/sbl1.err sbl1 && strings /tmp/sbl1.err | grep -C 1 SW_ID 2>&1)" && F_LOG "Please send this log and the SBL1 dump in /tmp/sbl1.err" && F_LOG "$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list --debug 2>&1)" && F_LOG "$(lsusb -v)"
@@ -512,8 +515,9 @@ F_CKARB(){ F_LOG "$FUNCNAME: started"
 # check device model
 F_CHKMODEL(){ F_LOG "$FUNCNAME: started"
     # takes 1 argument
+    # returns <connected-model>:<file-model>
     #
-    # 1 => KDZFILE to compare
+    # 1 => image/kdz file to compare
 
     KFILE="$1"
     [ -z "$KFILE" -o ! -f "$KFILE" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  KFILE missing for compare!"
@@ -657,6 +661,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
               if [ -z "$IRES" ];then IRES="true\n${AVIMG}\n${APART}\nbootloader\n1"; else IRES="$IRES true\n${AVIMG}\n${APART}\nbootloader\n1" ;fi
             ;;
             ${PDEVICE})
+              # dangerous partitions contain device specific stuff, e.g. your IMEI and will not get written by a regular KDZ flash!
               if [ -z "$IRES" ];then 
                 IRES="false\n${AVIMG}\n${APART}</span>\n<span\tcolor='#ff0000'>dangerous</span>\n88"
               else 
