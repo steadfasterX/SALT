@@ -653,12 +653,17 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     # takes 1 optional argument
     #
     # 1 => image files path
-
+    
+    LGUSUOVERRIDE=false
+    
     if [ -z "$1" ];then
         AIMGDIR=$($FYAD --width=600 --title="$YTITLE - FOLDER" --form \
                     --field="  Select the source folder":DIR \
-                  $HOME)
+                    --field="  UsU override\n  (will allow flashing of all partitions on UsU devices - leave unchecked if unsure!)":CHK \
+                  $REALHOME \
+                  $LGUSUOVERRIDE)
         IMGDIR=$(echo $AIMGDIR|cut -d '|' -f1)
+        LGUSUOVERRIDE=$(echo $AIMGDIR|cut -d '|' -f2)
     else
         IMGDIR="$1"
     fi
@@ -672,10 +677,15 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     VARSET=$(F_USUVARVALID)
     if [ "$VARSET" -eq 0 ];then F_MSGE 500 "ERROR: Cannot determine UsU state?! aborted.."; F_EXIT "$FUNCNAME" 3; fi
     
-    # create a list of *.image files and let the user choose
-    IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name '*.mbn' | tr " " "_" |egrep -vi "(GPT|firehose|zeros)");do echo "${ifile##*/}";done | tr "\n" " ")
-
-    F_LOG "($FUNCNAME) image files: $IMGFILES"
+    # create a list of *.image files
+    if [ "$LGUSU" == "yes" ] && [ "$LGUSUOVERRIDE" == "false" -o "$LGUSUOVERRIDE" == "FALSE" ];then
+      F_LOG "$FUNCNAME: UsU detected so will not display UsU relevant files (USUOVERRIDE=$LGUSUOVERRIDE)"
+      IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name '*.mbn' | tr " " "_" |egrep -vi "(aboot|laf|raw_resources|GPT|firehose|zeros)");do echo "${ifile##*/}";done | tr "\n" " ")
+    else
+      F_LOG "$FUNCNAME: will display all files (USUOVERRIDE=$LGUSUOVERRIDE)"
+      IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name '*.mbn' | tr " " "_" |egrep -vi "(GPT|firehose|zeros)");do echo "${ifile##*/}";done | tr "\n" " ")
+    fi
+    F_LOG "$FUNCNAME: image files: $IMGFILES"
 
     # give proper default choice for what to flash and what not
     shopt -s extglob
