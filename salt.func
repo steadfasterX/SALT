@@ -36,6 +36,13 @@ source "$VARS"
 source "$HASHES"
 [ $? -ne 0 ]&& echo "ERROR: including $HASHES" && exit 3
 
+# set CR arg
+case $CRMODE in
+    yes) export CROPT="--cr yes";;
+    no) export CROPT="--cr no";;
+    *) export CROPT="";;
+esac
+  
 ######################################################################################
 
 # there is no need to change these as they get auto set by the VERSION var
@@ -75,6 +82,9 @@ F_ELOG(){
   echo -e "$(date '+%F %T'): $1" | tee -a $LOG
 
 }; export -f F_ELOG
+######################################################################################
+F_LOG "CR setting: $CRMODE = $CROPT"
+######################################################################################
 
 # print a message
 F_MSG(){ F_LOG "$FUNCNAME: started"
@@ -135,7 +145,7 @@ F_MSGW(){ F_LOG "$FUNCNAME: started"
     # optional:
     # 3 => yad stuff
 
-    $FYAD --width="$1" --title="$YTITLE - SUCCESS" --image="$SICONS/warning_64x64.png" --text "\n$2" $3 --button=Close:0
+    $FYAD --width="$1" --title="$YTITLE - WARNING" --image="$SICONS/warning_64x64.png" --text "\n$2" $3 --button=Close:0
     RES=$?
     F_LOG "$2"
     F_LOG $RES
@@ -152,10 +162,12 @@ F_ERR(){ F_LOG "$FUNCNAME: started"
   # optional (4 requires at least an empty 3):
   #   3 => the message to show
   #   4 => the expected error code (if missing we expect 0)
+  #   5 => yad code for F_MSGE (requires at least emtpy 3 and 4)
   CALLER=$1
   ERRCODE=$2
   MSG="$3"
   EXPECTED=$4
+  YADSTUFF="$5"
 
   [ -z "$EXPECTED" ] && EXPECTED=0
   
@@ -165,7 +177,7 @@ F_ERR(){ F_LOG "$FUNCNAME: started"
   fi
   if [ "$ERRCODE" != "$EXPECTED" ];then
     F_ELOG "ERROR: $ERRCODE occurred in $CALLER (expected $EXPECTED, got $ERRCODE)"
-    [ ! -z "$MSG" ] && F_MSGE 400 "$MSG"
+    [ ! -z "$MSG" ] && F_MSGE 800 "$MSG" "$YADSTUFF"
     F_EXIT "${CALLER}->${FUNCNAME}" 4
   else
     echo "OK: $CALLER"
@@ -213,7 +225,7 @@ F_GETINFO(){ F_LOG "$FUNCNAME: started"
       && echo "romcomp:$ROMCOMP" \
       && echo "arb:${IARB}" \
       && echo "lafver:$LAFVER" \
-      && $PYTHONBIN $LAFPATH/lglaf.py -c '!INFO GPRO \x08\x0b\0\0' --rawshell \
+      && $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!INFO GPRO \x08\x0b\0\0' --rawshell \
        | $PYTHONBIN $LAFPATH/scripts/parse-props.py - \
        | egrep "(device_sw_version|model_name|secure_device|laf_sw_version|device_factory_version|target_country|battery_level|imei|target_operator|serial)" | tr "\n" " " | tr -d "'" 
     F_LOG "$FUNCNAME: $(kill $PBPP)"
@@ -224,8 +236,8 @@ F_GETINFO(){ F_LOG "$FUNCNAME: started"
 F_ROMCOMP(){ F_LOG "$FUNCNAME: started"
     # takes no arg
 
-    DEVTMO=$($PYTHONBIN $LAFPATH/partitions.py --list 2>&1 | grep -c carrier | tee -a $LOG)
-    DEVEUR=$($PYTHONBIN $LAFPATH/partitions.py --list 2>&1 | grep -c cust | tee -a $LOG)
+    DEVTMO=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list 2>&1 | grep -c carrier | tee -a $LOG)
+    DEVEUR=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list 2>&1 | grep -c cust | tee -a $LOG)
     F_LOG "UsU compatibility: $DEVTMO (0=h815, 1=h811)"
     if [ "$DEVTMO" == "1" ];then
         echo "H811"
@@ -234,7 +246,7 @@ F_ROMCOMP(){ F_LOG "$FUNCNAME: started"
     else
         echo "unknown"
         F_LOG "UsU compatibility: cannot be detected! full GPT:"
-        $PYTHONBIN $LAFPATH/partitions.py --list 2>&1 >> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list 2>&1 >> $LOG
     fi
 }; export -f F_ROMCOMP
 
@@ -253,7 +265,7 @@ F_KDZARB(){  F_LOG "$FUNCNAME: started with $@"
 
  
     F_LOG "$FUNCNAME: cleanup.."
-    find "$LGTARGET" -type f -name 'sbl*' -or -name 'xbl*' -exec rm -vf {}\\; >> $LOG 2>&1
+    find "$LGTARGET" -type f -maxdepth 1 -name 'sbl*' -or -name 'xbl*' -exec rm -vf {}\\; >> $LOG 2>&1
     IRES=$($KDZMGR --batch --list -x "$LGKDZ" -d "$LGTARGET" 2>&1)
     ARBSLICE=$(echo "$IRES" |egrep "sbl|xbl"|head -n1|cut -d ":" -f 1)
     if [ -z "$ARBSLICE" ];then
@@ -261,8 +273,9 @@ F_KDZARB(){  F_LOG "$FUNCNAME: started with $@"
         echo "arb-detect-error"
     else
         F_LOG "$FUNCNAME: found ARB in slice >$ARBSLICE< .. extracting.."
+        # extract ARB slice
         $KDZMGR --batch -x "$LGKDZ" -d "$LGTARGET" --slice "$ARBSLICE" >> $LOG 2>&1
-        ARBFILE=$(find "$LGTARGET" -type f -name 'sbl*' -or -name 'xbl*')
+        ARBFILE=$(find "${LGTARGET}/extracteddz" -type f -maxdepth 1 -name 'sbl*' -or -name 'xbl*')
         F_LOG "$FUNCNAME: ARBFILE = $ARBFILE"
         # get and print the ARB
         F_CKARB "$ARBFILE"
@@ -290,9 +303,13 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
     [ "${LGTARGET}/extracteddz" ] && rm -rf "${LGTARGET}/extracteddz"
     [ "${LGTARGET}/extractekdz" ] && rm -rf "${LGTARGET}/extractedkdz"
 
+    # open yad listener
+    echo 0> /tmp/${FUNCNAME}_l
+    tail -f /tmp/${FUNCNAME}_l | $FYAD --title="$YTITLE - COLLECT" --text="\n" --progress-text="Collecting KDZ information ..." --width=400 --progress --pulsate --no-buttons &
+    echo 1 >> /tmp/${FUNCNAME}_l
+    tail_pid=$!
+
     # grab the partition list
-    $FYAD --title="$YTITLE - PREPARE" --text "\n  Collecting KDZ information..." --width=400 --timeout=120 --timeout-indicator=right --no-buttons &
-    PBPP=$!
     IRES=$($KDZMGR --batch --list -x "$LGKDZ" -d "$LGTARGET" 2>&1)
     IRESDATA=$(echo -e "$IRES" |grep ":data" | sort -t : -k 2)
     IRESEMPTY=$(echo -e "$IRES" |grep ":empty" | sort -t : -k 2)
@@ -300,13 +317,18 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
     # grab the ARB of the KDZ
     KDZARB=$(F_KDZARB "$LGKDZ" "$LGTARGET")
 
+    # close yad listener
+    kill $tail_pid
+    rm /tmp/${FUNCNAME}_l
+
     # build the extract list based on the UsU state
     case "$LGUSU" in
         yes) IRESAUTO=$(echo -e "$IRESDATA" | egrep -iv "($AUTONOEXTRACTUSU)")
         ;;
         no|no_device_found) IRESAUTO=$(echo -e "$IRESDATA" | egrep -iv "($AUTONOEXTRACT)")
         ;;
-        *) kill $PBPP
+        *) kill $tail_pid
+           rm /tmp/${FUNCNAME}_l
            F_MSGE 500 "Unexpected LGUSU result ($LGUSU).. "
            F_EXIT "$FUNCNAME: Cannot determine UsU state" 3 
         ;; 
@@ -386,8 +408,15 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
     done
     EXERR=$?
 
-    # ensure regular users can work with the backup
-    chown -Rv ${REALUSER} "$LGTARGET/extractedkdz" "$LGTARGET/extracteddz" >> $LOG
+    # cleanup dz (but leave the dlls)
+    rm -fv "$LGTARGET/extractedkdz/*.dz" >> $LOG
+
+    # ensure regular users can work with the extracted stuff
+    if [ "$LGTARGET" != "/tmp" ] && [ "$LGTARGET" != "/" ];then
+        chown -Rv ${REALUSER} "$LGTARGET" >> $LOG
+    else
+        chown -Rv ${REALUSER} "$LGTARGET/extractedkdz" "$LGTARGET/extracteddz" >> $LOG
+    fi
 
     # close yad listener
     kill $tail_pid
@@ -406,10 +435,11 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
 # check device for for antirollback bullshit (I'm still pissed off how a vendor is doing this! I mean HARDBRICK a phone ?? wtf LG?)
 F_CDARB(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
-    #
+    # returns: <ARB>:<detection-success>
+
     DEVARBEMPTY=0
-    DEVARB=$($PYTHONBIN $LAFPATH/partitions.py --dump - sbl1 2>> $LOG| strings | grep "0 SW_ID" |cut -d " " -f 2 | head -n 1 | sed -e 's/0\{16,16\}/zero/g' | tr -d "0")
-    [ -z "$DEVARB" ] && DEVARB="0" && DEVARBEMPTY=1 && F_LOG "EMPTY ARB DETECTED:\n$($PYTHONBIN $LAFPATH/partitions.py --dump /tmp/sbl1.err sbl1 && strings /tmp/sbl1.err | grep -C 1 SW_ID |cut -d ' ' -f 2 | sed -e 's/0\{16,16\}/zero/g' 2>&1)" && F_LOG "Please send this log and the SBL1 dump in /tmp/sbl1.err" && F_LOG "$($PYTHONBIN $LAFPATH/partitions.py --list --debug 2>&1)" && F_LOG "$(lsusb -v)"
+    DEVARB=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump - sbl1 2>> $LOG| strings | grep "0 SW_ID" |cut -d " " -f 2 | head -n 1 | sed -e 's/0\{16,16\}/zero/g' | tr -d "0")
+    [ -z "$DEVARB" ] && DEVARB="0" && DEVARBEMPTY=1 && F_LOG "EMPTY ARB DETECTED:\n$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump /tmp/sbl1.err sbl1 && strings /tmp/sbl1.err | grep -C 1 SW_ID 2>&1)" && F_LOG "Please send this log and the SBL1 dump in /tmp/sbl1.err" && F_LOG "$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list --debug 2>&1)" && F_LOG "$(lsusb -v)"
     [ "$DEVARB" == "zero" ] && DEVARB=0 && F_LOG "ARB valid and 0"
     F_LOG "$FUNCNAME: DEVARB=$DEVARB, DEVARBEMPTY=$DEVARBEMPTY"
     echo "${DEVARB}:${DEVARBEMPTY}"
@@ -430,7 +460,7 @@ F_DUMPPART(){ F_LOG "$FUNCNAME: started with $@"
     BFL="${BPTH}/${PNAME}"
 
     [ ! -d "$BPTH" ] && mkdir -p "$BPTH"
-    $PYTHONBIN $LAFPATH/partitions.py --batch --dump $BFL $PNAME
+    $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump $BFL $PNAME
 
 }; export -f F_DUMPPART
 
@@ -474,7 +504,7 @@ F_CKARB(){ F_LOG "$FUNCNAME: started"
         F_MSGE 700 "Missing required file to check for ARB\n  (checked this filename: $ARBFILE)!"
         echo "arb-detect-error"
     else
-        KDZARB=$(strings "$ARBFILE" | grep "0 SW_ID" |cut -d " " -f 2 |tr -d "0")
+        KDZARB=$(strings "$ARBFILE" | egrep "[0-9] SW_ID" |cut -d " " -f 2 | cut -d "0" -f 8 |tr -d "0")
         [ -z "$KDZARB" ] && KDZARB=0
         F_LOG "KDZARB=$KDZARB"
         echo $KDZARB
@@ -485,8 +515,9 @@ F_CKARB(){ F_LOG "$FUNCNAME: started"
 # check device model
 F_CHKMODEL(){ F_LOG "$FUNCNAME: started"
     # takes 1 argument
+    # returns <connected-model>:<file-model>
     #
-    # 1 => KDZFILE to compare
+    # 1 => image/kdz file to compare
 
     KFILE="$1"
     [ -z "$KFILE" -o ! -f "$KFILE" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  KFILE missing for compare!"
@@ -497,7 +528,7 @@ F_CHKMODEL(){ F_LOG "$FUNCNAME: started"
            model_name) LGMODEL=${i/*:/};;
         esac
     done
-    KDZMODEL=$(dd if=$KFILE bs=512 count=10000 2>&1| strings | egrep -m1 'LG-[L|H|V]')
+    KDZMODEL=$(dd if=$KFILE bs=512 count=10000 2>&1| strings | egrep -m1 -o '(LGLS[0-9]{3})|(LGVS[0-9]{3})|(LG-[H|F][0-9]{3})')
     if [ -z "$KDZMODEL" ] ;then
         RES="${LGMODEL}:unknown"
     else
@@ -512,6 +543,52 @@ F_CHKMODEL(){ F_LOG "$FUNCNAME: started"
 F_USUVARVALID(){ F_LOG "$FUNCNAME: started"
     if [ "$LGUSU" == "yes" -o "$LGUSU" == "no" ];then echo 1; else echo 0; fi
  } ; export -f F_USUVARVALID
+
+# verify device ARB and model results against folder / files ARB and model
+# returns returncode of users choice or errors
+F_VERIFYDARB(){
+    F_LOG "$FUNCNAME: started with $@"
+    IMGDIR="$1"
+    
+    CHKMRES=unknown
+    
+    # check device model of the given files
+    DFIL=$(find "$IMGDIR" -name 'misc.*' | head -n 1 | grep misc \
+      || find "$IMGDIR" -name 'aboot*' | head -n 1 | grep aboot \
+      || find "$IMGDIR" -name 'mpt*' | head -n 1 | grep mpt \
+      || echo ERROR)
+    [ "$DFIL" != "ERROR" ] && F_LOG "$FUNCNAME: Will use $DFIL for model check" && CHKMRES=$(F_CHKMODEL "$DFIL")
+
+    # check ARB
+    ARBOK=0
+    AFIL=$(find "$IMGDIR" -name 'sbl1.*' | head -n 1 | grep sbl1 \
+      || find "$IMGDIR" -name 'rpm*' | head -n 1 | grep rpm \
+      || find "$IMGDIR" -name 'tz*' | head -n 1 | grep tz \
+      || find "$IMGDIR" -name 'aboot*' | head -n 1 | grep aboot \
+      || echo ERROR)
+    [ "$AFIL" != "ERROR" ] && F_LOG "$FUNCNAME: Will use $AFIL for ARB check" && KARB=$(F_CKARB "$AFIL")
+    
+    ARBOK=0
+    DARB=$(F_CDARB)
+    F_LOG "$FUNCNAME: KARB: $KARB, DARB: $DARB, \nCHKMRES: ${CHKMRES/*:} VS. ${CHKMRES/:*}"
+    # verify the internal functions do not generate crap
+    [ -z "$KARB" -o -z "$DARB" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  Device ARB or file-based ARB cannot be checked! ABORTED!!"
+    # verify ARB
+    [ "$KARB" -eq "${DARB/:*}" ] && ARBOK=1 && ARBINC=0 && F_LOG "$FUNCNAME: ARB is equal between files and device"
+    [ "$KARB" -gt "${DARB/:*}" ] && ARBOK=1 && ARBINC=1 && F_MSGW 800 "Depending on the files you flash (e.g. bootloader) your ARB will be increased!\n\nThat means you can <b>never</b> rollback to a previous versions once flashed!\n\nRead more about ARB here:\n\n<a href='https://bit.do/antirollg4'>ARB explained</a>" >> /dev/null 2>&1
+    [ "$KARB" -lt "${DARB/:*}" ] && ARBOK=0 && ARBINC=0 && F_MSGE 800 "The ARB of the files you are trying to flash is LOWER then your device!!! ABORTED!\n\nRead more about ARB here:\n\n<a href='https://bit.do/antirollg4'>ARB explained</a>" && F_EXIT "$FUNCNAME too low ARB" 3
+    # a bulletproof method to avoid issues with any of the above (e.g. when KARB or DARB are not digits etc)
+    [ "$ARBOK" -ne 1 ] && F_MSGE 500 "Issues regarding determining ARB! ABORTED!" && F_EXIT "$FUNCNAME: ARB check failed" 4
+
+    # manual ARB verification by the user
+    if [ -z "${CHKMRES/*:}" ] || [ -z "${CHKMRES/:*}" ]|| [ "${CHKMRES/:*}" == "unknown" ] || [ "${CHKMRES/*:}" != "${CHKMRES/:*}" ];then
+        F_LOG "$FUNCNAME: file and device model does not match!!!"
+        F_MSGW 800 "WARNING: <b><span color='#ff0000'>file and device model does not match!</span></b>\nDevice model:\t${CHKMRES/:*}\nFiles are for:\t\t${CHKMRES/*:}\n\nARB of your device compared with the files\nDevice:\t${DARB/:*}\nFiles:\t$KARB\n\nYou can doublecheck some known ARB <a href='https://bit.do/antirollg4'>here</a>\n\nDo you really want to continue and so FLASHing now?" "--button=Continue-may-HARDBRICK:99"
+    else
+        F_LOG "$FUNCNAME: file and device model does match"
+        F_MSGOK 800 "<b>file and device</b> information match\nDevice model:\t${CHKMRES/:*}\nFiles are for:\t\t${CHKMRES/*:}\n\nARB of your device compared with the files\nDevice:\t${DARB/:*}\nFiles:\t$KARB\nYou can doublecheck some known ARB <a href='http://bit.do/antirollg4'>here</a>\n\n  Do you really want to continue and so FLASHing now?" "--button=Continue:99"
+    fi
+}; export -f F_VERIFYDARB
 
 # flash a KDZ
 F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
@@ -550,29 +627,12 @@ F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
     # recheck valid image files
     # TODO
 
-    # check device model
-    CHKMRES=$(F_CHKMODEL "$LGKDZ")
-    
-    # check ARB
-    ARBOK=0
-    KARB=$(F_CKARB "$KDZTMP/extracteddz/sbl1.image")
-    DARB=$(F_CDARB)
-    F_LOG "KARB: $KARB, DARB: $DARB"
-    # verify the internal functions do not generate crap
-    [ -z "$KARB" -o -z "$DARB" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  Device ARB or KDZ ARB cannot be checked! ABORTED!!"
-    # verify ARB
-    [ "$KARB" -eq "${DARB/:*}" ] && ARBOK=1 && ARBINC=0 && F_LOG "ARB is equal between KDZ and device"
-    [ "$KARB" -gt "${DARB/:*}" ] && ARBOK=1 && ARBINC=1 && F_MSGW 800 "ARB will be increased!\n\nThat means you can not rollback to previous versions once flashed!\n\nRead more about ARB here:\n\n<a href='https://bit.do/antirollg4'>ARB explained</a>"
-    [ "$KARB" -lt "${DARB/:*}" ] && ARBOK=0 && ARBINC=0 && F_MSGE 800 "The ARB of the KDZ you trying to flash is lower then your device! ABORTED!\n\nRead more about ARB here:\n\n<a href='https://bit.do/antirollg4'>ARB explained</a>"
-    # a bulletproof method to avoid issues with any of the above (e.g. when KARB or DARB are not digits etc)
-    [ "$ARBOK" -ne 1 ] && F_MSGE 500 "Issues regarding determining ARB! ABORTED!" && F_EXIT "$FUNCNAME: ARB check failed" 4
+    # verify ARB and model
+    RET=$(F_VERIFYDARB "$KDZTMP/extracteddz")
 
-    # manual ARB verification by the user
-    if [ -z "${CHKMRES/*:}" ] || [ -z "${CHKMRES/:*}" ]|| [ "${CHKMRES/:*}" == "unknown" ] || [ "${CHKMRES/*:}" != "${CHKMRES/:*}" ];then
-        FYAD --title="$YTITLE - CHECKUP" --image="$SICONS/salt_logo_128x128.png" --text "\n  WARNING: <b><span color='#ff0000'>KDZ file and device information does not match!</span></b>\n  Device model:\t${CHKMRES/*:}\n  KDZ is for:\t\t${CHKMRES/:*}\n\n  ARB of your device <b>seems</b> to be compatible with the KDZ file\n  Device:\t${DARB/:*}\n  KDZ:\t$KARB\n\n  You can doublecheck <a href='http://tinyurl.com/antirollg4'>here</a>\n\n  Do you really want to continue and so FLASH now?" --button="Flash (may HARD BRICK)":0 --button=Cancel:1
-    else
-        $FYAD --title="$YTITLE - CHECKUP" --image="$SICONS/salt_logo_128x128.png" --text "\n  KDZ <b>file and device</b> information match\n  Device model:\t${CHKMRES/*:}\n  KDZ is for:\t\t${CHKMRES/:*}\n\n  ARB of your device <b>seems</b> to be compatible with the KDZ file\n  Device:\t${DARB/:*}\n  KDZ:\t$KARB\n  You can doublecheck ARB <a href='http://tinyurl.com/antirollg4'>here</a>\n\n  Do you really want to continue and so FLASH now?" --button="Flash (on your own risk)":0 --button=Cancel:1
-    fi
+    # abort when needed
+    [ "$RET" != "99" ] && F_ERR $FUNCNAME 3 "\n  Aborted on user check verification"
+
     # abort when needed
     [ $? -ne 0 ] && F_ERR $FUNCNAME 3 "\n  Aborted on user check verification"
 
@@ -580,7 +640,8 @@ F_FLASHKDZ(){ F_LOG "$FUNCNAME: started"
     F_FLASHPART "$KDZTMP/extracteddz" auto
 
     # factory reset to avoid bootloop (cache gets deleted by FLASHPART already)
-    # TODO: accept the taken user choice 
+    # TODO: accept the taken user choice
+    # DISABLED as WIPEPART will just clear the partition and do not FORMAT it (will produce bootloops etc) 
     #F_WIPEPART userdata ni
 
     F_MSG 600 "    KDZ flashing completed.\n    Check the log for details (Advanced Menu)"
@@ -592,12 +653,17 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     # takes 1 optional argument
     #
     # 1 => image files path
-
+    
+    LGUSUOVERRIDE=false
+    
     if [ -z "$1" ];then
         AIMGDIR=$($FYAD --width=600 --title="$YTITLE - FOLDER" --form \
                     --field="  Select the source folder":DIR \
-                  $HOME)
+                    --field="  UsU override\n  (will allow flashing of all partitions on UsU devices - leave unchecked if unsure!)":CHK \
+                  $REALHOME \
+                  $LGUSUOVERRIDE)
         IMGDIR=$(echo $AIMGDIR|cut -d '|' -f1)
+        LGUSUOVERRIDE=$(echo $AIMGDIR|cut -d '|' -f2)
     else
         IMGDIR="$1"
     fi
@@ -611,10 +677,15 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     VARSET=$(F_USUVARVALID)
     if [ "$VARSET" -eq 0 ];then F_MSGE 500 "ERROR: Cannot determine UsU state?! aborted.."; F_EXIT "$FUNCNAME" 3; fi
     
-    # create a list of *.image files and let the user choose
-    IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name '*.mbn' | tr " " "_" |egrep -vi "(GPT|firehose|zeros)");do echo "${ifile##*/}";done | tr "\n" " ")
-
-    F_LOG "($FUNCNAME) image files: $IMGFILES"
+    # create a list of *.image files
+    if [ "$LGUSU" == "yes" ] && [ "$LGUSUOVERRIDE" == "false" -o "$LGUSUOVERRIDE" == "FALSE" ];then
+      F_LOG "$FUNCNAME: UsU detected so will not display UsU relevant files (USUOVERRIDE=$LGUSUOVERRIDE)"
+      IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name '*.mbn' | tr " " "_" |egrep -vi "(aboot|laf|raw_resources|GPT|firehose|zeros)");do echo "${ifile##*/}";done | tr "\n" " ")
+    else
+      F_LOG "$FUNCNAME: will display all files (USUOVERRIDE=$LGUSUOVERRIDE)"
+      IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name '*.mbn' | tr " " "_" |egrep -vi "(GPT|firehose|zeros)");do echo "${ifile##*/}";done | tr "\n" " ")
+    fi
+    F_LOG "$FUNCNAME: image files: $IMGFILES"
 
     # give proper default choice for what to flash and what not
     shopt -s extglob
@@ -627,9 +698,14 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
               if [ -z "$IRES" ];then IRES="false\n${AVIMG}\n${APART}\nunneeded\n99"; else IRES="$IRES false\n${AVIMG}\n${APART}\nunneeded\n99" ;fi
             ;;
             ${PBOOTL})
-              if [ -z "$IRES" ];then IRES="true\n${AVIMG}\n${APART}\nbootloader\n1"; else IRES="$IRES true\n${AVIMG}\n${APART}\nbootloader\n1" ;fi
+              if [ -z "$IRES" ];then
+                IRES="true\n${AVIMG}\n${APART}</span>\n<span\tcolor='#ff0000'>bootloader</span>\n1"
+              else
+                IRES="$IRES true\n${AVIMG}\n${APART}\n<span\tcolor='#ff0000'>bootloader</span>\n1"
+              fi
             ;;
             ${PDEVICE})
+              # dangerous partitions contain device specific stuff, e.g. your IMEI and will not get written by a regular KDZ flash!
               if [ -z "$IRES" ];then 
                 IRES="false\n${AVIMG}\n${APART}</span>\n<span\tcolor='#ff0000'>dangerous</span>\n88"
               else 
@@ -653,24 +729,80 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
         esac
     done
 
-    F_LOG "($FUNCNAME) created yad list: $IRES"
+    F_LOG "$FUNCNAME: created yad list: $IRES"
 
-    CHOOSENP=$(for files in $IRES;do echo -e "$files" ;done \
-                | $FYAD --height=800 --width=700 --title="$YTITLE - FOLDER" --text "\n  Select the partitions you want to flash\n  (the RECOMMENDED partitions to flash are CHECKED already!)\n\n  Hint: you can change the target partition here but do this only when you\n  <b>REALLY KNOW</b> what you're doing!\n" --list --checklist \
-                        --column="Flash":CHK --column="Image File":TXT --column="Target partition" --column="Type" --editable --editable-cols="3" --column=sort_int --hide-column=5  --listen  \
-                        --button=FLASH:0 --button=Abort:99 |cut -d "|" -f 2-3,5 | tr "|" ":" )
+    BTNRET=66
+    while [ "$BTNRET" -eq 77 -o "$BTNRET" -eq 66 ];do
+        if [ "$BTNRET" == 66 ];then
+          FCHOOSENP=$(for files in $IRES;do echo -e "$files" ;done \
+                      | $FYAD --height=800 --width=700 --title="$YTITLE - FOLDER" --text "\n  Select the partitions you want to flash\n  (the RECOMMENDED partitions to flash are CHECKED already!)\n\n\t<i>bootloader:</i>\t\twhen flashing ensure you select <b>ALL</b> parts of it - otherwise hard brick\n\t<i>dangerous:</i>\t\tcan reset unlocked devices, loosing IMEI etc!\n\t<i>unknown-type:</i>\tmeaning of that partition is unknown, use with care!\n\n  Hint: you can change the target partition by a double click - but do this only when you\n  <b>REALLY</b> know what you're doing!\n" \
+                        --list --checklist \
+                        --column="Flash":CHK \
+                        --column="Image File":TXT \
+                        --column="Target partition" \
+                        --column="Type" \
+                        --editable \
+                        --editable-cols="3" \
+                        --column=sort_int \
+                        --hide-column=5 \
+                        --listen \
+                        --button="Deselect All":77 \
+                        --button=FLASH:0 \
+                        --button=Abort:99 )
+          BTNRET="${PIPESTATUS[0]}"
+          CHOOSENP=$(echo "$FCHOOSENP" | cut -d "|" -f 2-5 | tr "|" ":" | tr "\n" " ")
+          F_LOG "$FUNCNAME BTNRET: $BTNRET"
+        else 
+            if [ "$BTNRET" == 77 ];then
+              FCHOOSENP=$(for files in $IRES;do echo -e "${files/true/false}" ;done \
+                         | $FYAD --height=800 --width=700 --title="$YTITLE - FOLDER" --text "\n  Select the partitions you want to flash\n  (the RECOMMENDED partitions to flash are CHECKED already!)\n\n\t<i>bootloader:</i>\t\twhen flashing ensure you select <b>ALL</b> parts of it - otherwise hard brick\n\t<i>dangerous:</i>\t\tcan reset unlocked devices, loosing IMEI etc!\n\t<i>unknown-type:</i>\tmeaning of that partition is unknown, use with care!\n\n  Hint: you can change the target partition by a double click - but do this only when you\n  <b>REALLY</b> know what you're doing!\n" \
+                            --list --checklist \
+                            --column="Flash":CHK \
+                            --column="Image File":TXT \
+                            --column="Target partition" \
+                            --column="Type" \
+                            --editable \
+                            --editable-cols="3" \
+                            --column=sort_int \
+                            --hide-column=5 \
+                            --listen \
+                            --button="Select default":66 \
+                            --button=FLASH:0 \
+                            --button=Abort:99)
+              BTNRET="${PIPESTATUS[0]}"
+              CHOOSENP=$(echo "$FCHOOSENP" | cut -d "|" -f 2-5 | tr "|" ":" | tr "\n" " ")
+              F_LOG "$FUNCNAME BTNRET: $BTNRET"
+            else
+              break
+            fi
+        fi
+    done
 
+    [ $BTNRET -ne 0 ] && F_MSGE 500 "Aborted by user" && F_EXIT "$FUNCNAME aborted by user" 3
+    
     CHCOUNT=$(echo "$CHOOSENP" |tr " " "\n" |grep -c :)
     [ $CHCOUNT -lt 1 ] && F_ERR $FUNCNAME 0 "No partition selected?"
 
     F_LOG "choosen partitions: $CHOOSENP -> $CHCOUNT"
 
+    BLWARN=$(echo "$CHOOSENP"|tr " " "\n" | egrep -c "(bootloader|dangerous)" )
+    if [ "$BLWARN" -gt 0 ];then
+      RET=$(F_MSGW 600 "You have choosen\n\n\t<b>$BLWARN</b>\n\nfiles marked as bootloader or/and dangerous.\nFlashing those should only be done when you know what you do!" "--button=I-think-I-know-what-I-do:88")
+      [ "$RET" != "88" ] && F_ERR $FUNCNAME 3 "Aborted by user"
+    fi
+    
     SORTEDP=$(echo "$CHOOSENP" |tr " " "\n" | sort -t : -k 3n | cut -d ":" -f 1-2 | tr "\n" " " )
     CHCOUNT=$(echo "$SORTEDP" |tr " " "\n" |grep -c :)
 
     F_LOG "sorted partitions: $SORTEDP -> $CHCOUNT"
 
-    UANS=$(F_MSGW 700 "Will flash these partitions:\n\n$(echo $SORTEDP|tr ' ' '\n')" "--button=FLASH:99")
+    # verify ARB and model
+    ARET=$(F_VERIFYDARB "$IMGDIR")
+    
+    # abort when needed
+    [ "$ARET" != "99" ] && F_ERR $FUNCNAME 3 "Aborted on user check verification ($ARET)"
+
+    UANS=$(F_MSGW 700 "Keep in mind that SALT flashes the partitions in RAW format which will take usually longer then i.e. when using LGup.\n(RAW means every single bit gets copied - so even unused disk space)\n\nSALT is ready and will flash these partitions:\n\n$(echo $SORTEDP | sed 's/\ /, /g')" "--button=FLASH:99")
     if [ $UANS -ne 99 ] || [ $CHCOUNT -eq 0 ] ;then
         F_MSGE 500 "Aborted by user or no partitions selected"
     else
@@ -686,7 +818,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
       echo "#flashing: $FPART"
     
             F_LOG "$FUNCNAME: $FPART starting"
-            $PYTHONBIN -u $LAFPATH/partitions.py --batch --restore "$FFILE" $FPART 2>>$LOG | sed -u -e "s%:\([0-9]*\):\([0-9]*\)%,#$FPART: \1 KB / \2 KB%g;s/,/\n/g"  2>>$LOG
+            $PYTHONBIN -u $LAFPATH/partitions.py ${CROPT} --batch --restore "$FFILE" $FPART 2>>$LOG | sed -u -e "s%:\([0-9]*\):\([0-9]*\)%,#$FPART: \1 KB / \2 KB%g;s/,/\n/g"  2>>$LOG
       FLASHERR=${PIPESTATUS[0]}
       if [ $FLASHERR -eq 0 ];then
         echo "100"
@@ -695,23 +827,26 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
       else
                     F_LOG "$FUNCNAME: $FPART FAILED with $FLASHERR"
         echo "# $FPART: FAILED"
-              F_ERR $FUNCNAME 4 "\n  ERROR!\n\n  DO NOT REBOOT YOUR DEVICE!\n  FLASHING PROBLEM OCCURED!!!\n  while flashing:\n\n  <b>$FPART</b>" 
+              F_ERR $FUNCNAME 4 "DO NOT REBOOT YOUR DEVICE!\n  FLASHING PROBLEM OCCURED!!!\n  while flashing:\n\n  <b>$FPART</b>\n\nClick this button, then Upload: " 0 "--form --field=Upload-SALT-log!$SICONS/log_16x16.png:FBTN $SALTPATH/getlog" 
       fi
-        done | $FYAD --title="$YTITLE - FLASHING" --text="\n  <b>SALT is now flashing...</b>\n  (if the progress bar does NOT get up to 100%: DO NOT REBOOT THE DEVICE!)\n\n" --width 900 --progress --button='Close (WAIT until all is flashed)':1
+        done | $FYAD --image="$SICONS/salt_logo_64x64.png" --title="$YTITLE - FLASHING" --text="\n <b>Lean back, take a cup of coffee or sleep a bit. SALT is flashing now ...</b>\n (DO NOT REBOOT THE DEVICE while flashing or when an error occurs!)\n\n" --width 900 --progress --button='Close (WAIT until all is flashed)':1
         FLERR=${PIPESTATUS[0]}
     
         # check result
         if [ "$FLERR" -eq 0 ];then
             F_MSGOK 400 "Flashing was successful!"
         else
-            F_MSGE 400 "FLASHING ENDED WITH ERROR: $FLERR\n\nCheck Debug Log in SALT main screen!\nDO NOT REBOOT THE DEVICE TO AVOID HARD BRICK!!!!"
+            F_MSGE 800 "FLASHING ENDED WITH ERROR: $FLERR\n\nCheck Debug Log in SALT main screen!\nDO NOT REBOOT THE DEVICE TO AVOID HARD BRICK!!!!\n\nIf you haven't already uploaded the debug log click this button, then Upload:\n" "--form --field=Upload-SALT-log!$SICONS/log_16x16.png:FBTN $SALTPATH/getlog" 
         fi
     
+        # TODO: md5 verify?        
+        
         # wipe cache
+        # disabled as it will clear the partition but not format it - leading into a non booting device until formatted manually
         #F_WIPEPART cache ni || F_MSGE 400 "Wiping cache ended with an error: $WIPERR\n\nCheck Debug Log in SALT main screen."
         
         # sync filesystems
-        F_SYNC || F_MSGE 400 "Syncing filesystems ended with an error: $WIPERR\n\nCheck Debug Log in SALT main screen.\nDO NOT REBOOT THE DEVICE!"
+        F_SYNC || F_MSGE 400 "Syncing filesystems ended with an error: $WIPERR\n\nCheck and upload the debug Log in SALT advanced menu.\nDO NOT REBOOT THE DEVICE!"
     fi
     F_LOG "$FUNCNAME: ended"
 }; export -f F_FLASHPART
@@ -719,7 +854,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 # check/ensure device is connected
 F_CHKDEVCON(){ F_LOG "$FUNCNAME: started"
     # takes no argument
-    $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  uname -m\0' --rawshell 2>&1 >> $LOG 
+    $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  uname -m\0' --rawshell 2>&1 >> $LOG 
     RET=${PIPESTATUS[0]}
     if [ $RET -ne 0 ];then
         RES=$(F_MSG 700 "NO DEVICE CONNECTED?\nIf you have connected your device ensure that it is in DOWNLOAD mode\n(<u>not</u> fastboot, <u>not</u> recovery, <u>not</u> booted Android)" "--image=$SICONS/warning_64x64.png --button=Example-Picture:99 --button=Skip:11 --button=Retry:22")
@@ -742,7 +877,7 @@ F_SHELL(){ F_LOG "$FUNCNAME: started"
     F_CHKDEVCON
     if [ $? -eq 0 ];then
         F_ELOG "device connected... Opening shell now!"
-        xterm -e "cd $LAFPATH && echo -e '\n*****************\nTYPE the word exit TO CLOSE THIS WINDOW\n*********************\n\n'; $PYTHONBIN $LAFPATH/lglaf.py"
+        xterm -e "cd $LAFPATH && echo -e '\n*****************\nTYPE the word exit TO CLOSE THIS WINDOW\n*********************\n\n'; $PYTHONBIN $LAFPATH/lglaf.py ${CROPT}"
     fi
     F_LOG "$FUNCNAME: ended"
 }; export -f F_SHELL
@@ -756,7 +891,7 @@ F_STARTKDZ(){ F_LOG "$FUNCNAME: started"
         --form \
         --field="  KDZ file":FL --file-filter="KDZ files (*.kdz)| *.kdz *.KDZ"\
         --field="  Target directory\nHINT: Ensure you have enough free disk space":DIR \
-        undef /tmp \
+        undef /tmp/salt_kdz \
         )
     F_ELOG "returned: $EXCHOICES"
     KDZFILE=$(echo "$EXCHOICES" | cut -d '|' -f 1)
@@ -821,11 +956,11 @@ F_WIPEPART(){ F_LOG "$FUNCNAME: started with $@"
 
     if [ "$ITP" == "ni" ];then 
         F_LOG "$FUNCNAME: wiping $WPART in noninteractive mode"
-        $PYTHONBIN ${LAFPATH}/partitions.py --wipe $WPART 2>&1 | tee -a $LOG
+        $PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --wipe $WPART 2>&1 | tee -a $LOG
     else
         F_LOG "$FUNCNAME: wiping $WPART in interactive mode"
         F_MSG 400 "Do you really want to wipe out <b>$WPART</b>?" "--button=Yes:0 --button='wtf NO never':1"
-        [ $? -eq 0 ] && $PYTHONBIN ${LAFPATH}/partitions.py --wipe $WPART 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - WIPING" --width=800 --height=200 --text-info --listen --wrap --button=Close
+        [ $? -eq 0 ] && $PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --wipe $WPART 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - WIPING" --width=800 --height=200 --text-info --listen --wrap --button=Close
     fi
     F_SYNC
 }; export -f F_WIPEPART
@@ -835,7 +970,7 @@ F_LAFEXEC(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     # takes 1 argument
 
     EXECMD="$1"
-    RET=$($PYTHONBIN ${LAFPATH}/lglaf.py -c "'!EXEC  ${EXECMD}\0'" --rawshell)
+    RET=$($PYTHONBIN ${LAFPATH}/lglaf.py ${CROPT} -c "'!EXEC  ${EXECMD}\0'" --rawshell)
     echo $RET
 }; export -f F_LAFEXEC
 
@@ -854,17 +989,19 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     $FYAD --width=550 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text "\n  Choose your backup type!\n\n  Basic:\twill just backup partitions up to a size of $BMAXDEF MB\n  Full:\tlike Basic but includes any size" --button=Full:1 --button=Basic:2 --buttons-layout=center
     BAKTYPE=$?
 
+    F_LOG "$FUNCNAME: DEBUG: List partitions:\n$($PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --list --batch)"
+
     COMPLSIZE=0
     case $BAKTYPE in
         1) BAKTNAME=Full
             BMAX=0
-            for size in $($PYTHONBIN ${LAFPATH}/partitions.py --list --batch | cut -d ":" -f6 | $TRBIN "\n" " ");do
+            for size in $($PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --list --batch | cut -d ":" -f6 | $TRBIN "\n" " ");do
                 COMPLSIZE=$((COMPLSIZE + $size))
             done
         ;;
         2) BAKTNAME=Basic
             BMAX=$((BMAXDEF * 1024))
-            for size in $($PYTHONBIN ${LAFPATH}/partitions.py --list --batch | cut -d ":" -f6 | $GREPBIN -v $BMAX | $TRBIN "\n" " ");do
+            for size in $($PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --list --batch | cut -d ":" -f6 | $GREPBIN -v $BMAX | $TRBIN "\n" " ");do
                 if [ $size -le $BMAX ];then
                     F_LOG "$FUNCNAME: DEBUG: adding $size to $COMPLSIZE"
                     COMPLSIZE=$((COMPLSIZE + $size))
@@ -873,11 +1010,10 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
                 fi
             done
         ;;
-        *) F_EXIT $FUNCNAME $BAKTYPE
+        *) F_EXIT "$FUNCNAME $BAKTYPE" 3
         ;;
     esac
     COMPLSIZEMB=$((COMPLSIZE / 1024))
-    F_LOG "$FUNCNAME: choosen backup type was $BAKTYPE, $BAKTNAME, $BMAX KB, backup size: $COMPLSIZEMB"
 
     TFREE=0
     while [ "$TFREE" -lt "$COMPLSIZEMB" ];do
@@ -897,12 +1033,15 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
         [ "$TFREE" -lt "$COMPLSIZEMB" ] && F_MSGE 500 "Wake up dude!\n\nThe target directoy:\n\n$BTDIR\n\n<span color='#ff0000'><b>HAS NOT ENOUGH FREE SPACE!</b></span>\n\nFree space:\t<b>$TFREE MB</b>\nRequired:\t<b>$COMPLSIZEMB MB</b>\n\nTry again!"
     done
 
+    [ "$COMPLSIZEMB" -eq 0 -o -z "$COMPLSIZEMB" ] && F_MSGE 500 "Calculated target size is too small!\nUpload and share the debug log!" && F_EXIT "$FUNCNAME" 4
+ 
+    F_LOG "$FUNCNAME: choosen backup type was $BAKTYPE, $BAKTNAME, $BMAX KB, backup size: $COMPLSIZEMB, backup path: $BTDIR"
     F_LOG "$FUNCNAME: Target directory has enough free space!"
     $FYAD --width=500 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text "\n  READY!\n\n  Free space:\t<b>$TFREE MB</b>\n  Required:\t<b>$COMPLSIZEMB MB</b>\n\n  Click START to begin the backup now. " --button=START:0 --button=Abort:2
     BRET=$?
     [ $BRET -ne 0 ] && F_EXIT "$FUNCNAME Aborted on users request" $BRET
 
-    $PYTHONBIN ${LAFPATH}/extract-partitions.py --batch --outdir $BTDIR --max-size $BMAX 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - $BAKTNAME BACKUP" --text="\n  <b>SALT is backing up your device...</b>\n\n" --width 900 --progress --button='Close (WAIT until you see All finished)':0
+    $PYTHONBIN ${LAFPATH}/extract-partitions.py ${CROPT} --batch --outdir $BTDIR --max-size $BMAX 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - $BAKTNAME BACKUP" --text="\n  <b>SALT is backing up your device...</b>\n\n" --width 900 --progress --button='Close (WAIT until you see All finished)':0
     BERR=${PIPESTATUS[0]}
     if [ "$BERR" -ne 0 ];then
         F_MSGE 500 "Backup incomplete! Check the log."
@@ -913,7 +1052,7 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     # ensure regular users can work with the backup
     chown -Rv ${REALUSER} "${REALHOME}/salt_backup" >> $LOG
 
-    VERSUPP=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  md5sum /dev/block/bootdevice/by-name/\0' --rawshell 2>&1 | cut -d ' ' -f 1 | grep -vi Hello)
+    VERSUPP=$($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  md5sum /dev/block/bootdevice/by-name/\0' --rawshell 2>&1 | cut -d ' ' -f 1 | grep -vi Hello)
     if [ -z "$VERSUPP" ];then
         F_MSGW 600 "\n  Your device/firmware does not support verification of the backup sorry." 
     else
@@ -970,10 +1109,10 @@ F_VERIFYBAK(){ F_LOG "$FUNCNAME: started"
 
         if [ -z "$vfilerem" ];then
             vfilerem=$(echo "${vfileloc}" | tr "," " " | sed -e 's/mmcblk0p\(.*\)/\1/g')
-            REMFILE=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  md5sum /dev/block/bootdevice/by-num/p'${vfilerem}'\0' --rawshell 2>&1 | cut -d ' ' -f1)
+            REMFILE=$($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  md5sum /dev/block/bootdevice/by-num/p'${vfilerem}'\0' --rawshell 2>&1 | cut -d ' ' -f1)
         else
             LAFEXEC='!EXEC  md5sum /dev/block/bootdevice/by-name/${vfilerem}\0'
-            REMFILE=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  md5sum /dev/block/bootdevice/by-name/'${vfilerem}'\0' --rawshell 2>&1 | cut -d ' ' -f1)
+            REMFILE=$($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  md5sum /dev/block/bootdevice/by-name/'${vfilerem}'\0' --rawshell 2>&1 | cut -d ' ' -f1)
         fi
         F_LOG "$FUNCNAME: vfilerem: $vfilerem, REMFILE: $REMFILE"
         if [ -z "$LOCFILE" -o -z "$REMFILE" ];then
@@ -1032,7 +1171,20 @@ F_ABOUT(){ F_LOG "$FUNCNAME: started"
     # takes no args
 
     $FYAD --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - ABOUT" --width=800 --height=500 --fixed --text \
-        "\n  $TNAME is based on:\n\t- <a href='https://sourceforge.net/projects/yad-dialog'>YAD</a> - without this no GUI\n\t- the awesome <a href='https://github.com/Lekensteyn/lglaf'>LGLAF</a> code by Peter Wu\n\t- <a href='https://github.com/ehem/kdztools'>kdztools</a> by Elliott Mitchell\n\t- <b>MANY</b> enhancements by steadfasterX (including this GUI)\n\n  ${TNAME} sources:\n\t- <a href='https://github.com/steadfasterX/salt'>$TNAME</a>\n\t- <a href='https://github.com/steadfasterX/lglaf'>Patched LGLAF</a>\n\t- <a href='https://github.com/steadfasterX/salt'>Patched kdztools</a>\n\n  $TNAME support: <a href='https://tinyurl.com/SALTatXDA'>XDA thread</a>\n\n  Special credits:\n\t- <a href='https://github.com/tuxuser/'>tuxuser</a> for making LAF communication on Nougat possible and for his great support!" \
+"\n  $TNAME is based on:\n\t- <a href='https://sourceforge.net/projects/yad-dialog'>YAD</a> - without this no GUI\n\
+\t- the awesome <a href='https://github.com/Lekensteyn/lglaf'>LGLAF</a> code by Peter Wu\n\
+\t- <a href='https://github.com/ehem/kdztools'>kdztools</a> by Elliott Mitchell\n\
+\t- <b>MANY</b> enhancements by steadfasterX (including this GUI)\n\n\
+  ${TNAME} sources:\n\
+\t- <a href='https://github.com/steadfasterX/salt'>$TNAME</a>\n\
+\t- <a href='https://github.com/steadfasterX/lglaf'>Patched LGLAF</a>\n\
+\t- <a href='https://github.com/steadfasterX/salt'>Patched kdztools</a>\n\n\
+  $TNAME support: <a href='https://tinyurl.com/SALTatXDA'>XDA thread</a>\n\n\
+  Special credits:\n\
+\t- <a href='https://github.com/tuxuser/'>tuxuser</a> for making LAF communication on Nougat possible and for his great support!\n\n\
+  Images/Icons:\n\
+\t- SALT logo is created by <a href='https://github.com/steadfasterX'>steadfasterX</a> and licensed under <a href='https://creativecommons.org/licenses/by-sa/4.0/'>CC BY-SA 4.0</a>.\n\
+\t- CR icon by RRZEicons <a href='https://creativecommons.org/licenses/by-sa/3.0'>CC BY-SA 3.0</a> from Wikimedia Commons. Modified in size." \
         --button=Close:0
 }; export -f F_ABOUT
 
@@ -1075,23 +1227,25 @@ F_STARTKDZFL(){ F_LOG "$FUNCNAME: started"
 }; export -f F_STARTKDZFL
 
 # showing a advanced menu
-F_ADVMENU(){ F_LOG "$FUNCNAME: started"
+F_ADVMENU(){ F_LOG "$FUNCNAME: started with $@"
     # takes 1 arg
     #
     # 1 => LGMODEL
     
     LGMODEL=$1
+    F_LOG "$FUNCNAME: main YAD_PID is $YAD_PID"
 
-    $FYAD --title="$YTITLE" --width=1000 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n\n <b><span color='#ff0000'>THIS IS AN ADVANCED Menu</span></b>\n\nUse these options here with <b><span color='#ff0000'>CARE!</span></b>\n\n" \
+    $FYAD --title="$YTITLE" --width=1000 --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n\n <b><span color='#ff0000'>THIS IS AN ADVANCED Menu</span></b>\n\nUse these options here with <b><span color='#ff0000'>CARE!</span></b>\n\n(mouse-over on a button for details)\n" \
         --form --columns=2\
         --field="SALT debug log!$SICONS/log_16x16.png":FBTN "$SALTPATH/getlog" \
-        --field="Support / Credits!$SICONS/log_16x16.png":FBTN "bash -c F_ABOUT" \
-        --field="Show your partitions!!This will just list your current partitions":FBTN "bash -c F_LISTPARTS" \
-        --field="Mount an image!!This will let you mount android image files (system,userdata,..)":FBTN "bash -c F_MOUNTPARTS" \
+        --field="$CRBTN!$SICONS/cr_30x30.png!Change the detection of challenge/response: Auto, forced yes, forced no":FBTN "bash -c 'F_CRRESTART $YAD_PID $CRMODE'" \
+        --field="Convert an image (ZIP)!!Extract and convert sparse Android data images (.dat/.br) into a readable filesystem image and mount it":FBTN "bash -c F_EXTRACTDAT" \
+        --field="Mount an image file!!This will let you mount android image files (system,userdata,..)":FBTN "bash -c F_MOUNTPARTS" \
         --field="Open a shell!$SICONS/terminal_30x30.png!Open an adb-like shell while in download mode":FBTN "bash -c F_SHELL" \
         --field="<span color='#ff0000'>Wipe</span> partition(s)!!EXTREMELY DANGEROUS - CAN EASILY BRICK YOUR DEVICE":FBTN "bash -c F_DELPART" \
-        --field="Convert system.dat (ROM)!!Convert sparse Android data image (.dat) into filesystem ext4 image and mount it":FBTN "bash -c F_EXTRACTDAT" \
+        --field="Show your partitions!!This will just list your current partitions":FBTN "bash -c F_LISTPARTS" \
         --field="Unlock G4 (UsU)!$SICONS/salt_logo_30x30.png!Unofficial secureboot-off/steadfasterX Unlock":FBTN "bash -c 'F_DOUSU $LGMODEL'" \
+        --button="Support / Licensing / Credits!$SICONS/log_16x16.png":"bash -c F_ABOUT" \
         --button="Close"
 
 }; export -f F_ADVMENU
@@ -1136,9 +1290,9 @@ F_EXTRACTDAT(){ F_LOG "$FUNCNAME: started"
         "\n  Choose your ROM zip file\n" \
         --form \
         --field="  ROM zip file":FL --file-filter="ROM (*.zip)| *.zip *.ZIP" undef\
-        --field="  Target directory":DIR "/tmp" \
+        --field="  Working directory":DIR "/tmp" \
         --field="  Auto-Mount resulting image file":CHK true \
-        --field="  Mountpoint (don't touch unless you know why)" "/mnt/android_system" \
+        --field="  Mountpoint (don't touch unless you know why)" "/mnt/android_image" \
         --button=Abort:99 \
         --button=Next:0 \
         )
@@ -1148,7 +1302,7 @@ F_EXTRACTDAT(){ F_LOG "$FUNCNAME: started"
     ZIPFILE=$(echo "$EXCHOICES" | cut -d '|' -f 1)
     TARGDIR=$(echo "$EXCHOICES" | cut -d '|' -f 2)
     MNTWANT=$(echo "$EXCHOICES" | cut -d '|' -f 3)
-    MNTPNT=$(echo "$EXCHOICES" | cut -d '|' -f 4)
+    CMNTPNT=$(echo "$EXCHOICES" | cut -d '|' -f 4)
 
     F_ELOG "ZIPFILE = $ZIPFILE, TARGDIR = $TARGDIR"
 
@@ -1171,7 +1325,7 @@ F_EXTRACTDAT(){ F_LOG "$FUNCNAME: started"
     BRC=$(echo "$EXFILE" |grep -c "\.br")
     if [ "$BRC" -eq 1 ];then
         if [ ! -f "$BROTLI" ];then
-            F_MSGE 500 "You're trying to extract an Oreo 8.1 dat file\nwhich requires the Google tool <a href='https://github.com/google/brotli'>brotli</a>\n\nPlease install it first:\n\n\t- in FWUL/Arch/Manjaro:\n\t  sudo pacman -S brotli\n\n\t- on Ubuntu/Debian/Mint:\n\t  sudo apt-get install brotli" "--selectable-labels --height=400 --fixed"
+            F_MSGE 500 "You're trying to extract an Oreo 8.1 dat file\nwhich requires the Google tool <a href='https://github.com/google/brotli'>brotli v1.x or higher!!!</a>\n\nPlease install it first:\n\n\t- in FWUL/Arch/Manjaro:\n\t  sudo pacman -S brotli\n\n\t- on Ubuntu/Debian/Mint:\n\t  sudo apt-get install brotli" "--selectable-labels --height=400 --fixed"
             F_EXIT $FUNCNAME 3
         else
             F_LOG "Brotli required and found!"
@@ -1180,17 +1334,20 @@ F_EXTRACTDAT(){ F_LOG "$FUNCNAME: started"
 
     [ -z "$EXFILE" ] && F_MSGE 500 "No file choosen?!"
 
-    F_LOG "ZIPFILE = $ZIPFILE, TARGDIR = $TARGDIR, EXFILE = $EXFILE"
+    CHIMGNAME="${EXFILE/\.*}"
+    MNTPNT="${CMNTPNT}_$CHIMGNAME"
 
-    F_UNZIP "$ZIPFILE" "$TARGDIR" "$EXFILE system.transfer.list"
+    F_LOG "ZIPFILE = $ZIPFILE, TARGDIR = $TARGDIR, EXFILE = $EXFILE, CHIMGNAME = $CHIMGNAME, MNTPNT = $MNTPNT"
+
+    F_UNZIP "$ZIPFILE" "$TARGDIR" "$EXFILE ${CHIMGNAME}.transfer.list"
     if [ $BRC -eq 0 ];then
-         F_CONVDAT "DAT" "${TARGDIR}/system.transfer.list" "${TARGDIR}/$EXFILE" "$TARGDIR"
+         F_CONVDAT "DAT" "${TARGDIR}/${CHIMGNAME}.transfer.list" "${TARGDIR}/$EXFILE" "$TARGDIR" "${CHIMGNAME}.converted.img"
     else
-        F_CONVDAT "BR" "${TARGDIR}/system.transfer.list" "${TARGDIR}/$EXFILE" "$TARGDIR"
-        F_CONVDAT "DAT" "${TARGDIR}/system.transfer.list" "${TARGDIR}/system.new.dat" "$TARGDIR"
+        F_CONVDAT "BR" "${TARGDIR}/${CHIMGNAME}.transfer.list" "${TARGDIR}/$EXFILE" "$TARGDIR" "${CHIMGNAME}.converted.img"
+        F_CONVDAT "DAT" "${TARGDIR}/${CHIMGNAME}.transfer.list" "${TARGDIR}/${CHIMGNAME}.new.dat" "$TARGDIR" "${CHIMGNAME}.converted.img"
     fi
     if [ "$MNTWANT" == "TRUE" ];then
-        F_MOUNTIMG "$TARGDIR/system_ext4.img" "$MNTPNT"
+        F_MOUNTIMG "$TARGDIR/${CHIMGNAME}.converted.img" "$MNTPNT"
     else
         F_MSGOK 600 "Image has been extracted!\nYou can find it here:\n\n<b>${TARGDIR}/</b>"
     fi
@@ -1222,6 +1379,7 @@ F_MOUNTIMG(){ F_LOG "$FUNCNAME: started with $@"
             $FYAD --width=1000 --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - MOUNT" --text="  Image file:\n\t<b>$MFILE</b>\n\n  has been mounted to\n\t<b>$MNTPNT</b>\n\n" \
                 --form \
                 --field="Browse Image":FBTN "sudo -u $REALUSER xdg-open $MPNT" \
+                --field="Browse Image (root)":FBTN "xdg-open $MPNT" \
                 --field="Unmount Image":FBTN "bash -c 'F_UMNT $MPNT'" \
                 --button=Close:0
         else
@@ -1286,22 +1444,24 @@ F_CONVDAT(){ F_LOG "$FUNCNAME: started with $@"
     # 2 => transfer list (full path)
     # 3 => sparse filename (full path)
     # 4 => target directory
+    # 5 => target image file name
 
     CMODE="$1"
     TFLIST="$2"
     SFIL="$3"
     TDIR="$4"
-    RFILE="${TDIR}/system_ext4.img"
+    IMGTYPE="${5/\.*}"
+    RFILE="${TDIR}/$5"
 
-    F_LOG "$FUNCNAME: $CMODE, $TFLIST, $SFIL, $TDIR, $RFILE"
-    [ ! -f "$TFLIST" -o ! -f "$SFIL" -o ! -d $TDIR ] && F_MSGE 500 "missing file! $TFLIST, $SFIL, $TDIR" && F_EXIT $FUNCNAME 3
+    F_LOG "$FUNCNAME: $CMODE, $TFLIST, $SFIL, $TDIR, $RFILE, $IMGTYPE"
+    [ ! -f "$TFLIST" -o ! -f "$SFIL" -o ! -d "$TDIR" ] && F_MSGE 500 "missing file! $TFLIST, $SFIL, $TDIR," && F_EXIT $FUNCNAME 3
 
     case "$CMODE" in
         DAT) F_LOG "DAT mode detected"
              $PYTHONBIN $SDATBIN "$TFLIST" "$SFIL" "$RFILE" 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - CONVERT" --text="\n  Converting:\n  <b>${SFIL/*\/}</b>\n  Please be patient depending on your PC this can take a while...\n" --width=800 --progress --progress-text="converting ${SFIL} ..." --pulsate --no-buttons --auto-close
         ;;
         BR) F_LOG "BR mode detected"
-            $BROTLI --force --decompress -o "${TDIR}/system.new.dat" "$SFIL" 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - CONVERT" --text="\n  Converting:\n  <b>${SFIL/*\/}</b>\n  Please be patient depending on your PC this can take a while...\n" --width=800 --progress --progress-text="converting ${SFIL} ..." --pulsate --no-buttons --auto-close 
+            $BROTLI --force --decompress -o "${TDIR}/${IMGTYPE}.new.dat" "$SFIL" 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - CONVERT" --text="\n  Converting:\n  <b>${SFIL/*\/}</b>\n  Please be patient depending on your PC this can take a while...\n" --width=800 --progress --progress-text="converting ${SFIL} ..." --pulsate --no-buttons --auto-close 
         ;;
         *) F_MSGE 500 "no valid mode selected! ABORTED"; F_EXIT $FUNCNAME 3
         ;;
@@ -1333,7 +1493,7 @@ F_LISTPARTS(){ F_LOG "$FUNCNAME: started"
 F_GETPARTS(){ F_LOG "$FUNCNAME: started"
     # takes no args
 
-    PARTLIST=$($PYTHONBIN $LAFPATH/partitions.py --list --batch)
+    PARTLIST=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list --batch)
 
     # make preselections
     unset IRES
@@ -1440,7 +1600,7 @@ F_DELPART(){ F_LOG "$FUNCNAME: started"
         echo "#${w/:*}"
         sleep 2
         echo 40
-        ($PYTHONBIN $LAFPATH/partitions.py --wipe ${w/:*} 2>&1) >> $LOG
+        ($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --wipe ${w/:*} 2>&1) >> $LOG
         if [ $? -ne 0 ];then
             echo "#ERROR: while wiping ${w/:*}"
             F_MSGE 600 "ERROR while wiping ${w/:*} !! " && F_EXIT $FUNCNAME 4
@@ -1483,8 +1643,8 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
             USUSRC=/data/media/0/Download/aboot_UsU.img
             DLMSRC=/data/media/0/Download/laf_UsU.img
             RRSRC=/data/media/0/Download/rawres_UsU.img
-            $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  umount /data\0' --debug --rawshell 2>&1 >> $LOG
-            $PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  mount -t ext4 /dev/block/bootdevice/by-name/userdata /data\0' --debug --rawshell 2>&1 >> $LOG
+            $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  umount /data\0' --debug --rawshell 2>&1 >> $LOG
+            $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  mount -t ext4 /dev/block/bootdevice/by-name/userdata /data\0' --debug --rawshell 2>&1 >> $LOG
             F_LOG "$FUNCNAME: userdata mounting finished"
         ;;
         direct) F_LOG "$FUNCNAME: Will flash UsU directly to the device..."
@@ -1524,14 +1684,14 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
             kill $PROGY
         fi
     else
-        USUEX=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls '$USUSRC'\0' --rawshell)
-        DLMEX=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls '$DLMSRC'\0' --rawshell)
-        RREX=$($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls '$RRSRC'\0' --rawshell)
+        USUEX=$($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  ls '$USUSRC'\0' --rawshell)
+        DLMEX=$($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  ls '$DLMSRC'\0' --rawshell)
+        RREX=$($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  ls '$RRSRC'\0' --rawshell)
         F_LOG "$FUNCNAME: USUEX=$USUEX, DLMEX=$DLMEX, RREX=$RREX"
         kill $PROGY
         if [ -z "$USUEX" ]||[ -z "$DLMEX"]||[ -z "$RREX"];then 
             F_MSGE 700 "   Oops?!\n\n   You have choosen\n\n   $USUSRC\n   $DLMSRC\n   $RRSRC\n\n   but I can not find it...!\n\n   Try another method or ensure you stored it to the correct path."
-            ($PYTHONBIN $LAFPATH/lglaf.py -c '!EXEC  ls /storage/external_SD/*.img /data/media/0/Download/*.img\0' --rawshell 2>&1) >> $LOG 
+            ($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  ls /storage/external_SD/*.img /data/media/0/Download/*.img\0' --rawshell 2>&1) >> $LOG 
             F_EXIT $FUNCNAME 5
         fi
     fi
@@ -1548,10 +1708,10 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     F_LOG "$FUNCNAME: abootbak before flashing: $TESTPRE"
     echo "#pre-checking ..." >> $FLPBAR
     if [ "$FLTYPE" == "direct" ];then
-        $PYTHONBIN $LAFPATH/partitions.py --restore "$USUDIRECT" abootbak --batch 1>> $FLPBAR 2>> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --restore "$USUDIRECT" abootbak --batch 1>> $FLPBAR 2>> $LOG
     else
         F_LOG '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0'
-        $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0' --rawshell 2>&1 >> $LOG
+        $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0' --rawshell 2>&1 >> $LOG
     fi
     echo "#verifying pre-check ..." >> $FLPBAR
     F_DUMPPART abootbak "/tmp/UsU/after"
@@ -1587,14 +1747,14 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     if [ "$FLTYPE" == "direct" ];then
         F_LOG 'flashing aboot and laf directly...'
         echo "#flashing UsU unlock ..." >> $FLPBAR
-        $PYTHONBIN $LAFPATH/partitions.py --debug --restore "$USUDIRECT" aboot --batch 1>> $FLPBAR 2>> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --debug --restore "$USUDIRECT" aboot --batch 1>> $FLPBAR 2>> $LOG
         echo "#flashing UsU laf ..." >> $FLPBAR
         F_LOG "flashing laf from $DLMDIRECT ..."
-        $PYTHONBIN $LAFPATH/partitions.py --debug --restore "$DLMDIRECT" laf --batch 1>> $FLPBAR 2>> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --debug --restore "$DLMDIRECT" laf --batch 1>> $FLPBAR 2>> $LOG
 
         echo "#flashing UsU rawres ..." >> $FLPBAR
         F_LOG "flashing rawres from $RRDIRECT ..."
-        $PYTHONBIN $LAFPATH/partitions.py --debug --restore "$RRDIRECT" raw_resources --batch 1>> $FLPBAR 2>> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --debug --restore "$RRDIRECT" raw_resources --batch 1>> $FLPBAR 2>> $LOG
     else
         # we have no progress indicator when flashing from the device storage so we need to pulsate..
         kill $PROGY
@@ -1602,21 +1762,21 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
         PROGY=$!
         F_LOG "flashing aboot from $USUSRC..."
         echo "#flashing UsU unlock ..." >> $FLPBAR
-        $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0' --rawshell 2>&1 >> $LOG
+        $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0' --rawshell 2>&1 >> $LOG
         echo "#flashing UsU laf ..." >> $FLPBAR
         F_LOG "flashing laf from $DLMSRC ..."
-        $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek=393216 bs=512\0' --rawshell 2>&1 >> $LOG
+        $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --debug -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek=393216 bs=512\0' --rawshell 2>&1 >> $LOG
 
-        RRSEEKSTART=$($PYTHONBIN $LAFPATH/partitions.py --list --batch |grep "raw_resources:" |cut -d ":" -f 3)
+        RRSEEKSTART=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list --batch |grep "raw_resources:" |cut -d ":" -f 3)
         F_LOG "FUNCNAME: raw resources from partition listing:"
-        $PYTHONBIN $LAFPATH/partitions.py --list --batch |grep "raw_resources:" >> $LOG 2>&1
+        $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list --batch |grep "raw_resources:" >> $LOG 2>&1
         # G4 must have rr between sector 770000 and 870000
         if [ "$RRSEEKSTART" -lt 770000 ] || [ "$RRSEEKSTART" -gt 870000 ];then
             F_MSGW 700 "Can not identify a valid seek start for rawres! SKIPPED!\nYou have to flash the rawres_UsU.img in fastboot to fully enable UsU"
         else
             echo "#flashing UsU rawres ..." >> $FLPBAR
             F_LOG "flashing rawres from $RRSRC with seekstart: $RRSEEKSTART ..."
-            $PYTHONBIN $LAFPATH/lglaf.py --debug -c '!EXEC  dd if='$RRSRC' of=/dev/block/mmcblk0 seek='$RRSEEKSTART' bs=512\0' --rawshell 2>&1 >> $LOG
+            $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --debug -c '!EXEC  dd if='$RRSRC' of=/dev/block/mmcblk0 seek='$RRSEEKSTART' bs=512\0' --rawshell 2>&1 >> $LOG
         fi
     fi
     # verify real flashing
@@ -1647,7 +1807,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
                 --text "SALT will reboot your device now but it needs\n\n<b>YOU</b>\n\nto boot properly:\n\n<b>Before</b> pressing Continue:\n\npress the <b>Volume DOWN</b> button NOW\nand <b>keep</b> it pressed!!\n\nWhen you click continue wait until you see the fastboot mode\n(a black screen and a couple of lines).\nThen you can release that button." \
                 --button=Continue:99
             if [ $? -eq 99 ];then
-                F_LOG "REBOOT INITIATED by USER!" && $PYTHONBIN ${LAFPATH}/lglaf.py -c '!CTRL RSET'
+                F_LOG "REBOOT INITIATED by USER!" && $PYTHONBIN ${LAFPATH}/lglaf.py ${CROPT} -c '!CTRL RSET'
                 F_USUFLFB laf "${DLMSRC%/*}" "${DLMSRC##*/}"
                 F_USUFLFB raw_resources "${RRSRC%/*}" "${RRSRC##*/}"
                 $FYAD --title="$YTITLE - FB FLASH" --width=700 --fixed --image="$SICONS/salt_logo_64x64.png" --text "Good! Now press\n\n <b>Volume UP (!!)</b> button\n\nand <b>keep</b> it pressed until you see the download mode.\nThen press Continue." --button=Continue
@@ -1718,7 +1878,7 @@ F_CHKLAFV(){ F_LOG "$FUNCNAME: started with this args: $@"
     # 1 => compare the detection with a max allowed version
 
     MAXV="$1"
-    LAFV=$($PYTHONBIN $LAFPATH/lglaf.py --proto --rawshell)
+    LAFV=$($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --proto --rawshell)
     if [ $? -ne 0 ]||[ -z "$LAFV" ]||[ "$LAFV" -lt 1000001 -o "$LAFV" -gt 2000000 ];then
         F_LOG "$FUNCNAME: Unexpected error while retrieving LAF protocol version ($LAFV)"
         echo "unknown"
@@ -1874,4 +2034,34 @@ F_CHKFREE(){ F_LOG "$FUNCNAME: started with this args: $@"
     fi
     F_LOG "$FUNCNAME: ended."
 }; export -f F_CHKFREE
+
+## @fn F_CRRESTART()
+## @brief change the CR mode in fix order!
+## @param 1 The main SALT window pid (required for killing it)
+## @param 2 The mode you currently have: Auto|yes|no
+## @exception when param1 does not exists
+F_CRRESTART(){ F_LOG "$FUNCNAME: started with this args: $@"
+    MAIN_YAD_PID=$1
+    CURRENTCR="$2"
+    F_LOG "$FUNCNAME: YAD_PID is $MAIN_YAD_PID"
+ 
+    [ -z "$CURRENTCR" -o -z "$MAIN_YAD_PID" ] && F_EXIT "$FUNCNAME: missing parameter CURRENTCR or MAIN_YAD_PID" 0
+
+    case $CURRENTCR in
+        Auto)export CRMODE=yes;;
+        yes)export CRMODE=no;;
+        no)export CRMODE=Auto;;
+    esac
+
+    F_LOG "$FUNCNAME: Will change CR from $CURRENTCR to $CRMODE"
+    # kill parent windows
+    kill -s SIGUSR1 $YAD_PID >> $LOG 2>&1
+    kill -s SIGUSR1 $MAIN_YAD_PID >> $LOG 2>&1
+    
+    F_LOG "$FUNCNAME: Will restart SALT now like that: $FULLCMD"
+    $FULLCMD
+    F_LOG "$FUNCNAME: ended."
+}; export -f F_CRRESTART
+
+
 

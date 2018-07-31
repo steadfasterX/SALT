@@ -204,7 +204,7 @@ else
         fi
         
         # flash
-        for part in $(find "$IMGPATH" -type f -name *.image|egrep -vi "($GREPOUT)");do
+        for part in $(find "$IMGPATH" -type f -maxdepth 0 -name *.image|egrep -vi "($GREPOUT)");do
             RMPATH="${part##*/}"
             REMPART="${RMPATH/\.image/}"
             echo -e "... flashing: $part to ${REMPART}"

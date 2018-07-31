@@ -28,11 +28,14 @@ if [ ! -x $LAFTERM ];then F_MSGE 700 "Missing X terminal (usually xterm).\n  Ins
 if [ ! -x $GIT ];then no-git 3 "\n  ERROR!\n\n  Missing GIT client.\n  Install $GIT or check salt.vars file." ; F_EXIT "no-git" 3 full; fi 
 if [ ! -x $FBBIN ];then F_MSGE 700 "Missing fastboot!\nInstall $FBBIN first (or better directly consider to use FWUL ...)!"; F_EXIT "no-fb" 3 full; fi 
 
+# set full command for restarting properly 
+export FULLCMD="$0 $@"
+
 # check root:
 ME=$(id -u)
 if [ "$ME" -ne 0 ];then
     echo -e '\nI need more POWER! If asked now type in your sudo password to restart with root perms (wait 20s or press CTRL+C to abort)'
-    sudo $0 $@ &
+    sudo $FULLCMD &
     sleep 20s
     F_LOG "no-root mode ending now"
     exit 0
@@ -81,6 +84,7 @@ fi
 F_LOG "OS: $(cat /etc/*-release)"
 F_LOG "OS (lsb): $(lsb_release -a)"
 F_LOG "yad: $(yad --version)"
+F_LOG "summary:\n $(hostnamectl status |grep -v ID)\n"
 
 # check if device in dl mode connected
 DEVCON=99
@@ -96,6 +100,12 @@ done
 EXPERIMENTAL=$(echo "$@"|grep -c experimental)
 
 F_LOG "EXPERIMENTAL: $EXPERIMENTAL"
+
+case $CRMODE in
+    Auto)export CRBTN="Force CR";;
+    yes)export CRBTN="Force no CR";;
+    no)export CRBTN="Set CR Auto";;
+esac
 
 # main func
 F_MAIN(){
@@ -176,7 +186,7 @@ F_MAIN(){
         
     # main SALT screen depends on experimental flag .. and LAF version
     if [ $FLASHMENU -eq 0 ]&&[ $EXPERIMENTAL -ne 1 ];then
-      $FYAD --title="$YTITLE" --width=1100 --height=600 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://bit.do/SALTatXDA'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
+      $FYAD --title="$YTITLE" --width=1100 --height=620 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://bit.do/SALTatXDA'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
         --form --columns=2 \
         --field="  Device model":RO $LGMODEL \
         --field="  Firmware (laf)":RO $LGSWV \
@@ -185,6 +195,7 @@ F_MAIN(){
         --field="  Country":RO "$LGCOUNTRY" \
         --field="  UsU":RO $LGUSU \
         --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
+        --field="  Current CR mode":RO $CRMODE \
         --field="  GPT compatibility":RO $ROMCOMP \
         --field="  LAF protocol":RO $LAFVER \
         --field="  Battery level":RO $LGBATT \
@@ -199,7 +210,7 @@ F_MAIN(){
         --button="Extract!$SICONS/extract_48x48.png!Extract a KDZ file. If you want to flash choose Extract+Flash instead":"bash -c F_STARTKDZ"
     else
         if [ $EXPERIMENTAL -eq 1 ]||[ $FLASHMENU -eq 1 ];then
-            $FYAD --title="$YTITLE" --width=1100 --height=600 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://bit.do/SALTatXDA'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
+            $FYAD --title="$YTITLE" --width=1100 --height=620 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://bit.do/SALTatXDA'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
               --form --columns=2 \
               --field="  Device model":RO $LGMODEL \
               --field="  Firmware (laf)":RO $LGSWV \
@@ -208,6 +219,7 @@ F_MAIN(){
               --field="  Country":RO "$LGCOUNTRY" \
               --field="  UsU":RO $LGUSU \
               --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
+              --field="  Current CR mode":RO $CRMODE \
               --field="  GPT compatibility":RO $ROMCOMP \
               --field="  LAF protocol":RO $LAFVER \
               --field="  Battery level":RO $LGBATT \
