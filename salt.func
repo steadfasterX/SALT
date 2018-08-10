@@ -1041,7 +1041,7 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     BRET=$?
     [ $BRET -ne 0 ] && F_EXIT "$FUNCNAME Aborted on users request" $BRET
 
-    $PYTHONBIN ${LAFPATH}/extract-partitions.py ${CROPT} --batch --outdir $BTDIR --max-size $BMAX 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - $BAKTNAME BACKUP" --text="\n  <b>SALT is backing up your device...</b>\n\n" --width 900 --progress --button='Close (WAIT until you see All finished)':0
+    $PYTHONBIN ${LAFPATH}/extract-partitions.py ${CROPT} --batch --outdir "$BTDIR" --max-size $BMAX 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - $BAKTNAME BACKUP" --text="\n  <b>SALT is backing up your device...</b>\n\n" --width 900 --progress --button='Close (WAIT until you see All finished)':0
     BERR=${PIPESTATUS[0]}
     if [ "$BERR" -ne 0 ];then
         F_MSGE 500 "Backup incomplete! Check the log."
