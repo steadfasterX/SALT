@@ -119,7 +119,7 @@ Exec=${EXE} ${HERE}/salt
 EOFDSK
 chmod +x ${HERE}/SALT.desktop
 
-[ -f ${HERE}/SALT.desktop ] && echo -e "... personal start icon (./SALT.desktop) has been prepared successfully"
+[ -f ${HERE}/SALT.desktop ] && chown $REALUSER "${HERE}/SALT.desktop" && echo -e "... personal start icon (./SALT.desktop) has been prepared successfully"
 
 # installing the desktop icon
 [ -f ${HOME}/.config/user-dirs.dirs ] && source ${HOME}/.config/user-dirs.dirs
@@ -131,7 +131,6 @@ if [ -d "$DESKDIR" ];then
       && chown $REALUSER "${DESKDIR}/SALT.desktop" \
       && echo -e "... start icon installed to your desktop successfully"
 else
-    chown $REALUSER ${HERE}/SALT.desktop 
     echo -e "\n\tOops - I cannot find your desktop folder..\n\tThis can happen when you installed Linux in your language.\n\tCopy it to your desktop like this"
     echo -e "\n\tcp ${HERE}/SALT.desktop $REALHOME/<your-desktop-folder>/\n\n"
 fi
