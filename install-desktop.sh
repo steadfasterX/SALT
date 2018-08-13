@@ -127,8 +127,8 @@ chmod +x ${HERE}/SALT.desktop
 [ -z "$DESKDIR" ] && DESKDIR=${HOME}/Desktop
 
 if [ -d "$DESKDIR" ];then
-    chown $REALUSER ${HERE}/SALT.desktop \
-      && cp ${HERE}/SALT.desktop "$DESKDIR" \
+    cp ${HERE}/SALT.desktop "$DESKDIR" \
+      && chown $REALUSER "${DESKDIR}/SALT.desktop" \
       && echo -e "... start icon installed to your desktop successfully"
 else
     chown $REALUSER ${HERE}/SALT.desktop 
