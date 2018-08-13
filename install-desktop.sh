@@ -3,9 +3,7 @@
 
 HERE="$(pwd)"
 
-gksudo --help 2>&1 >> /dev/null
-[ $? -ne 0 ] && echo "ERROR: Please install gksudo!" && exit
-echo here: $HERE
+sudo ./addPolicy.py ${HERE}/salt
 
 cat > ${HERE}/SALT.desktop <<EOFDSK
 [Desktop Entry]
@@ -15,7 +13,7 @@ Terminal=false
 Name=SALT
 Icon=${HERE}/icons/salt_icon.png
 Comment=SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
-Exec=gksudo ${HERE}/salt
+Exec=pkexec ${HERE}/salt
 EOFDSK
 chmod +x ${HERE}/SALT.desktop
 
