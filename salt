@@ -93,6 +93,7 @@ while [ $DEVCON -ne 0 ];do
     F_LOG "DEVCON before: $DEVCON"
     F_CHKDEVCON
     DEVCON=$?
+    # skip=11, retry=22, connected=0
     F_LOG "DEVCON after: $DEVCON"
 done
 
@@ -192,32 +193,63 @@ F_MAIN(){
             FLASHMENU=0
     fi
         
-    # main SALT screen depends on experimental flag .. and LAF version
+    # main SALT screen depends on experimental flag .. and LAF version .. and model
     if [ $FLASHMENU -eq 0 ]&&[ $EXPERIMENTAL -ne 1 ];then
-      $FYAD --title="$YTITLE" --width=1100 --height=620 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://bit.do/SALTatXDA'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
-        --form --columns=2 \
-        --field="  Device model":RO $LGMODEL \
-        --field="  Firmware (laf)":RO $LGSWV \
-        --field="  Firmware (system)":RO "$LGFACV" \
-        --field="  Carrier":RO "$LGOPER" \
-        --field="  Country":RO "$LGCOUNTRY" \
-        --field="  UsU":RO $LGUSU \
-        --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
-        --field="  Current CR mode":RO $CRMODE \
-        --field="  GPT compatibility":RO $ROMCOMP \
-        --field="  LAF protocol":RO $LAFVER \
-        --field="  Battery level":RO $LGBATT \
-        --field="  <span color='#ff0000'>AntiRollBack</span>":RO $DEVARB \
-        --field="  IMEI" $LGIMEI \
-        --field="  Serial":RO $LGSERIAL \
-        --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c 'F_ADVMENU $LGMODEL'" \
-        true \
-        --buttons-layout=spread \
-        --button="!$SICONS/update_48x48.png!Updating SALT (kdztools, lglaf, SALT)":"bash -c F_UPDATE" \
-        --button="  Backup!$SICONS/backup.png!Make a full or basic backup while in download mode":"bash -c F_BACKUP" \
-        --button="Extract!$SICONS/extract_48x48.png!Extract a KDZ file. If you want to flash choose Extract+Flash instead":"bash -c F_STARTKDZ"
+        shopt -s extglob
+        case $LGMODEL in
+            ${LGG4})
+                F_LOG "$FUNCNAME: starting G4 menu"
+                $FYAD --title="$YTITLE" --width=1100 --height=620 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://bit.do/SALTatXDA'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
+                --form --columns=2 \
+                --field="  Device model":RO $LGMODEL \
+                --field="  Firmware (laf)":RO $LGSWV \
+                --field="  Firmware (system)":RO "$LGFACV" \
+                --field="  Carrier":RO "$LGOPER" \
+                --field="  Country":RO "$LGCOUNTRY"\
+                --field="  UsU":RO $LGUSU \
+                --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
+                --field="  Current CR mode":RO $CRMODE \
+                --field="  GPT compatibility":RO $ROMCOMP \
+                --field="  LAF protocol":RO $LAFVER \
+                --field="  Battery level":RO $LGBATT \
+                --field="  <span color=\'#ff0000\'>AntiRollBack</span>":RO $DEVARB \
+                --field="  IMEI" $LGIMEI \
+                --field="  Serial":RO $LGSERIAL \
+                --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c 'F_ADVMENU $LGMODEL'" \
+                true \
+                --buttons-layout=spread \
+                --button="!$SICONS/update_48x48.png!Updating SALT (kdztools, lglaf, SALT)":"bash -c F_UPDATE" \
+                --button="  Backup!$SICONS/backup.png!Make a full or basic backup while in download mode":"bash -c F_BACKUP" \
+                --button="Extract!$SICONS/extract_48x48.png!Extract a KDZ file. If you want to flash choose Extract+Flash instead":"bash -c F_STARTKDZ"
+            ;;
+            *)
+            F_LOG "$FUNCNAME: starting non-G4 menu"
+            $FYAD --title="$YTITLE" --width=1100 --height=620 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://bit.do/SALTatXDA'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
+                --form --columns=2 \
+                --field="  Device model":RO $LGMODEL \
+                --field="  Firmware (laf)":RO $LGSWV \
+                --field="  Firmware (system)":RO "$LGFACV" \
+                --field="  Carrier":RO "$LGOPER" \
+                --field="  Country":RO "$LGCOUNTRY"\
+                --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
+                --field="  Current CR mode":RO $CRMODE \
+                --field="  LAF protocol":RO $LAFVER \
+                --field="  Battery level":RO $LGBATT \
+                --field="  <span color=\'#ff0000\'>AntiRollBack</span>":RO $DEVARB \
+                --field="  IMEI" $LGIMEI \
+                --field="  Serial":RO $LGSERIAL \
+                --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c 'F_ADVMENU $LGMODEL'" \
+                true \
+                --buttons-layout=spread \
+                --button="!$SICONS/update_48x48.png!Updating SALT (kdztools, lglaf, SALT)":"bash -c F_UPDATE" \
+                --button="  Backup!$SICONS/backup.png!Make a full or basic backup while in download mode":"bash -c F_BACKUP" \
+                --button="Extract!$SICONS/extract_48x48.png!Extract a KDZ file. If you want to flash choose Extract+Flash instead":"bash -c F_STARTKDZ"
+            ;;
+        esac
     else
+        # when started with --experimental (will be removed one day)
         if [ $EXPERIMENTAL -eq 1 ]||[ $FLASHMENU -eq 1 ];then
+            F_LOG "$FUNCNAME: starting experimental menu"
             $FYAD --title="$YTITLE" --width=1100 --height=620 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://bit.do/SALTatXDA'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
               --form --columns=2 \
               --field="  Device model":RO $LGMODEL \
