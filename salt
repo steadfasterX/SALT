@@ -176,7 +176,7 @@ F_MAIN(){
             shopt -s extglob
             case $LGMODEL in
                 ${LGG4})
-                    F_MSGW 700 "Your device ($LGMODEL) does <b>not</b> support direct flashing!\n\nFlashing functionality <b>disabled</b>!\n\nActivate flashing functionality by flashing a SALT compatible LAF partition.\nDownload it right here for <b>any</b> G4 model (requires unlocked device + TWRP):\n\n<a href='https://www.androidfilehost.com/?fid=818070582850495147'>SALT-compatible-LAF_flash-in-twrp.zip</a>\n\nYou can still use many of the features SALT offering - just not the flashing part." "--fixed --height=300"
+                    F_MSGW 700 "Your LAF firmware ($LAFVER / $LGMODEL) does <b>not</b> support direct flashing!\n\nFlashing functionality <b>disabled</b>!\n\nActivate flashing functionality by flashing a SALT compatible LAF partition.\nDownload it right here for <b>any</b> G4 model (requires an unlocked device + TWRP):\n\n<a href='https://www.androidfilehost.com/?fid=818070582850495147'>SALT-compatible-LAF_flash-in-twrp.zip (click here)</a>\n\nYou can still use many of the features SALT offering - just not the flashing part." "--fixed --height=300"
                 ;;
             esac
             F_LOG "Flashing functionality disabled bc: LAFVER = $LAFVER and/or EXPERIMENTAL = $EXPERIMENTAL"
