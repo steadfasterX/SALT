@@ -171,7 +171,13 @@ F_MAIN(){
     #if [ "$LAFVER" == "1000001" ]||[ $EXPERIMENTAL -eq 1 ];then FLASHMENU=0; else FLASHMENU=0;fi
     if [ $DEVCON -eq 0 ];then
         if [ "$LAFVER" != "1000001" ] && [ $EXPERIMENTAL -ne 1 ];then
-            F_MSGW 700 "Your device does <b>not</b> support direct flashing!\nFlashing functionality <b>disabled</b>!\n\nActivate flashing functionality by flashing a SALT compatible LAF partition.\nDownload it right here for <b>any</b> G4 model (requires unlocked device + TWRP):\n\n<a href='https://www.androidfilehost.com/?fid=818070582850495147'>SALT-compatible-LAF_flash-in-twrp.zip</a>\n\nYou can still use many of the features SALT offering - just not the flashing part." "--fixed --height=300"
+
+            shopt -s extglob
+            case $LGMODEL in
+                ${LGG4})
+                    F_MSGW 700 "Your device ($LGMODEL) does <b>not</b> support direct flashing!\n\nFlashing functionality <b>disabled</b>!\n\nActivate flashing functionality by flashing a SALT compatible LAF partition.\nDownload it right here for <b>any</b> G4 model (requires unlocked device + TWRP):\n\n<a href='https://www.androidfilehost.com/?fid=818070582850495147'>SALT-compatible-LAF_flash-in-twrp.zip</a>\n\nYou can still use many of the features SALT offering - just not the flashing part." "--fixed --height=300"
+                ;;
+            esac
             F_LOG "Flashing functionality disabled bc: LAFVER = $LAFVER and/or EXPERIMENTAL = $EXPERIMENTAL"
             FLASHMENU=0
         else
