@@ -1957,17 +1957,9 @@ F_DOUSU(){ F_LOG "$FUNCNAME: started with this args: $@"
 
     F_LOG "$FUNCNAME: Answered: $A"
     if [ "$A" == "99" ];then
-        if [ "$LAFVER" == "100001" ];then
-          USUF=$($FYAD --width=800 --title="$YTITLE - UsU" --text="\n   UsU can be installed from either the internal storage or from an external SD card.\n   The paths for the UsU file are FIX and <b>can not</b> be changed:\n" \
-            --form --columns=2\
-            --field='   Placed <b>directly</b> on the sdcard - no subfolder!':LBL true \
-            --field='   Placed in <b>/data/media/0/Download</b>':LBL true \
-            --field="UNLOCK by external SDcard":FBTN "bash -c 'F_USUFLASH sdcard'"\
-            --field="UNLOCK by /data/media/0/Download":FBTN "bash -c 'F_USUFLASH internal'"\
-            --button="Cancel":0)
-        else
-           USUF=$($FYAD --width=800 --title="$YTITLE - UsU" --text="\n   UsU can be installed from either the internal storage or from an external SD card.\n   The paths for the UsU file are FIX and <b>can not
-</b> be changed:\n" \
+        if [ "$LAFVER" == "1000001" ];then
+          USUF=$($FYAD --width=800 --title="$YTITLE - UsU" --image="$SICONS/salt_logo_64x64.png" \
+            --text="\n   UsU can be installed from either the internal storage, from an external SD card\n   or by flashing directly (your firmware supports this).\n\n   The paths for the UsU file are FIX and <b>can not</b> be changed:\n" \
             --form --columns=2\
             --field='   Placed <b>directly</b> on the sdcard - no subfolder!':LBL true \
             --field='   Placed in <b>/data/media/0/Download</b>':LBL true \
@@ -1975,7 +1967,16 @@ F_DOUSU(){ F_LOG "$FUNCNAME: started with this args: $@"
             --field="UNLOCK by external SDcard":FBTN "bash -c 'F_USUFLASH sdcard'"\
             --field="UNLOCK by /data/media/0/Download":FBTN "bash -c 'F_USUFLASH internal'"\
             --field="UNLOCK by direct flash":FBTN "bash -c 'F_USUFLASH direct'"\
-            --button="Close":0)
+            --button="Cancel":0)
+        else
+           USUF=$($FYAD --width=800 --title="$YTITLE - UsU" --image="$SICONS/salt_logo_64x64.png" \
+            --text="\n   UsU can be installed from either the internal storage or from an external SD card\n   (your firmware does not allow direct flashing)\n\n   The paths for the UsU file are FIX and <b>can not</b> be changed:\n" \
+            --form --columns=2\
+            --field='   Placed <b>directly</b> on the sdcard - no subfolder!':LBL true \
+            --field='   Placed in <b>/data/media/0/Download</b>':LBL true \
+            --field="UNLOCK by external SDcard":FBTN "bash -c 'F_USUFLASH sdcard'"\
+            --field="UNLOCK by /data/media/0/Download":FBTN "bash -c 'F_USUFLASH internal'"\
+            --button="Cancel":0)
         fi
 
         if [ $? -eq 98 ];then
