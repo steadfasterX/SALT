@@ -1743,7 +1743,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     ABPRE=$(sha256sum /tmp/UsU/before/aboot|cut -d " " -f1)
     DLMPRE=$(sha256sum /tmp/UsU/before/laf|cut -d " " -f1)
     RRPRE=$(sha256sum /tmp/UsU/before/raw_resources|cut -d " " -f1)
-    F_LOG "$FUNCNAME: aboot before flashing:\n$ABPRE\nlaf before: $DLMPRE\nrr before: $RRPRE"
+    F_LOG "$FUNCNAME: checksums before flashing UsU:\naboot before:\n$ABPRE\nlaf before: $DLMPRE\nrr before: $RRPRE"
     if [ "$FLTYPE" == "direct" ];then
         F_LOG 'flashing aboot and laf directly...'
         echo "#flashing UsU unlock ..." >> $FLPBAR
