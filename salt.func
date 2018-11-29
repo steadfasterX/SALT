@@ -205,6 +205,11 @@ F_EXIT(){ F_LOG "$FUNCNAME: started"
   F_LOG "$FUNCNAME: ended"
 }; export -f F_EXIT
 
+# detects the type of device storage
+F_DETSTORAGE(){ F_LOG "$FUNCNAME: started"
+   echo coming soon 
+}; export -f F_DETSTORAGE
+
 # get current phone data
 F_GETINFO(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
@@ -432,14 +437,17 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_EXTRACTKDZ
 
-# check device for for antirollback bullshit (I'm still pissed off how a vendor is doing this! I mean HARDBRICK a phone ?? wtf LG?)
+# check device for for antirollback bullshit (I'm still pissed off that a vendor is doing this! I mean HARDBRICK a phone ?? wtf LG?)
 F_CDARB(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
     # returns: <ARB>:<detection-success>
 
     DEVARBEMPTY=0
-    DEVARB=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump - sbl1 2>> $LOG| strings | grep "0 SW_ID" |cut -d " " -f 2 | head -n 1 | sed -e 's/0\{16,16\}/zero/g' | tr -d "0")
-    [ -z "$DEVARB" ] && DEVARB="0" && DEVARBEMPTY=1 && F_LOG "EMPTY ARB DETECTED:\n$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump /tmp/sbl1.err sbl1 && strings /tmp/sbl1.err | grep -C 1 SW_ID 2>&1)" && F_LOG "Please send this log and the SBL1 dump in /tmp/sbl1.err" && F_LOG "$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list --debug 2>&1)" && F_LOG "$(lsusb -v)"
+    PDARB=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --list | egrep "($PARB)" | head -n 1 | cut -d ":" -f1)
+    F_LOG "$FUNCNAME: ARB partition seems to be: $PDARB"
+    DEVARB=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump - $PDARB 2>> $LOG| strings | grep "0 SW_ID" |cut -d " " -f 2 | head -n 1 | sed -e 's/0\{16,16\}/zero/g' | tr -d "0")
+    
+    [ -z "$DEVARB" ] && DEVARB="0" && DEVARBEMPTY=1 && F_LOG "EMPTY ARB DETECTED:\n$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump /tmp/${PDARB}.err $PDARB && strings /tmp/${PDARB}.err | grep -C 1 SW_ID 2>&1)" && F_LOG "Please send this log and the $PDARB dump in /tmp/${PDARB}.err" && F_LOG "$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list --debug 2>&1)" && F_LOG "$(lsusb -v)"
     [ "$DEVARB" == "zero" ] && DEVARB=0 && F_LOG "ARB valid and 0"
     F_LOG "$FUNCNAME: DEVARB=$DEVARB, DEVARBEMPTY=$DEVARBEMPTY"
     echo "${DEVARB}:${DEVARBEMPTY}"
@@ -680,10 +688,10 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     # create a list of *.image files
     if [ "$LGUSU" == "yes" ] && [ "$LGUSUOVERRIDE" == "false" -o "$LGUSUOVERRIDE" == "FALSE" ];then
       F_LOG "$FUNCNAME: UsU detected so will not display UsU relevant files (USUOVERRIDE=$LGUSUOVERRIDE)"
-      IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name '*.mbn' | tr " " "_" |egrep -vi "(aboot|laf|raw_resources|GPT|firehose|zeros)");do echo "${ifile##*/}";done | tr "\n" " ")
+      IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name '*.mbn' | tr " " "_" |egrep -vi "($FLASHIGNOREUSU)");do echo "${ifile##*/}";done | tr "\n" " ")
     else
       F_LOG "$FUNCNAME: will display all files (USUOVERRIDE=$LGUSUOVERRIDE)"
-      IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name '*.mbn' | tr " " "_" |egrep -vi "(GPT|firehose|zeros)");do echo "${ifile##*/}";done | tr "\n" " ")
+      IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name '*.mbn' | tr " " "_" |egrep -vi "($FLASHIGNORE)");do echo "${ifile##*/}";done | tr "\n" " ")
     fi
     F_LOG "$FUNCNAME: image files: $IMGFILES"
 
@@ -981,12 +989,12 @@ F_SYNC(){ F_LOG "$FUNCNAME: started"
     F_LAFEXEC sync
 }; export -f F_SYNC
 
-# take a nandroid backup of the device
+# take a REAL nandroid backup of the device
 F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     # takes no arguments
 
     # define backup type
-    $FYAD --width=550 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text "\n  Choose your backup type!\n\n  Basic:\twill just backup partitions up to a size of $BMAXDEF MB\n  Full:\tlike Basic but includes any size" --button=Full:1 --button=Basic:2 --buttons-layout=center
+    $FYAD --width=550 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text "\n  Choose your backup type!\n\n  Full:\t\tlike Basic but includes any size\n  Custom:\tLet you choose the partitions to backup\n  Basic:\t\twill just backup partitions up to a size of $BMAXDEF MB" --button=Full:1 --button=Custom:3 --button=Basic:2 --buttons-layout=center
     BAKTYPE=$?
 
     F_LOG "$FUNCNAME: DEBUG: List partitions:\n$($PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --list --batch)"
@@ -1009,6 +1017,95 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
                 else
                     F_LOG "$FUNCNAME: skipping $size as its smaller then $BMAX"
                 fi
+            done
+        ;;
+        3) BAKTNAME=Custom
+            BMAX=0
+            IRES=$(F_GETPARTS)
+
+            BTNRET=66
+            while [ "$BTNRET" -eq 77 -o "$BTNRET" -eq 66 ];do
+                if [ "$BTNRET" == 66 ];then
+                  FCHOOSENP=$(for slice in $IRES;do echo -e "$slice" | sed 's/false/true/g' ;done \
+                            | $FYAD --height=800 --width=1000 --title="$YTITLE - BACKUP" \
+                            --text "\n  Select partition(s) to backup:\n"\
+                            --list --checklist \
+                            --column="Selection":CHK \
+                            --column="Partition":TXT \
+                            --column="#" \
+                            --column="Start sector" \
+                            --column="End sector" \
+                            --column="UID" \
+                            --column="Type" \
+                            --column="Size" \
+                            --column="t_nr" \
+                            --hide-column=9 \
+                            --listen --no-selection \
+                            --button="Deselect All":77 \
+                            --button=Backup:0 \
+                            --button=Abort:3)
+                  BTNRET="${PIPESTATUS[0]}"
+                  CHOOSENP=$(echo "$FCHOOSENP" | cut -d "|" -f 2,3,8 | tr "|" ":"| tr "\n" " ")
+                  F_LOG "$FUNCNAME BTNRET: $BTNRET"
+                else
+                    if [ "$BTNRET" == 77 ];then
+                      FCHOOSENP=$(for slice in $IRES;do echo -e "$slice" | sed 's/true/false/g';done \
+                                | $FYAD --height=800 --width=1000 --title="$YTITLE - BACKUP" \
+                                --text "\n  Select partition(s) to backup:\n"\
+                                --list --checklist \
+                                --column="Selection":CHK \
+                                --column="Partition":TXT \
+                                --column="#" \
+                                --column="Start sector" \
+                                --column="End sector" \
+                                --column="UID" \
+                                --column="Type" \
+                                --column="Size" \
+                                --column="t_nr" \
+                                --hide-column=9 \
+                                --listen --no-selection \
+                                --button="Select All":66 \
+                                --button=Backup:0 \
+                                --button=Abort:3)
+                      BTNRET="${PIPESTATUS[0]}"
+                      CHOOSENP=$(echo "$FCHOOSENP" | cut -d "|" -f 2,3,8 | tr "|" ":"| tr "\n" " ")
+                      F_LOG "$FUNCNAME BTNRET: $BTNRET"
+                    else
+                      break
+                    fi
+                fi
+            done
+
+            F_LOG "CHOOSENP: $CHOOSENP"
+        
+            F_LOG "CERR: $CERR"
+            [ $CERR -ne 0 ] && F_MSGE 400 "Aborted by user!" && F_EXIT $FUNCNAME $CERR
+        
+            CHCOUNT=$(echo "$CHOOSENP" |tr " " "\n" |cut -d ":" -f 1-2 | grep -c :)
+            [ $CHCOUNT -lt 1 ] && F_MSGE 400 "No partition selected?" && F_EXIT $FUNCNAME $CHCOUNT
+        
+            F_ELOG "choosen partitions: $CHOOSENP -> $CHCOUNT"
+        
+            SORTEDP=$(echo "$CHOOSENP" |tr " " "\n" | sort -t : -k 3n | cut -d ":" -f 1,3 | tr "\n" " ")
+            BAKPARTS=$(echo "$SORTEDP" | tr " " "\n" |cut -d ":" -f1 | tr "\n" " ")
+            BSIZES=$(echo "$SORTEDP" | tr " " "\n" |cut -d ":" -f2 | tr "\n" " ")
+            CHCOUNT=$(echo "$SORTEDP" |tr " " "\n" |grep -c :)
+        
+            F_LOG "$FUNCNAME: sorted partitions: $SORTEDP . In sum: $CHCOUNT partitions"
+            F_LOG "$FUNCNAME: BSIZES: $BSIZES"
+
+            for size in $BSIZES;do
+                # $($PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --list --batch | egrep "($SORTEDP)" | cut -d ":" -f6 | $TRBIN "\n" " ");do
+                MSZ="${size/*_}"
+                NSZ="${size/_*}"
+                case $MSZ in
+                    KB) SZ=$((NSZ));;
+                    MB) SZ=$((NSZ*1024));;
+                    GB) SZ=$((NSZ*1024*1024));;
+                    *) SZ=0;;
+                esac
+                F_LOG "$FUNCNAME: DEBUG: adding $SZ to $COMPLSIZE"
+                COMPLSIZE=$((COMPLSIZE + $SZ))
             done
         ;;
         *) F_EXIT "$FUNCNAME $BAKTYPE" 3
@@ -1043,13 +1140,55 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     BRET=$?
     [ $BRET -ne 0 ] && F_EXIT "$FUNCNAME Aborted on users request" $BRET
 
-    $PYTHONBIN ${LAFPATH}/extract-partitions.py ${CROPT} --batch --outdir "$BTDIR" --max-size $BMAX 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - $BAKTNAME BACKUP" --text="\n  <b>SALT is backing up your device...</b>\n\n" --width 900 --progress --button='Close (WAIT until you see All finished)':0
-    BERR=${PIPESTATUS[0]}
-    if [ "$BERR" -ne 0 ];then
-        F_MSGE 500 "Backup incomplete! Check the log."
-    else
-        F_MSGOK 400 "Backup completed successfully"
-    fi
+    case $BAKTNAME in
+        Basic|Full)
+            $PYTHONBIN ${LAFPATH}/extract-partitions.py ${CROPT} --batch --outdir "$BTDIR" --max-size $BMAX 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - $BAKTNAME BACKUP" --text="\n  <b>SALT is backing up your device...</b>\n\n" --width 900 --progress --button='Close (WAIT until you see All finished)':0
+            BERR=${PIPESTATUS[0]}
+            if [ "$BERR" -ne 0 ];then
+                F_MSGE 500 "Backup ($BAKTNAME) incomplete! Check the log."
+                return 3
+            else
+                F_MSGOK 400 "Backup ($BAKTNAME) completed successfully"
+            fi
+        ;;
+        Custom)
+            [ -z "$BAKPARTS" ] && F_MSGE 500 "Backup partition list is empty!\nUpload and share the debug log!" && F_EXIT "$FUNCNAME" 4
+            F_LOG "$FUNCNAME: resulting partion list: $BAKPARTS"
+
+            # open yad listener
+            echo 0> /tmp/t_${BAKTNAME}
+            tail -f /tmp/t_${BAKTNAME} | $FYAD --title="$YTITLE - BACKUP" --text="\n  <b>SALT is now taken a custom backup...</b>\n  (just wait until you see: <b><span color='#ff0000'>BACKUP FINISHED</span></b>)\n" --width 900 --progress --button='Close (WAIT until FINISHED)':0 --auto-close &
+            tail_pid=$!
+            CNT=0
+            BERR=0
+
+            for part in $BAKPARTS;do
+                CNT=$((CNT+1))
+                echo "#backing up $part" >>/tmp/t_${BAKTNAME}
+                $PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --batch --dump "$BTDIR/${part}.img" $part 2>&1 | tee -a $LOG
+                ERR=$?
+                BERR=$((BERR + $ERR))
+                F_LOG "$FUNCNAME: $part finished with error code: $ERR"
+                echo "#$part backup done!">>/tmp/t_${BAKTNAME}
+
+               # ensure we do not overflow lafd
+                sleep 2
+                CNTPERC=$(($CNT * 100 / $CHCOUNT))
+                echo $CNTPERC >>/tmp/t_${BAKTNAME}
+                [ $CNT -eq $CHCOUNT ] && echo '# BACKUP FINISHED!' >>/tmp/t_${BAKTNAME} && F_LOG "$FUNCNAME: Custom Backup finished"
+            done
+            rm /tmp/t_${BAKTNAME}
+            if [ "$BERR" -ne 0 ];then
+                F_MSGE 500 "Backup ($BAKTNAME) incomplete! Check the log."
+            else
+                F_MSGOK 400 "Backup ($BAKTNAME) completed successfully"
+            fi
+        ;;
+        *)
+            F_MSGE 500 "Backup $BAKTNAME ($BAKTYPE) is an unknown type! Check the log."
+            return 3
+        ;;
+    esac
 
     # ensure regular users can work with the backup
     chown -Rv ${REALUSER} "${REALHOME}/salt_backup" >> $LOG
@@ -1485,9 +1624,10 @@ F_LISTPARTS(){ F_LOG "$FUNCNAME: started"
             --column="End sector" \
             --column="UID" \
             --column="Type" \
+            --column="Size" \
             --column="Unused" \
             --listen --no-selection \
-            --hide-column=7 \
+            --hide-column=8 \
             --button=Close:0 
 }; export -f F_LISTPARTS
 
@@ -1506,36 +1646,49 @@ F_GETPARTS(){ F_LOG "$FUNCNAME: started"
         SSEC=$(echo "${f}" | cut -d ":" -f 3)
         ESEC=$(echo "${f}" | cut -d ":" -f 4)
         PARTUID=$(echo "${f}" | cut -d ":" -f 5)
-    
-        F_LOG "${PNAME},${PARTN},${SSEC},${ESEC},${PARTUID}"
+        PARTSIZEB=$(echo "${f}" | cut -d ":" -f 6)
+
+        F_LOG "PARTSIZEB is: $PARTSIZEB"
+        if [ $PARTSIZEB -gt 1048576 ];then
+            PARTSIZE="$((PARTSIZEB/1024/1024))_GB"
+        else
+            if [ $PARTSIZEB -gt 1024 ];then
+                PARTSIZE="$((PARTSIZEB/1024))_MB"
+            else
+                PARTSIZE="${PARTSIZEB}_KB"
+            fi
+        fi
+        [ -z "$PARTSIZE" ] && PARTSIZE="unknown_size"
+
+        F_LOG "${PNAME},${PARTN},${SSEC},${ESEC},${PARTUID},$PARTSIZE"
 
         shopt -s extglob
         case $PNAME in
             ${PUNNEEDED})
-              if [ -z "$IRES" ];then IRES="false\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nunneeded\n99"; else IRES="$IRES false\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nunneeded\n99" ;fi
+              if [ -z "$IRES" ];then IRES="false\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nunneeded\n99"; else IRES="$IRES false\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nunneeded\n${PARTSIZE}\n99" ;fi
             ;;
             ${PBOOTL})
-              if [ -z "$IRES" ];then IRES="true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nbootloader\n1"; else IRES="$IRES true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nbootloader\n1" ;fi
+              if [ -z "$IRES" ];then IRES="true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nbootloader\n1"; else IRES="$IRES true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nbootloader\n${PARTSIZE}\n1" ;fi
             ;;
             ${PDEVICE})
               if [ -z "$IRES" ];then 
-                IRES="false\n${PNAME}\n${PARTN}${SSEC}\n${ESEC}\n${PARTUID}\n</span>\n<span\tcolor='#ff0000'>dangerous</span>\n88"
+                IRES="false\n${PNAME}\n${PARTN}${SSEC}\n${ESEC}\n${PARTUID}\n</span>\n<span\tcolor='#ff0000'>dangerous</span>\n${PARTSIZE}\n88"
               else 
-                IRES="$IRES false\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\n<span\tcolor='#ff0000'>dangerous</span>\n88"
+                IRES="$IRES false\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\n<span\tcolor='#ff0000'>dangerous</span>\n${PARTSIZE}\n88"
               fi
             ;;
             ${PSYSTEM})
             if [ -z "$IRES" ];then
-                IRES="true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\n<span\tcolor='#558000'>system-partition</span>\n2"
+                IRES="true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\n<span\tcolor='#558000'>system-partition</span>\n${PARTSIZE}\n2"
             else
-                IRES="$IRES true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\n<span\tcolor='#558000'>system-partition</span>\n2"
+                IRES="$IRES true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\n<span\tcolor='#558000'>system-partition</span>\n${PARTSIZE}\n2"
             fi
             ;;
             *)
             if [ -z "$IRES" ];then
-                IRES="true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nunknown-type\n2"
+                IRES="true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nunknown-type\n${PARTSIZE}\n2"
             else
-                IRES="$IRES true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nunknown-type\n2"
+                IRES="$IRES true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nunknown-type\n${PARTSIZE}\n2"
             fi
             ;;
         esac
@@ -1564,7 +1717,7 @@ F_FACRESET(){ F_LOG "$FUNCNAME: started"
 F_DELPART(){ F_LOG "$FUNCNAME: started"
     # takes no args
     
-    IRES=$(F_GETPARTS)
+    IRES=$(F_GETPARTS) 
     CHOOSENP=$((for files in $IRES;do echo -e "$files" | sed 's/true/false/g' ;done | $FYAD --height=800 --width=1000 --title="$YTITLE - WIPE" --text "\n  Select partition(s) to WIPE:\n" --list  --checklist\
             --column="Selection":CHK \
             --column="Partition":TXT \
@@ -1573,11 +1726,12 @@ F_DELPART(){ F_LOG "$FUNCNAME: started"
             --column="End sector" \
             --column="UID" \
             --column="Type" \
+            --column="Size" \
             --column="sort_int" \
             --listen --no-selection \
-            --hide-column=8 \
+            --hide-column=9 \
             --button=WIPE:0 \
-            --button=Abort:3) | cut -d "|" -f 2,3,8 | tr "|" ":")
+            --button=Abort:3) | cut -d "|" -f 2,3,9 | tr "|" ":")
     CERR=${PIPESTATUS[0]}
     F_LOG "CHOOSENP: $CHOOSENP"
 
