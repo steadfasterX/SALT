@@ -1142,7 +1142,7 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
 
     case $BAKTNAME in
         Basic|Full)
-            $PYTHONBIN ${LAFPATH}/extract-partitions.py ${CROPT} --batch --outdir "$BTDIR" --max-size $BMAX 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - $BAKTNAME BACKUP" --text="\n  <b>SALT is backing up your device...</b>\n\n" --width 900 --progress --button='Close (WAIT until you see All finished)':0
+            $PYTHONBIN ${LAFPATH}/extract-partitions.py ${CROPT} --batch --outdir "$BTDIR" --max-size $BMAX 2>&1 | tee -a $LOG | $FYAD --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - $BAKTNAME BACKUP" --text="\n  <b>SALT is backing up your device...</b>\n\n" --width 900 --progress --button='Close (WAIT until you see All finished)':0
             BERR=${PIPESTATUS[0]}
             if [ "$BERR" -ne 0 ];then
                 F_MSGE 500 "Backup ($BAKTNAME) incomplete! Check the log."
@@ -1157,25 +1157,27 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
 
             # open yad listener
             echo 0> /tmp/t_${BAKTNAME}
-            tail -f /tmp/t_${BAKTNAME} | $FYAD --title="$YTITLE - BACKUP" --text="\n  <b>SALT is now taken a custom backup...</b>\n  (just wait until you see: <b><span color='#ff0000'>BACKUP FINISHED</span></b>)\n" --width 900 --progress --button='Close (WAIT until FINISHED)':0 --auto-close &
+            tail -f /tmp/t_${BAKTNAME} | $FYAD --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - BACKUP" --text="\n  <b>SALT is now taken a custom backup...</b>\n" --width 900 --multi-progress --multi-progress --bar="  Current Partition" --bar="  Overall state" --watch-bar2 --button='Close (WAIT until FINISHED)':0 --auto-close &
             tail_pid=$!
             CNT=0
             BERR=0
 
             for part in $BAKPARTS;do
                 CNT=$((CNT+1))
-                echo "#backing up $part" >>/tmp/t_${BAKTNAME}
-                $PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --batch --dump "$BTDIR/${part}.img" $part 2>&1 | tee -a $LOG
+                echo "1:0" >> /tmp/t_${BAKTNAME}
+                echo "1:#dumping $part partition..." >>/tmp/t_${BAKTNAME}
+                echo "2:#processing $part ($CNT of $CHCOUNT)" >>/tmp/t_${BAKTNAME}
+                $PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --batch --dump "$BTDIR/${part}.img" $part 2>&1 | tee -a $LOG | cut -d ":" -f1 | sed 's/^/1:/g' >> /tmp/t_${BAKTNAME}
                 ERR=$?
                 BERR=$((BERR + $ERR))
                 F_LOG "$FUNCNAME: $part finished with error code: $ERR"
-                echo "#$part backup done!">>/tmp/t_${BAKTNAME}
+                CNTPERC=$(($CNT * 100 / $CHCOUNT))
+                echo "2:$CNTPERC" >>/tmp/t_${BAKTNAME}
+                echo "2:#$part backup ($CNT of $CHCOUNT) done!">>/tmp/t_${BAKTNAME}
 
                # ensure we do not overflow lafd
                 sleep 2
-                CNTPERC=$(($CNT * 100 / $CHCOUNT))
-                echo $CNTPERC >>/tmp/t_${BAKTNAME}
-                [ $CNT -eq $CHCOUNT ] && echo '# BACKUP FINISHED!' >>/tmp/t_${BAKTNAME} && F_LOG "$FUNCNAME: Custom Backup finished"
+                [ $CNT -eq $CHCOUNT ] && echo '2:# BACKUP FINISHED!' >>/tmp/t_${BAKTNAME} && F_LOG "$FUNCNAME: Custom Backup finished"
             done
             rm /tmp/t_${BAKTNAME}
             if [ "$BERR" -ne 0 ];then
