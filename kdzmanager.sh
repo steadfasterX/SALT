@@ -79,7 +79,7 @@ while [ ! -z $1 ];do
             echo -e "\nERROR: Expected LG LAF NG here: $LAFPATH" 
             [ "$BATCH" -eq 0 ] && read -p "Should I download it for you? (y/N) " DLLAF
             if [ "$DLLAF" == "y" ]||[ "$BATCH" -eq 1 ];then 
-                git clone https://github.com/steadfasterX/lglaf.git $LAFPATH
+                git clone $LAFGIT $LAFPATH
             else
                 exit
             fi
@@ -95,7 +95,7 @@ while [ ! -z $1 ];do
             echo -e "\nERROR: Expected kdztools here: $KDZTOOLS" 
             [ "$BATCH" -eq 0 ] && read -p "Should I download it for you? (y/N) " DLKDZ
             if [ "$DLKDZ" == "y" ]||[ "$BATCH" -eq 1 ];then 
-                git clone https://github.com/steadfasterX/kdztools.git $KDZTOOLS
+                git clone $KDZGIT $KDZTOOLS
             else
                 exit
             fi
