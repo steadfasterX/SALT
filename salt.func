@@ -1514,7 +1514,11 @@ F_MOUNTIMG(){ F_LOG "$FUNCNAME: started with $@"
     # check if the mnt point is in use
     mount | grep "$MPNT" >> /dev/null
     if [ $? -eq 0 ];then
-        F_MSGE 500 "Mountpoint $MPNT is in use! Unmount it first!\n\nABORTED."
+        UMANS=$(F_MSGW 500 "Mountpoint $MPNT is in use!\nDo you want to unmount it now?" "--button=Unmount:99")
+        if [ $UMANS -eq 99 ];then
+            F_UMNT $MPNT
+            F_MSGW 500 "You have to re-open the mount menu to proceed"
+        fi
     else
         # mount
         mount -v -o loop "$MFILE" $MPNT 2>&1 >> $LOG 
@@ -1526,7 +1530,7 @@ F_MOUNTIMG(){ F_LOG "$FUNCNAME: started with $@"
                 --field="Unmount Image":FBTN "bash -c 'F_UMNT $MPNT'" \
                 --button=Close:0
         else
-            F_MSGE 500 "system image could not be mounted to $MNTPNT.\nCheck SALT logfile!"
+            F_MSGE 500 "Image could not be mounted to $MNTPNT.\nEnsure you do *NOT* open a file within a VirtualBox shared folder!\nThis is <b>not</b> SALT's fault!\nWorkaround: copy the image to your Desktop\n\nCheck SALT logfile for any further details."
         fi
     fi
     F_LOG "$FUNCNAME ended"
