@@ -1521,15 +1521,20 @@ F_MOUNTIMG(){ F_LOG "$FUNCNAME: started with $@"
         fi
     else
         # mount
-        mount -v -o loop "$MFILE" $MPNT 2>&1 >> $LOG 
-        if [ $? -eq 0 ]; then
-            $FYAD --width=1000 --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - MOUNT" --text="  Image file:\n\t<b>$MFILE</b>\n\n  has been mounted to\n\t<b>$MNTPNT</b>\n\n" \
-                --form \
-                --field="Browse Image":FBTN "xdg-open $MPNT" \
-                --field="Unmount Image":FBTN "bash -c 'F_UMNT $MPNT'" \
-                --button=Close:0
+        df --output=fstype "$MFILE" 2>&1 | grep vboxsf >> $LOG
+        if [ $? -eq 0 ];then
+            F_MSGE 500 "VirtualBox shared folders are not supported!\n.. and no this is <b>not</b> SALT's fault!\n\nWorkaround: copy the image file to your Desktop\n\nCheck SALT logfile for any further details."
         else
-            F_MSGE 500 "Image could not be mounted to $MNTPNT.\nEnsure you do *NOT* open a file within a VirtualBox shared folder!\nThis is <b>not</b> SALT's fault!\nWorkaround: copy the image to your Desktop\n\nCheck SALT logfile for any further details."
+            mount -v -o loop "$MFILE" $MPNT 2>&1 >> $LOG 
+            if [ $? -eq 0 ]; then
+                $FYAD --width=1000 --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - MOUNT" --text="  Image file:\n\t<b>$MFILE</b>\n\n  has been mounted to\n\t<b>$MNTPNT</b>\n\n" \
+                    --form \
+                    --field="Browse Image":FBTN "xdg-open $MPNT" \
+                    --field="Unmount Image":FBTN "bash -c 'F_UMNT $MPNT'" \
+                    --button=Close:0
+            else
+                F_MSGE 500 "Image could not be mounted to $MNTPNT.Is this even an mountable image?\n\nCheck SALT logfile for any further details."
+            fi
         fi
     fi
     F_LOG "$FUNCNAME ended"
