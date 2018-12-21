@@ -430,7 +430,7 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
         F_ERR $FUNCNAME $EXERR "ERROR occured or aborted by user!"
     else
         [ x"$AUTOM" != "xauto" ] && $FYAD --width="500" --title="$YTITLE - SUCCESS" --image="$SICONS/ok_64x64.png" --text "\nAll partitions extracted!\n" \
-            --button='Open target folder':"sudo -u $REALUSER xdg-open '$LGTARGET/extracteddz'" \
+            --button='Open target folder':"xdg-open '$LGTARGET/extracteddz'" \
             --button='Mount an image':"bash -c 'F_MOUNTPARTS $LGTARGET/extracteddz'" \
             --button=Close:0
     fi
@@ -1514,19 +1514,27 @@ F_MOUNTIMG(){ F_LOG "$FUNCNAME: started with $@"
     # check if the mnt point is in use
     mount | grep "$MPNT" >> /dev/null
     if [ $? -eq 0 ];then
-        F_MSGE 500 "Mountpoint $MPNT is in use! Unmount it first!\n\nABORTED."
+        UMANS=$(F_MSGW 500 "Mountpoint $MPNT is in use!\nDo you want to unmount it now?" "--button=Unmount:99")
+        if [ $UMANS -eq 99 ];then
+            F_UMNT $MPNT
+            F_MSGW 500 "You have to re-open the mount menu to proceed"
+        fi
     else
         # mount
-        mount -v -o loop "$MFILE" $MPNT 2>&1 >> $LOG 
-        if [ $? -eq 0 ]; then
-            $FYAD --width=1000 --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - MOUNT" --text="  Image file:\n\t<b>$MFILE</b>\n\n  has been mounted to\n\t<b>$MNTPNT</b>\n\n" \
-                --form \
-                --field="Browse Image":FBTN "sudo -u $REALUSER xdg-open $MPNT" \
-                --field="Browse Image (root)":FBTN "xdg-open $MPNT" \
-                --field="Unmount Image":FBTN "bash -c 'F_UMNT $MPNT'" \
-                --button=Close:0
+        df --output=fstype "$MFILE" 2>&1 | grep vboxsf >> $LOG
+        if [ $? -eq 0 ];then
+            F_MSGE 500 "VirtualBox shared folders are not supported!\n.. and no this is <b>not</b> SALT's fault!\n\nWorkaround: copy the image file to your Desktop\n\nCheck SALT logfile for any further details."
         else
-            F_MSGE 500 "system image could not be mounted to $MNTPNT.\nCheck SALT logfile!"
+            mount -v -o loop "$MFILE" $MPNT 2>&1 >> $LOG 
+            if [ $? -eq 0 ]; then
+                $FYAD --width=1000 --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - MOUNT" --text="  Image file:\n\t<b>$MFILE</b>\n\n  has been mounted to\n\t<b>$MNTPNT</b>\n\n" \
+                    --form \
+                    --field="Browse Image":FBTN "xdg-open $MPNT" \
+                    --field="Unmount Image":FBTN "bash -c 'F_UMNT $MPNT'" \
+                    --button=Close:0
+            else
+                F_MSGE 500 "Image could not be mounted to $MNTPNT.Is this even an mountable image?\n\nCheck SALT logfile for any further details."
+            fi
         fi
     fi
     F_LOG "$FUNCNAME ended"
