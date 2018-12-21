@@ -430,7 +430,7 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
         F_ERR $FUNCNAME $EXERR "ERROR occured or aborted by user!"
     else
         [ x"$AUTOM" != "xauto" ] && $FYAD --width="500" --title="$YTITLE - SUCCESS" --image="$SICONS/ok_64x64.png" --text "\nAll partitions extracted!\n" \
-            --button='Open target folder':"sudo -u $REALUSER xdg-open '$LGTARGET/extracteddz'" \
+            --button='Open target folder':"xdg-open '$LGTARGET/extracteddz'" \
             --button='Mount an image':"bash -c 'F_MOUNTPARTS $LGTARGET/extracteddz'" \
             --button=Close:0
     fi
@@ -1525,8 +1525,7 @@ F_MOUNTIMG(){ F_LOG "$FUNCNAME: started with $@"
         if [ $? -eq 0 ]; then
             $FYAD --width=1000 --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - MOUNT" --text="  Image file:\n\t<b>$MFILE</b>\n\n  has been mounted to\n\t<b>$MNTPNT</b>\n\n" \
                 --form \
-                --field="Browse Image":FBTN "sudo -u $REALUSER xdg-open $MPNT" \
-                --field="Browse Image (root)":FBTN "xdg-open $MPNT" \
+                --field="Browse Image":FBTN "xdg-open $MPNT" \
                 --field="Unmount Image":FBTN "bash -c 'F_UMNT $MPNT'" \
                 --button=Close:0
         else
