@@ -126,18 +126,18 @@ done
 FK_LISTPARTS(){
     DZFILE="$(echo ${KDZDIR}/extractedkdz/*.dz)"
     if [ "$BATCH" -eq 1 ];then
-        python2 ${KDZTOOLS}/undz -b -l -f "${DZFILE}" 2>>$LOG
+        $PYTHONBIN ${KDZTOOLS}/undz -b -l -f "${DZFILE}" 2>>$LOG
     else
-        python2 ${KDZTOOLS}/undz -l -f "${DZFILE}"
+        $PYTHONBIN ${KDZTOOLS}/undz -l -f "${DZFILE}"
     fi        
 }
 
 # extract a KDZ file
 FK_EXTRACTKDZ(){
     if [ "$BATCH" -eq 1 ];then
-        python2 ${KDZTOOLS}/unkdz -f "$FULLKDZ" -x -d "${KDZDIR}/extractedkdz" 2>>$LOG
+        $PYTHONBINLEGACY ${KDZTOOLS}/unkdz -f "$FULLKDZ" -x -d "${KDZDIR}/extractedkdz" 2>>$LOG
     else
-        python2 ${KDZTOOLS}/unkdz -f "$FULLKDZ" -x -d "${KDZDIR}/extractedkdz"
+        $PYTHONBINLEGACY ${KDZTOOLS}/unkdz -f "$FULLKDZ" -x -d "${KDZDIR}/extractedkdz"
     fi
 }
 
@@ -145,9 +145,11 @@ FK_EXTRACTKDZ(){
 FK_EXTRACTPARTS(){
     DZFILE="$(echo ${KDZDIR}/extractedkdz/*.dz)"
     if [ "$BATCH" -eq 1 ];then
-        python2 ${KDZTOOLS}/undz -b -s $SELPARTS -f "${DZFILE}" -d "${KDZDIR}/extracteddz"
+        $PYTHONBIN ${KDZTOOLS}/undz -b -s $SELPARTS -f "${DZFILE}" -d "${KDZDIR}/extracteddz"
+        #python2 ${KDZTOOLS}/undz -b -s $SELPARTS -f "${DZFILE}" -d "${KDZDIR}/extracteddz"
     else
-        python2 ${KDZTOOLS}/undz -s $SELPARTS -f "${DZFILE}" -d "${KDZDIR}/extracteddz"
+        $PYTHONBIN ${KDZTOOLS}/undz -s $SELPARTS -f "${DZFILE}" -d "${KDZDIR}/extracteddz"
+        #python2 ${KDZTOOLS}/undz -s $SELPARTS -f "${DZFILE}" -d "${KDZDIR}/extracteddz"
     fi
     # delete unneeded parse files
     rm -rvf ${KDZDIR}/extracteddz/*.params
@@ -179,8 +181,8 @@ else
             [ $DEBUG -eq 0 ] && rm -fv "${KDZDIR}/extractedkdz/*.dz"
         else
             echo "TESTMODE only:"
-            echo "CMD: python2 ${KDZTOOLS}/unkdz -f $FULLKDZ -x -d ${KDZDIR}/extractedkdz"
-            echo "CMD: python2 ${KDZTOOLS}/undz -s -f ${KDZDIR}/extractedkdz/*.dz -d ${KDZDIR}/extracteddz"
+            echo "CMD: $PYTHONBINLEGACY ${KDZTOOLS}/unkdz -f $FULLKDZ -x -d ${KDZDIR}/extractedkdz"
+            echo "CMD: $PYTHONBIN ${KDZTOOLS}/undz -s -f ${KDZDIR}/extractedkdz/*.dz -d ${KDZDIR}/extracteddz"
         fi
     
         echo -e "\n\nALL FINISHED! Your extracted files are in: ${KDZDIR}/extracteddz\n"
