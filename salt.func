@@ -241,8 +241,8 @@ F_GETINFO(){ F_LOG "$FUNCNAME: started"
 F_ROMCOMP(){ F_LOG "$FUNCNAME: started"
     # takes no arg
 
-    DEVTMO=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list 2>&1 | grep -c carrier | tee -a $LOG)
-    DEVEUR=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list 2>&1 | grep -c cust | tee -a $LOG)
+    DEVTMO=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list 2>&1 | grep -c carrier | $TEEBIN -a $LOG)
+    DEVEUR=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list 2>&1 | grep -c cust | $TEEBIN -a $LOG)
     F_LOG "UsU compatibility: $DEVTMO (0=h815, 1=h811)"
     if [ "$DEVTMO" == "1" ];then
         echo "H811"
@@ -251,7 +251,7 @@ F_ROMCOMP(){ F_LOG "$FUNCNAME: started"
     else
         echo "unknown"
         F_LOG "UsU compatibility: cannot be detected! full GPT:"
-        $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list 2>&1 >> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list 2>&1 | $TEEBIN -a $LOG
     fi
 }; export -f F_ROMCOMP
 
@@ -468,7 +468,7 @@ F_DUMPPART(){ F_LOG "$FUNCNAME: started with $@"
     BFL="${BPTH}/${PNAME}"
 
     [ ! -d "$BPTH" ] && mkdir -p "$BPTH"
-    $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump $BFL $PNAME
+    $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump $BFL $PNAME | $TEEBIN -a $LOG
 
 }; export -f F_DUMPPART
 
@@ -476,8 +476,8 @@ F_DUMPPART(){ F_LOG "$FUNCNAME: started with $@"
 F_CKUSU(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
     #
-    (F_DUMPPART aboot /tmp/UsU/check 2>&1) >> $LOG
-    REMAB=$(sha256sum /tmp/UsU/check/aboot | cut -d " " -f1)
+    (F_DUMPPART aboot $USUTMPDIR/check 2>&1) >> $LOG
+    REMAB=$(sha256sum $USUTMPDIR/check/aboot | cut -d " " -f1)
 
     USUDET=0
     [ "$USUHASH" == "$REMAB" ] && USUDET=1
@@ -492,8 +492,8 @@ F_CKUSU(){ F_LOG "$FUNCNAME: started"
 F_USUMODEL(){ F_LOG "$FUNCNAME: started"
     # takes no arguments
     #
-    (F_DUMPPART raw_resources /tmp/UsU 2>&1) >> $LOG
-    REMRR=$(dd if=/tmp/UsU/raw_resources skip=3145722 count=6 bs=1 2>>/dev/null | strings)
+    (F_DUMPPART raw_resources $USUTMPDIR 2>&1) >> $LOG
+    REMRR=$(dd if=$USUTMPDIR/raw_resources skip=3145722 count=6 bs=1 2>>/dev/null | strings)
     F_LOG "$FUNCNAME: RR based USUMODEL=$REMRR"
     echo "${REMRR}"
     F_LOG "$FUNCNAME: ended"
@@ -862,7 +862,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 # check/ensure device is connected
 F_CHKDEVCON(){ F_LOG "$FUNCNAME: started"
     # takes no argument
-    $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  uname -m\0' --rawshell 2>&1 >> $LOG 
+    $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --debug -c '!EXEC  uname -m\0' --rawshell 2>&1 | $TEEBIN -a $LOG 
     RET=${PIPESTATUS[0]}
     if [ $RET -ne 0 ];then
         RES=$(F_MSG 700 "NO DEVICE CONNECTED?\nIf you have connected your device ensure that it is in DOWNLOAD mode\n(<u>not</u> fastboot, <u>not</u> recovery, <u>not</u> booted Android)" "--image=$SICONS/warning_64x64.png --button=Example-Picture:99 --button=Skip:11 --button=Retry:22")
@@ -964,11 +964,11 @@ F_WIPEPART(){ F_LOG "$FUNCNAME: started with $@"
 
     if [ "$ITP" == "ni" ];then 
         F_LOG "$FUNCNAME: wiping $WPART in noninteractive mode"
-        $PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --wipe $WPART 2>&1 | tee -a $LOG
+        $PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --wipe $WPART 2>&1 | $TEEBIN -a $LOG
     else
         F_LOG "$FUNCNAME: wiping $WPART in interactive mode"
         F_MSG 400 "Do you really want to wipe out <b>$WPART</b>?" "--button=Yes:0 --button='wtf NO never':1"
-        [ $? -eq 0 ] && $PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --wipe $WPART 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - WIPING" --width=800 --height=200 --text-info --listen --wrap --button=Close
+        [ $? -eq 0 ] && $PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --wipe $WPART 2>&1 | $TEEBIN -a $LOG | $FYAD --title="$YTITLE - WIPING" --width=800 --height=200 --text-info --listen --wrap --button=Close
     fi
     F_SYNC
 }; export -f F_WIPEPART
@@ -978,7 +978,7 @@ F_LAFEXEC(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     # takes 1 argument
 
     EXECMD="$1"
-    RET=$($PYTHONBIN ${LAFPATH}/lglaf.py ${CROPT} -c "'!EXEC  ${EXECMD}\0'" --rawshell)
+    RET=$($PYTHONBIN ${LAFPATH}/lglaf.py ${CROPT} -c "'!EXEC  ${EXECMD}\0'" --rawshell | $TEEBIN -a $LOG)
     echo $RET
 }; export -f F_LAFEXEC
 
@@ -1142,7 +1142,7 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
 
     case $BAKTNAME in
         Basic|Full)
-            $PYTHONBIN ${LAFPATH}/extract-partitions.py ${CROPT} --batch --outdir "$BTDIR" --max-size $BMAX 2>&1 | tee -a $LOG | $FYAD --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - $BAKTNAME BACKUP" --text="\n  <b>SALT is backing up your device...</b>\n\n" --width 900 --progress --button='Close (WAIT until you see All finished)':0
+            $PYTHONBIN ${LAFPATH}/extract-partitions.py ${CROPT} --batch --outdir "$BTDIR" --max-size $BMAX 2>&1 | $TEEBIN -a $LOG | $FYAD --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - $BAKTNAME BACKUP" --text="\n  <b>SALT is backing up your device...</b>\n\n" --width 900 --progress --button='Close (WAIT until you see All finished)':0
             BERR=${PIPESTATUS[0]}
             if [ "$BERR" -ne 0 ];then
                 F_MSGE 500 "Backup ($BAKTNAME) incomplete! Check the log."
@@ -1157,7 +1157,8 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
 
             # open yad listener
             echo 0> /tmp/t_${BAKTNAME}
-            tail -f /tmp/t_${BAKTNAME} | $FYAD --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - BACKUP" --text="\n  <b>SALT is now taken a custom backup...</b>\n" --width 900 --multi-progress --multi-progress --bar="  Current Partition" --bar="  Overall state" --watch-bar2 --button='Close (WAIT until FINISHED)':0 --auto-close &
+            > /tmp/t_${BAKTNAME}_label
+            tail -f /tmp/t_${BAKTNAME} /tmp/t_${BAKTNAME}_label | $FYAD --image="$SICONS/salt_logo_128x128.png" --title="$YTITLE - BACKUP" --text="\n  <b>SALT is now taken a custom backup...</b>\n" --width 900 --multi-progress --multi-progress --bar="  Current Partition" --bar="  Overall state" --watch-bar2 --button='Close (WAIT until FINISHED)':0 --auto-close &
             tail_pid=$!
             CNT=0
             BERR=0
@@ -1165,21 +1166,21 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
             for part in $BAKPARTS;do
                 CNT=$((CNT+1))
                 echo "1:0" >> /tmp/t_${BAKTNAME}
-                echo "1:#dumping $part partition..." >>/tmp/t_${BAKTNAME}
-                echo "2:#processing $part ($CNT of $CHCOUNT)" >>/tmp/t_${BAKTNAME}
-                $PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --batch --dump "$BTDIR/${part}.img" $part 2>&1 | tee -a $LOG | cut -d ":" -f1 | sed 's/^/1:/g' >> /tmp/t_${BAKTNAME}
+                echo "1:#dumping $part partition..." >>/tmp/t_${BAKTNAME}_label
+                echo "2:#processing $part ($CNT of $CHCOUNT)" >>/tmp/t_${BAKTNAME}_label
+                $PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --batch --dump "$BTDIR/${part}.img" $part 2>&1 | $TEEBIN -a $LOG | $STDBUF cut -d ":" -f1 | sed -u 's/^/1:/g' | $TEEBIN -a /tmp/t_${BAKTNAME} | sed -u 's/^1:\(.*\)/1:#dumping '$part' partition \(\1 %\)/g' | $TEEBIN -a /tmp/t_${BAKTNAME}_label
                 ERR=$?
                 BERR=$((BERR + $ERR))
                 F_LOG "$FUNCNAME: $part finished with error code: $ERR"
                 CNTPERC=$(($CNT * 100 / $CHCOUNT))
                 echo "2:$CNTPERC" >>/tmp/t_${BAKTNAME}
-                echo "2:#$part backup ($CNT of $CHCOUNT) done!">>/tmp/t_${BAKTNAME}
+                echo "2:#$part backup ($CNT of $CHCOUNT) done!">>/tmp/t_${BAKTNAME}_label
 
                # ensure we do not overflow lafd
                 sleep 2
-                [ $CNT -eq $CHCOUNT ] && echo '2:# BACKUP FINISHED!' >>/tmp/t_${BAKTNAME} && F_LOG "$FUNCNAME: Custom Backup finished"
+                [ $CNT -eq $CHCOUNT ] && echo '2:# BACKUP FINISHED!' >>/tmp/t_${BAKTNAME}_label && F_LOG "$FUNCNAME: Custom Backup finished"
             done
-            rm /tmp/t_${BAKTNAME}
+            rm /tmp/t_${BAKTNAME} /tmp/t_${BAKTNAME}_label
             if [ "$BERR" -ne 0 ];then
                 F_MSGE 500 "Backup ($BAKTNAME) incomplete! Check the log."
             else
@@ -1193,7 +1194,7 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     esac
 
     # ensure regular users can work with the backup
-    chown -Rv ${REALUSER} "${REALHOME}/salt_backup" >> $LOG
+    chown -Rv ${REALUSER} "$BTDIR" >> $LOG
 
     VERSUPP=$($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  md5sum /dev/block/bootdevice/by-name/\0' --rawshell 2>&1 | cut -d ' ' -f 1 | grep -vi Hello)
     if [ -z "$VERSUPP" ];then
@@ -1609,7 +1610,7 @@ F_CONVDAT(){ F_LOG "$FUNCNAME: started with $@"
 
     case "$CMODE" in
         DAT) F_LOG "DAT mode detected"
-             $PYTHONBIN $SDATBIN "$TFLIST" "$SFIL" "$RFILE" 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - CONVERT" --text="\n  Converting:\n  <b>${SFIL/*\/}</b>\n  Please be patient depending on your PC this can take a while...\n" --width=800 --progress --progress-text="converting ${SFIL} ..." --pulsate --no-buttons --auto-close
+             $PYTHONBIN $SDATBIN "$TFLIST" "$SFIL" "$RFILE" 2>&1 | $TEEBIN -a $LOG | $FYAD --title="$YTITLE - CONVERT" --text="\n  Converting:\n  <b>${SFIL/*\/}</b>\n  Please be patient depending on your PC this can take a while...\n" --width=800 --progress --progress-text="converting ${SFIL} ..." --pulsate --no-buttons --auto-close
         ;;
         BR) F_LOG "BR mode detected"
             $BROTLI --force --decompress -o "${TDIR}/${IMGTYPE}.new.dat" "$SFIL" 2>&1 | tee -a $LOG | $FYAD --title="$YTITLE - CONVERT" --text="\n  Converting:\n  <b>${SFIL/*\/}</b>\n  Please be patient depending on your PC this can take a while...\n" --width=800 --progress --progress-text="converting ${SFIL} ..." --pulsate --no-buttons --auto-close 
@@ -1766,7 +1767,7 @@ F_DELPART(){ F_LOG "$FUNCNAME: started"
         echo "#${w/:*}"
         sleep 2
         echo 40
-        ($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --wipe ${w/:*} 2>&1) >> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --wipe ${w/:*} 2>&1 | $TEEBIN -a $LOG
         if [ $? -ne 0 ];then
             echo "#ERROR: while wiping ${w/:*}"
             F_MSGE 600 "ERROR while wiping ${w/:*} !! " && F_EXIT $FUNCNAME 4
@@ -1809,8 +1810,8 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
             USUSRC=/data/media/0/Download/aboot_UsU.img
             DLMSRC=/data/media/0/Download/laf_UsU.img
             RRSRC=/data/media/0/Download/rawres_UsU.img
-            $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  umount /data\0' --debug --rawshell 2>&1 >> $LOG
-            $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  mount -t ext4 /dev/block/bootdevice/by-name/userdata /data\0' --debug --rawshell 2>&1 >> $LOG
+            $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  umount /data\0' --debug --rawshell 2>&1 | $TEEBIN -a $LOG
+            $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!EXEC  mount -t ext4 /dev/block/bootdevice/by-name/userdata /data\0' --debug --rawshell 2>&1 | $TEEBIN -a $LOG
             F_LOG "$FUNCNAME: userdata mounting finished"
         ;;
         direct) F_LOG "$FUNCNAME: Will flash UsU directly to the device..."
@@ -1869,19 +1870,19 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     PROGY=$!
     
     # verify writing in general (before actually writing to REAL aboot!!)
-    F_DUMPPART abootbak "/tmp/UsU/before"
-    TESTPRE=$(sha256sum /tmp/UsU/before/abootbak | cut -d " " -f1)
+    F_DUMPPART abootbak "$USUTMPDIR/before"
+    TESTPRE=$(sha256sum $USUTMPDIR/before/abootbak | cut -d " " -f1)
     F_LOG "$FUNCNAME: abootbak before flashing: $TESTPRE"
     echo "#pre-checking ..." >> $FLPBAR
     if [ "$FLTYPE" == "direct" ];then
         $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --restore "$USUDIRECT" abootbak --batch 1>> $FLPBAR 2>> $LOG
     else
         F_LOG '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0'
-        $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0' --rawshell 2>&1 >> $LOG
+        $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0' --rawshell 2>&1 | $TEEBIN -a $LOG
     fi
     echo "#verifying pre-check ..." >> $FLPBAR
-    F_DUMPPART abootbak "/tmp/UsU/after"
-    TESTAFTER=$(sha256sum /tmp/UsU/after/abootbak | cut -d " " -f1)
+    F_DUMPPART abootbak "$USUTMPDIR/after"
+    TESTAFTER=$(sha256sum $USUTMPDIR/after/abootbak | cut -d " " -f1)
     # verify test result
     F_LOG "$FUNCNAME: abootbak after flashing: $TESTAFTER"
     if [ "$TESTAFTER" == "$USUHASH" ];then
@@ -1903,12 +1904,12 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     # real flash
     echo 0 >> $FLPBAR
     echo "#preparing flashing! ..." >> $FLPBAR
-    F_DUMPPART aboot "/tmp/UsU/before"
-    F_DUMPPART laf "/tmp/UsU/before"
-    F_DUMPPART raw_resources "/tmp/UsU/before"
-    ABPRE=$(sha256sum /tmp/UsU/before/aboot|cut -d " " -f1)
-    DLMPRE=$(sha256sum /tmp/UsU/before/laf|cut -d " " -f1)
-    RRPRE=$(sha256sum /tmp/UsU/before/raw_resources|cut -d " " -f1)
+    F_DUMPPART aboot "$USUTMPDIR/before"
+    F_DUMPPART laf "$USUTMPDIR/before"
+    F_DUMPPART raw_resources "$USUTMPDIR/before"
+    ABPRE=$(sha256sum $USUTMPDIR/before/aboot|cut -d " " -f1)
+    DLMPRE=$(sha256sum $USUTMPDIR/before/laf|cut -d " " -f1)
+    RRPRE=$(sha256sum $USUTMPDIR/before/raw_resources|cut -d " " -f1)
     F_LOG "$FUNCNAME: checksums before flashing UsU:\naboot before:\n$ABPRE\nlaf before: $DLMPRE\nrr before: $RRPRE"
     if [ "$FLTYPE" == "direct" ];then
         F_LOG 'flashing aboot and laf directly...'
@@ -1928,31 +1929,31 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
         PROGY=$!
         F_LOG "flashing aboot from $USUSRC..."
         echo "#flashing UsU unlock ..." >> $FLPBAR
-        $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0' --rawshell 2>&1 >> $LOG
+        $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0' --rawshell 2>&1 | $TEEBIN -a $LOG
         echo "#flashing UsU laf ..." >> $FLPBAR
         F_LOG "flashing laf from $DLMSRC ..."
-        $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --debug -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek=393216 bs=512\0' --rawshell 2>&1 >> $LOG
+        $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --debug -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek=393216 bs=512\0' --rawshell 2>&1 | $TEEBIN -a $LOG
 
         RRSEEKSTART=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list --batch |grep "raw_resources:" |cut -d ":" -f 3)
         F_LOG "FUNCNAME: raw resources from partition listing:"
-        $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list --batch |grep "raw_resources:" >> $LOG 2>&1
+        $PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list --batch |grep "raw_resources:" | $TEEBIN -a $LOG
         # G4 must have rr between sector 770000 and 870000
         if [ "$RRSEEKSTART" -lt 770000 ] || [ "$RRSEEKSTART" -gt 870000 ];then
             F_MSGW 700 "Can not identify a valid seek start for rawres! SKIPPED!\nYou have to flash the rawres_UsU.img in fastboot to fully enable UsU"
         else
             echo "#flashing UsU rawres ..." >> $FLPBAR
             F_LOG "flashing rawres from $RRSRC with seekstart: $RRSEEKSTART ..."
-            $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --debug -c '!EXEC  dd if='$RRSRC' of=/dev/block/mmcblk0 seek='$RRSEEKSTART' bs=512\0' --rawshell 2>&1 >> $LOG
+            $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --debug -c '!EXEC  dd if='$RRSRC' of=/dev/block/mmcblk0 seek='$RRSEEKSTART' bs=512\0' --rawshell 2>&1 | $TEEBIN -a $LOG
         fi
     fi
     # verify real flashing
     echo "#verifying UsU unlock ..." >> $FLPBAR
-    F_DUMPPART aboot "/tmp/UsU/after"
-    F_DUMPPART laf "/tmp/UsU/after"
-    F_DUMPPART raw_resources "/tmp/UsU/after"
-    ABAFTER=$(sha256sum /tmp/UsU/after/aboot|cut -d " " -f1)
-    LAFAFTER=$(sha256sum /tmp/UsU/after/laf|cut -d " " -f1)
-    RRAFTER=$(sha256sum /tmp/UsU/after/raw_resources|cut -d " " -f1)
+    F_DUMPPART aboot "$USUTMPDIR/after"
+    F_DUMPPART laf "$USUTMPDIR/after"
+    F_DUMPPART raw_resources "$USUTMPDIR/after"
+    ABAFTER=$(sha256sum $USUTMPDIR/after/aboot|cut -d " " -f1)
+    LAFAFTER=$(sha256sum $USUTMPDIR/after/laf|cut -d " " -f1)
+    RRAFTER=$(sha256sum $USUTMPDIR/after/raw_resources|cut -d " " -f1)
     F_LOG "$FUNCNAME: after flashing:\naboot = $ABAFTER\nlaf = $LAFAFTER\nrr = $RRAFTER"
 
     source "$HASHES"

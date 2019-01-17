@@ -3,7 +3,7 @@
 #
 # SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
 #
-# Copyright (C): 2017-2018, steadfasterX <steadfasterX [AT] gmail [DOT] com>
+# Copyright (C): 2017-2019, steadfasterX <steadfasterX [AT] gmail [DOT] com>
 #
 # Main program for SALT
 #
@@ -57,6 +57,9 @@ trap "F_EXIT 'ctrl+c pressed' 0 full" SIGINT
 
 # check freshness
 F_VCHK
+
+# remove any previous working path
+rm -rf $USUTMPDIR
 
 # check the base:
 if [ ! -d "$LAFPATH" ];then
