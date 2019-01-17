@@ -1017,7 +1017,7 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     # takes no arguments
 
     # define backup type
-    $FYAD --width=550 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text "\n  Choose your backup type!\n\n  Full:\t\tlike Basic but includes any size\n  Custom:\tLet you choose the partitions to backup\n  Basic:\t\twill just backup partitions up to a size of $BMAXDEF MB" --button=Full:1 --button=Custom:3 --button=Basic:2 --buttons-layout=center
+    $FYAD --width=550 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text "\n  Choose your backup type!\n\n  <b>Basic:</b>\t\twill just backup partitions up to a size of $BMAXDEF MB\n  <b>Full:</b>\t\tlike Basic but includes any size\n  <b>Custom:</b>\tLet you choose the partitions to backup" --button=Basic:2 --button=Full:1 --button=Custom:3 --buttons-layout=center
     BAKTYPE=$?
 
     F_LOG "$FUNCNAME: DEBUG: List partitions:\n$($PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --list --batch)"
