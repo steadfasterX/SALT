@@ -3,7 +3,7 @@
 #
 # SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
 #
-# Copyright (C): 2017-2018, steadfasterX <steadfastX|boun.cr>
+# Copyright (C): 2017-2019, steadfasterX <steadfastX|boun.cr>
 #
 # LG KDZ MANAGER 
 # 
@@ -22,7 +22,7 @@ source $FUNCS
 F_LOG "KDZMGR started.."
 
 F_HELP(){
-    echo -e "\nCopyright (C) 2017-2018: steadfasterX <steadfastX | boun.cr>"
+    echo -e "\nCopyright (C) 2017-2019: steadfasterX <steadfastX | boun.cr>"
     echo -e "LICENSE: LGPLv2 (https://www.gnu.org/licenses/old-licenses/lgpl-2.0.txt)\n"
     echo -e "\nUsage:\n----------------------------\n"
     echo -e "\tactions (one or both):"
@@ -124,7 +124,8 @@ done
 
 # list partitions of a DZ file
 FK_LISTPARTS(){
-    DZFILE="$(echo ${KDZDIR}/extractedkdz/*.dz)"
+    DZFILE=$(find "${KDZDIR}/extractedkdz/" -name '*\.dz')
+    echo "DZFILE is $DZFILE" >> $LOG
     if [ "$BATCH" -eq 1 ];then
         $PYTHONBIN ${KDZTOOLS}/undz -b -l -f "${DZFILE}" 2>>$LOG
     else
@@ -143,18 +144,17 @@ FK_EXTRACTKDZ(){
 
 # extract a DZ
 FK_EXTRACTPARTS(){
-    DZFILE="$(echo ${KDZDIR}/extractedkdz/*.dz)"
+    DZFILE=$(find "${KDZDIR}/extractedkdz/" -name '*\.dz')
+    echo "DZFILE is $DZFILE" >> $LOG
     if [ "$BATCH" -eq 1 ];then
         $PYTHONBIN ${KDZTOOLS}/undz -b -s $SELPARTS -f "${DZFILE}" -d "${KDZDIR}/extracteddz"
-        #python2 ${KDZTOOLS}/undz -b -s $SELPARTS -f "${DZFILE}" -d "${KDZDIR}/extracteddz"
     else
         $PYTHONBIN ${KDZTOOLS}/undz -s $SELPARTS -f "${DZFILE}" -d "${KDZDIR}/extracteddz"
-        #python2 ${KDZTOOLS}/undz -s $SELPARTS -f "${DZFILE}" -d "${KDZDIR}/extracteddz"
     fi
     # delete unneeded parse files
-    rm -rvf ${KDZDIR}/extracteddz/*.params
+    find "${KDZDIR}/extracteddz/" -name "*.params" -delete
     # rename GPT files to ensure they will not flashed by accident
-    for gpt in $(find ${KDZDIR}/extracteddz/ -type f |grep -i GPT);do mv -v "$gpt" "${gpt/\.image/.gpt}";done
+    for gpt in $(find "${KDZDIR}/extracteddz/" -type f |grep -i GPT);do mv -v "$gpt" "${gpt/\.image/.gpt}";done
 }
 
 if [ $LISTMODE -eq 1 ];then
@@ -170,7 +170,8 @@ else
         [ "$BATCH" -eq 0 ] && read -p "I understood and want to continue (press ENTER)" DUMMY
     
         if [ $TESTMODE -eq 0 ];then
-            DZFILE=$(find "${KDZDIR}/extractedkdz/" -name '.*\.dz' 2>/dev/null)
+            DZFILE=$(find "${KDZDIR}/extractedkdz/" -name '*\.dz' 2>/dev/null)
+            echo "DZFILE is $DZFILE" >> $LOG
             [ ! -f "$DZFILE" ] && FK_EXTRACTKDZ
             FK_EXTRACTPARTS
             # delete userdata partition when not needed
