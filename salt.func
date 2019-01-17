@@ -989,6 +989,29 @@ F_SYNC(){ F_LOG "$FUNCNAME: started"
     F_LAFEXEC sync
 }; export -f F_SYNC
 
+# select backup dir
+F_SELBAKDIR(){ F_LOG "$FUNCNAME: started with these arguments: $@"
+    TFREE=0
+    COMPLSIZEMB="$1"
+    while [ "$TFREE" -lt "$COMPLSIZEMB" ];do
+        BANS=$($FYAD --width=800 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text="\n Backup your device in <b>$BAKTNAME</b> mode.\n\n The choosen backup type will require: <span color='#ff0000'><b>$COMPLSIZEMB MB</b></span> of free disk space!\n\n" --form \
+        --field="Target directory":CDIR "${REALHOME}/salt_backup" \
+        --button=Continue:0 --button=Abort:99)
+        BRET=$?
+        [ $BRET -ne 0 ] && F_EXIT "$FUNCNAME Aborted on users request" $BRET
+        BTDIR="${BANS/|*}"
+        F_LOG "$FUNCNAME: choosen target directory was $BTDIR"
+
+        [ ! -d "$BTDIR" ] && F_LOG "$FUNCNAME: Target dir <$BTDIR> does not exists. Will create it" && mkdir -p "$BTDIR" 2>&1 >> $LOG
+
+        # verify disk space
+        TFREE=$(F_CHKFREE "$BTDIR")
+        F_LOG "$FUNCNAME: TFREE $TFREE vs. $COMPLSIZEMB"
+        [ "$TFREE" -lt "$COMPLSIZEMB" ] && F_MSGE 500 "Wake up dude!\n\nThe target directoy:\n\n$BTDIR\n\n<span color='#ff0000'><b>HAS NOT ENOUGH FREE SPACE!</b></span>\n\nFree space:\t<b>$TFREE MB</b>\nRequired:\t<b>$COMPLSIZEMB MB</b>\n\nTry again!" 2>&1 >> $LOG
+    done
+    echo "${BTDIR}:${TFREE}"
+}; export -f F_SELBAKDIR
+
 # take a REAL nandroid backup of the device
 F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
     # takes no arguments
@@ -1116,24 +1139,10 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
 
     [ "$COMPLSIZEMB" -eq 0 -o -z "$COMPLSIZEMB" ] && F_MSGE 500 "Calculated target size is too small ($COMPLSIZEMB)!\nUpload and share the debug log!" && F_EXIT "$FUNCNAME" 4
 
-    TFREE=0
-    while [ "$TFREE" -lt "$COMPLSIZEMB" ];do
-        BANS=$($FYAD --width=800 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text="\n Backup your device in <b>$BAKTNAME</b> mode.\n\n The choosen backup type will require: <span color='#ff0000'><b>$COMPLSIZEMB MB</b></span> of free disk space!\n\n" --form \
-        --field="Target directory":CDIR "${REALHOME}/salt_backup" \
-        --button=Continue:0 --button=Abort:99)
-        BRET=$?
-        [ $BRET -ne 0 ] && F_EXIT "$FUNCNAME Aborted on users request" $BRET
-        BTDIR="${BANS/|*}"
-        F_LOG "$FUNCNAME: choosen target directory was $BTDIR"
+    VBTFUNC=$(F_SELBAKDIR "$COMPLSIZEMB")
+    BTDIR=$(echo "${VBTFUNC/:*}"| tr -d "\n")
+    TFREE="${VBTFUNC/*:}"
 
-        [ ! -d "$BTDIR" ] && F_LOG "$FUNCNAME: Target dir <$BTDIR> does not exists. Will create it" && mkdir -p "$BTDIR"
-
-        # verify disk space
-        TFREE=$(F_CHKFREE "$BTDIR")
-        F_LOG "$FUNCNAME: TFREE $TFREE vs. $COMPLSIZEMB"
-        [ "$TFREE" -lt "$COMPLSIZEMB" ] && F_MSGE 500 "Wake up dude!\n\nThe target directoy:\n\n$BTDIR\n\n<span color='#ff0000'><b>HAS NOT ENOUGH FREE SPACE!</b></span>\n\nFree space:\t<b>$TFREE MB</b>\nRequired:\t<b>$COMPLSIZEMB MB</b>\n\nTry again!"
-    done
- 
     F_LOG "$FUNCNAME: choosen backup type was $BAKTYPE, $BAKTNAME, $BMAX KB, backup size: $COMPLSIZEMB, backup path: $BTDIR"
     F_LOG "$FUNCNAME: Target directory has enough free space!"
     $FYAD --width=500 --image="$SICONS/backup.png" --title="$YTITLE - BACKUP" --text "\n  READY!\n\n  Free space:\t<b>$TFREE MB</b>\n  Required:\t<b>$COMPLSIZEMB MB</b>\n\n  Click START to begin the backup now. " --button=START:0 --button=Abort:2
