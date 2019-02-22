@@ -1680,6 +1680,13 @@ F_GETPARTS(){ F_LOG "$FUNCNAME: started"
         PARTUID=$(echo "${f}" | cut -d ":" -f 5)
         PARTSIZEB=$(echo "${f}" | cut -d ":" -f 6)
 
+        if [ -z "$PARTSIZEB"];then
+            BLOCKSIZE=4096      # FIXME: NEED TO BE DYNAMIC OFC - JUST FOR TESTING ATM
+            F_LOG "$FUNCNAME: firmware do not support size listing.. sigh."
+            SECTORSIZE=$((SSEC + 1 - $ESEC))
+            PARTSIZEB=$((SECTORSIZE * $BLOCKSIZE))
+        fi
+
         F_LOG "PARTSIZEB is: $PARTSIZEB"
         if [ $PARTSIZEB -gt 1048576 ];then
             PARTSIZE="$((PARTSIZEB/1024/1024))_GB"
