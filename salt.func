@@ -1704,10 +1704,10 @@ F_GETPARTS(){ F_LOG "$FUNCNAME: started"
         shopt -s extglob
         case $PNAME in
             ${PUNNEEDED})
-              if [ -z "$IRES" ];then IRES="false\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nunneeded\n99"; else IRES="$IRES false\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nunneeded\n${PARTSIZE}\n99" ;fi
+              if [ -z "$IRES" ];then IRES="false\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nunneeded\n${PARTSIZE}\n99"; else IRES="$IRES false\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nunneeded\n${PARTSIZE}\n99" ;fi
             ;;
             ${PBOOTL})
-              if [ -z "$IRES" ];then IRES="true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nbootloader\n1"; else IRES="$IRES true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nbootloader\n${PARTSIZE}\n1" ;fi
+              if [ -z "$IRES" ];then IRES="true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nbootloader\n${PARTSIZE}\n1"; else IRES="$IRES true\n${PNAME}\n${PARTN}\n${SSEC}\n${ESEC}\n${PARTUID}\nbootloader\n${PARTSIZE}\n1" ;fi
             ;;
             ${PDEVICE})
               if [ -z "$IRES" ];then 
