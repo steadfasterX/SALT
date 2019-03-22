@@ -445,7 +445,7 @@ F_CDARB(){ F_LOG "$FUNCNAME: started"
     DEVARBEMPTY=0
     PDARB=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --list | egrep "($PARB)" | head -n 1 | cut -d ":" -f1)
     F_LOG "$FUNCNAME: ARB partition seems to be: $PDARB"
-    DEVARB=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump - $PDARB 2>> $LOG| strings | egrep "[0-9] SW_ID" |cut -d " " -f 2 | head -n 1 | sed -e 's/0\{16,16\}/zero/g' | tr -d "0")
+    DEVARB=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump - $PDARB 2>> $LOG| strings | egrep "[0-9] SW_ID" |cut -d " " -f 2 | head -n 1 | sed -E 's/([0-9]{6,6})([0-9]{2,2}).*/\2/g;s/^0//g')
     
     [ -z "$DEVARB" ] && DEVARB="0" && DEVARBEMPTY=1 && F_LOG "EMPTY ARB DETECTED:\n$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump /tmp/${PDARB}.err $PDARB && strings /tmp/${PDARB}.err | grep -C 1 SW_ID 2>&1)" && F_LOG "Please send this log and the $PDARB dump in /tmp/${PDARB}.err" && F_LOG "$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list --debug 2>&1)" && F_LOG "$(lsusb -v)"
     [ "$DEVARB" == "zero" ] && DEVARB=0 && F_LOG "ARB valid and 0"
@@ -1694,21 +1694,13 @@ F_GETPARTS(){ F_LOG "$FUNCNAME: started"
         SSEC=$(echo "${f}" | cut -d ":" -f 3)
         ESEC=$(echo "${f}" | cut -d ":" -f 4)
         PARTUID=$(echo "${f}" | cut -d ":" -f 5)
+        PARTSIZEB=$(echo "${f}" | cut -d ":" -f 6)
 
-        BLOCKSIZE=4096      # FIXME: NEED TO BE DYNAMIC OFC - JUST FOR TESTING ATM 
-        F_LOG "$FUNCNAME: calculating partition size ... ($ESEC - $SSEC)" 
-        SECTORSIZE=$((ESEC + 1 - $SSEC))
-        PARTSIZEB=$((SECTORSIZE * $BLOCKSIZE))
- 
-        F_LOG "PARTSIZEB is: $PARTSIZEB"
-        if [ $PARTSIZEB -gt 1073741824 ];then
-            PARTSIZE="$((PARTSIZEB/1024/1024/1024))_GB" 
-        else 
-            if [ $PARTSIZEB -gt 1048576 ];then 
-                PARTSIZE="$((PARTSIZEB/1024/1024))_MB" 
-            else
-                PARTSIZE="$((PARTSIZEB/1024))_KB"
-            fi
+        if [ -z "$PARTSIZEB"];then
+            BLOCKSIZE=4096      # FIXME: NEED TO BE DYNAMIC OFC - JUST FOR TESTING ATM
+            F_LOG "$FUNCNAME: firmware do not support size listing.. sigh."
+            SECTORSIZE=$((SSEC + 1 - $ESEC))
+            PARTSIZEB=$((SECTORSIZE * $BLOCKSIZE))
         fi
 
         F_LOG "PARTSIZEB is: $PARTSIZEB"
