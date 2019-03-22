@@ -952,6 +952,22 @@ F_UPDATE(){ F_LOG "$FUNCNAME: started"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_UPDATE
 
+# identify a git branch
+F_CHKBRNCH(){ F_LOG "$FUNCNAME: started"
+    # takes 1 arg
+    #
+    # 1 => path to check
+    #
+    # returns: current branch name
+
+    BRPATH="$1"
+    if [ -z "$BRPATH" ] || [ ! -d "$BRPATH" ];then F_MSGE 500 "INTERNAL ERROR: No valid path ($BRPATH) given! aborted.."; F_EXIT "$FUNCNAME" 9; fi
+    cd $BRPATH
+    git symbolic-ref --short -q HEAD
+
+    F_LOG "$FUNCNAME: ended with $?"
+}; export -f F_CHKBRNCH
+
 # wipe a partition
 F_WIPEPART(){ F_LOG "$FUNCNAME: started with $@"
     # takes 2 arguments
@@ -1678,13 +1694,21 @@ F_GETPARTS(){ F_LOG "$FUNCNAME: started"
         SSEC=$(echo "${f}" | cut -d ":" -f 3)
         ESEC=$(echo "${f}" | cut -d ":" -f 4)
         PARTUID=$(echo "${f}" | cut -d ":" -f 5)
-        PARTSIZEB=$(echo "${f}" | cut -d ":" -f 6)
 
-        if [ -z "$PARTSIZEB"];then
-            BLOCKSIZE=4096      # FIXME: NEED TO BE DYNAMIC OFC - JUST FOR TESTING ATM
-            F_LOG "$FUNCNAME: firmware do not support size listing.. sigh."
-            SECTORSIZE=$((SSEC + 1 - $ESEC))
-            PARTSIZEB=$((SECTORSIZE * $BLOCKSIZE))
+        BLOCKSIZE=4096      # FIXME: NEED TO BE DYNAMIC OFC - JUST FOR TESTING ATM 
+        F_LOG "$FUNCNAME: calculating partition size ... ($ESEC - $SSEC)" 
+        SECTORSIZE=$((ESEC + 1 - $SSEC))
+        PARTSIZEB=$((SECTORSIZE * $BLOCKSIZE))
+ 
+        F_LOG "PARTSIZEB is: $PARTSIZEB"
+        if [ $PARTSIZEB -gt 1073741824 ];then
+            PARTSIZE="$((PARTSIZEB/1024/1024/1024))_GB" 
+        else 
+            if [ $PARTSIZEB -gt 1048576 ];then 
+                PARTSIZE="$((PARTSIZEB/1024/1024))_MB" 
+            else
+                PARTSIZE="$((PARTSIZEB/1024))_KB"
+            fi
         fi
 
         F_LOG "PARTSIZEB is: $PARTSIZEB"
@@ -2073,6 +2097,8 @@ F_CHKLAFV(){ F_LOG "$FUNCNAME: started with this args: $@"
     # 1 => compare the detection with a max allowed version
 
     MAXV="$1"
+    BRLAF=$(F_CHKBRNCH "$LAFPATH")
+
     LAFPROT="--proto"
     [ "$BRLAF" == "develop" ] && LAFPROT="--showproto" && F_LOG "$FUNCNAME: on branch $BRLAF so using the new proto arg"
     LAFV=$($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} $LAFPROT --rawshell)
