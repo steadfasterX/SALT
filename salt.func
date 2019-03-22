@@ -2,7 +2,7 @@
 ## @file			salt.func
 ## @brief			The heart of SALT - all global functions
 ## @author			steadfasterX <steadfasterX -AT- gmail -DOT- com>
-## @date                        2017-2018
+## @date                        2017-2019
 ## @copyright			LGPL v3
 ## @details                     SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
 ##
@@ -49,7 +49,7 @@ esac
 if [ "${VERSION/*:}" == "TESTING" ];then
     export BRSALT=develop
     export BRKDZ=develop
-    export BRLAF=g4-develop
+    export BRLAF="develop|g4-develop"
     export BROSALT=master
     export BROKDZ=master
     export BROLAF=g4-stable
@@ -60,7 +60,7 @@ else
     export BRLAF=g4-stable
     export BROSALT=develop
     export BROKDZ=develop
-    export BROLAF=g4-develop
+    export BROLAF="develop|g4-develop"
     export VCHK=https://raw.githubusercontent.com/steadfasterX/SALT/master/salt.vars
 fi
 
@@ -2073,7 +2073,9 @@ F_CHKLAFV(){ F_LOG "$FUNCNAME: started with this args: $@"
     # 1 => compare the detection with a max allowed version
 
     MAXV="$1"
-    LAFV=$($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --proto --rawshell)
+    LAFPROT="--proto"
+    [ "$BRLAF" == "develop" ] && LAFPROT="--showproto" && F_LOG "$FUNCNAME: on branch $BRLAF so using the new proto arg"
+    LAFV=$($PYTHONBIN $LAFPATH/lglaf.py ${CROPT} $LAFPROT --rawshell)
     if [ $? -ne 0 ]||[ -z "$LAFV" ]||[ "$LAFV" -lt 1000001 -o "$LAFV" -gt 2000000 ];then
         F_LOG "$FUNCNAME: Unexpected error while retrieving LAF protocol version ($LAFV)"
         echo "unknown"
