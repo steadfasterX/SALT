@@ -11,11 +11,16 @@ F_LOG "getlog script started"
 cat $LOG | $FYAD --title="$YTITLE - DEBUGLOG" --width=1000 --height=800 --wrap --text-info --button="Upload/Paste this log":99 --button=Close:0 
 
 if [ $? -eq 99 ];then
-    PASTEURL=$($WPASTE -s bpaste -e 1month $LOG)
-    echo "$PASTEURL" | grep http > /dev/null
-    if [ $? -eq 0 ];then
-        F_MSGOK 500 "Log uploaded successfully!\n\nPlease share this link:\n\n<a href=\"$PASTEURL\">$PASTEURL</a>" 
-    else
-        F_MSGE 500 "Error $PASTEURL while uploading logfile.."
-    fi
+    for pastes in dpaste haste ix transfer; do
+        PASTEURL=$($APASTE -s -p $pastes $LOG | grep Link)
+        PASTEURL=${PASTEURL/Link: /}
+        echo "${PASTEURL}" | grep -q http
+        PASTEERR=$?
+        if [ $PASTEERR -eq 0 ];then
+            F_MSGOK 700 "Log uploaded successfully!\n\nPlease share this link:\n\n<a href=\"${PASTEURL}\">${PASTEURL}</a>\n(right click, copy link address)\n"
+            break
+        else
+            F_MSGE 800 "Error in module '$pastes' $PASTEURL while uploading logfile..\nClick EXIT for trying next paste service...\n\n"
+        fi
+    done
 fi

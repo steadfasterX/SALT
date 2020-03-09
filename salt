@@ -3,7 +3,7 @@
 #
 # SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
 #
-# Copyright (C): 2017-2018, steadfasterX <steadfasterX [AT] gmail [DOT] com>
+# Copyright (C): 2017-2019, steadfasterX <steadfasterX [AT] gmail [DOT] com>
 #
 # Main program for SALT
 #
@@ -36,6 +36,9 @@ if [ ! -x $FBBIN ];then F_MSGE 700 "Missing fastboot!\nInstall $FBBIN first (or 
 $PYTHONBIN -c "import zstandard"
 if [ $? -ne 0 ];then F_MSGE 500 "FATAL ERROR!! Missing requirement\n\n  <b>python-zstandard (python3)</b>\n\nRead the SALT thread for how to install and try again!" ; F_EXIT "no-zstd" 3 full;fi
 
+$PYTHONBIN -c "import cryptography"
+if [ $? -ne 0 ];then F_MSGE 500 "FATAL ERROR!! Missing requirement\n\n  <b>python cryptography module (python3)</b>\n\nRead the SALT thread for how to install and try again!" ; F_EXIT "no-crypto" 3 full;fi
+
 # set full command for restarting properly 
 export FULLCMD="$0 $@"
 
@@ -57,6 +60,9 @@ trap "F_EXIT 'ctrl+c pressed' 0 full" SIGINT
 
 # check freshness
 F_VCHK
+
+# remove any previous working path
+rm -rf $USUTMPDIR
 
 # check the base:
 if [ ! -d "$LAFPATH" ];then

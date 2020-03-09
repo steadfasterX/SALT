@@ -1,0 +1,1314 @@
+#!/usr/bin/env bash
+
+# This is anypaste. Authored by Mark Polyakov (see markasoftware.com)
+# This software is released under the GPLv3, see gnu.org
+# Homepage at anypaste.xyz
+
+# shellcheck disable=2128
+
+export ap_version ap_mac ap_path ap_human_name ap_mime ap_size ap_plugin ap_last_stdout
+ap_version_text='Anypaste 1.1.2'
+[[ $OSTYPE == darwin* ]] && ap_mac='true' || ap_mac='false'
+ap_tmpdir=${TMPDIR:-/tmp}
+shopt -s extglob
+
+# BEGIN PLUGINS
+
+# COMMON PLUGIN FUNCTIONS
+
+function check_size {
+	if ! [[ $ap_size -lt $1 ]]
+	then
+		echo "${ap_WARNING}WARNING: File is of compatible type for plugin '$ap_plugin', but is above size limit of $1 bytes${ap_RESET}" >&2
+		return 1
+	fi
+}
+
+function curl_form_upload {
+	curl -#fF "$1=@\"$ap_path\";type=$ap_mime" "$2" || { echo "${ap_ERROR}ERROR: Upload request did not return HTTP 200!${ap_RESET}" >&2 && return 1; }
+}
+
+function curl_file_upload {
+	curl "-X$1" -#fT "$2" "$3" || { echo "${ap_ERROR}ERROR: Upload request did not return HTTP 200!${ap_RESET}" >&2 && return 1; }
+}
+
+# string json, string key -> string value
+# make sure shopt -s extglob is on before using
+# not standards compliant in any way shape or form, is designed specifically to work around strange
+# cases present in anypaste plugins, mainly if the whole json is wrapped in a string so all
+# actual strings inside of the json are escaped, eg: "{\"hello\":\"world\"}", see test.sh for more
+function json_parse {
+	local infernal_agony
+	infernal_agony="$1"
+	# remove everything before the value, not including the leading quote
+	eval "infernal_agony=\${infernal_agony##*\\\"$2\\\"*( ):*( )}"
+	# does it start with a quote?
+	if [[ $infernal_agony == \"* ]]
+	then
+		# remove initial quote
+		infernal_agony=${infernal_agony:1}
+		infernal_agony=${infernal_agony%%\"*}
+	else
+		# it can only be a number or a boolean, so it can't contain special characters at this point
+		infernal_agony=${infernal_agony%%[ ,\}]*}
+	fi
+	echo "$infernal_agony"
+}
+
+# @param ALL env vars about a path
+# @return $ap_find_extension_return the "ideal" file extension, will be the real extension
+# if it has one, or otherwise will try to determine based on metadata
+function ap_find_extension {
+	local format_name_line
+	# ffmpeg provides the best file extensions
+	if [[ -n $ap_ffprobe && $ap_ffprobe == *probe_score=100* ]]
+	then
+		format_name_line=$(grep 'format_name=' <<< "$ap_ffprobe")
+		ap_find_extension_return=${format_name_line##*=}
+	else
+		# attempt to use actual file extension, if it has one, otherwise null
+		[[ $ap_path == */+([^/]).+([^/]) ]] && ap_find_extension_return=${ap_path##*.} || ap_find_extension_return=
+	fi
+}
+
+# @return exit code is 0 if input is a video (NOT a motion JPEG or animated GIF)
+# Uses ffprobe and falls back to file --mime
+function ap_is_video {
+	# codec_type=video indicates that there is some video-related stream, but that could mean an animated gif or even a still png
+	# bit_rate indicates that it must be a true video, that ffprobe truly "understands" the file
+	if [[ -n $ap_ffprobe ]]
+	then
+		[[ $ap_ffprobe == *codec_type=video* && $ap_ffprobe == *bit_rate=[0-9]* ]]
+	else
+		[[ $ap_mime == video/* ]]
+	fi
+}
+
+# @return exit code is 0 if input is a GIF (doesn't check if it's animated)
+function ap_is_gif {
+	if [[ -n $ap_ffprobe ]]
+	then
+		[[ $ap_ffprobe == *codec_name=gif* ]]
+	else
+		[[ $ap_mime == image/gif ]]
+	fi
+}
+
+# PLUGINS
+
+function ixio {
+	case $1 in
+	check_eligibility)
+		[[ $ap_mime == text/* ]] && check_size 1000000
+		;;
+	upload)
+		ixio_link=$(curl_form_upload 'f:1' ix.io) || return 1
+		echo >&2
+		echo "Direct: $ixio_link"
+		echo
+		;;
+	get_info)
+		echo '[name]'
+		echo 'ix.io'
+		echo '[description]'
+		echo 'Simple plain-text host with direct links only.'
+		echo '[tags]'
+		echo 'permanent'
+		echo 'direct'
+		;;
+	esac
+}
+
+function hastebin {
+	case $1 in
+	check_eligibility)
+		[[ $ap_mime == text/* ]] && check_size 400000
+		;;
+	upload)
+		hastebin_json=$(curl_file_upload 'POST' "$ap_path" 'https://hastebin.com/documents') || return 1
+		hastebin_id=$(json_parse "$hastebin_json" 'key')
+		echo 'Reminder: hastebin.com uploads are deleted 30 days after their last view!' >&2
+		echo >&2
+		echo "Link: https://hastebin.com/$hastebin_id"
+		echo "Direct: https://hastebin.com/raw/$hastebin_id"
+		echo
+		;;
+	get_info)
+		echo '[name]'
+		echo 'Hastebin'
+		echo '[description]'
+		echo 'Plain-text host with syntax highlighting and forking.'
+		echo '[tags]'
+		echo 'private'
+		echo 'direct'
+		;;
+	esac
+}
+
+function fileio {
+	case $1 in
+	check_eligibility)
+		check_size 5000000000
+		;;
+	upload)
+		fileio_json=$(curl_form_upload 'file' 'https://file.io') || return 1
+		fileio_link=$(json_parse "$fileio_json" 'link')
+		echo 'Reminder: file.io uploads are deleted after being download, or 14 days, whichever comes first!' >&2
+		echo >&2
+		echo "Direct: $fileio_link"
+		echo
+		;;
+	get_info)
+		echo '[name]'
+		echo 'file.io'
+		echo '[description]'
+		echo 'Snapchat for files: They are deleted after their first view. Generic; direct-links only'
+		echo '[tags]'
+		echo 'private'
+		echo 'direct'
+		;;
+	esac
+}
+
+function transfersh {
+	case $1 in
+	check_eligibility)
+		check_size 10000000000
+		;;
+	upload)
+		transfersh_link=$(curl_file_upload 'PUT' "$ap_path" "https://transfer.sh/$ap_human_name") || return 1
+		echo 'Reminder: transfer.sh uploads are deleted after 14 days!' >&2
+		echo 'Transfer.sh links are *not* direct if you use a browser, but they can be curled!' >&2;
+		echo >&2
+		echo "Direct: $transfersh_link"
+		echo
+		;;
+	get_info)
+		echo '[name]'
+		echo 'transfer.sh'
+		echo '[description]'
+		echo 'Generic-file host with a popular, official CLI client. No ads.'
+		echo '[tags]'
+		echo 'private'
+		;;
+	esac
+}
+
+function vgyme {
+	case $1 in
+	check_eligibility)
+		# This is literally the worst possible way to design how the quotes should be used in a regex
+		[[ $ap_mime =~ 'image/jpeg'|'image/png'|'image/gif'|'image/x-ms-bmp' ]] && check_size 20000000
+		;;
+	upload)
+		vgyme_json=$(curl_form_upload 'file' 'https://vgy.me/upload') || return 1
+		vgyme_link=$(json_parse "$vgyme_json" 'url')
+		vgyme_direct=$(json_parse "$vgyme_json" 'image')
+		vgyme_delete=$(json_parse "$vgyme_json" 'delete')
+		echo >&2
+		echo "Link: $vgyme_link"
+		echo "Direct: $vgyme_direct"
+		echo "Delete: $vgyme_delete"
+		echo
+		;;
+	get_info)
+		echo '[name]'
+		echo 'vgy.me'
+		echo '[description]'
+		echo 'Image host, supports direct links and some editing.'
+		echo '[tags]'
+		echo 'private'
+		echo 'editable'
+		echo 'deletable'
+		echo 'direct'
+		;;
+	esac
+}
+
+function tinyimg {
+	case $1 in
+	check_eligibility)
+		[[ $ap_mime == image/* ]] && check_size 10000000
+		;;
+	upload)
+		tinyimg_json=$(curl_form_upload 'qqfile' 'https://tinyimg.io/upload') || return 1
+		tinyimg_filename=$(json_parse "$tinyimg_json" 'uploadName')
+		echo >&2
+		echo "Direct: https://tinyimg.io/i/$tinyimg_filename"
+		echo
+		;;
+	get_info)
+		echo '[name]'
+		echo 'Tinyimg'
+		echo '[description]'
+		echo 'Image host, super simple, direct links only.'
+		echo '[tags]'
+		echo 'private'
+		echo 'direct'
+		;;
+	esac
+}
+
+function imgur {
+	case $1 in
+	check_eligibility)
+		[[ $ap_mime == image/* ]] && check_size 100000000
+		;;
+	upload)
+		imgur_json=$(curl -#fF "image=@\"$ap_path\"" -F "name=\"$ap_human_name\"" \
+			-H "Authorization: Client-ID ${imgur_client_id:-c7e65b324a5ebe8}" \
+			'https://api.imgur.com/3/image') || return 1
+		imgur_json=${imgur_json//\\/}
+		imgur_id=$(json_parse "$imgur_json" 'id')
+		imgur_link=$(json_parse "$imgur_json" 'link')
+		imgur_deletehash=$(json_parse "$imgur_json" 'deletehash')
+		echo >&2
+		echo "Link: https://imgur.com/$imgur_id"
+		echo "Direct: $imgur_link"
+		echo "Edit: https://imgur.com/edit?deletehash=$imgur_deletehash"
+		echo "Delete: https://imgur.com/delete/$imgur_deletehash"
+		echo
+		;;
+	get_info)
+		echo '[name]'
+		echo 'Imgur'
+		echo '[description]'
+		echo 'The most popular image host in the world. We had to hard-code an API key, but it has rate limits. Use your own key if you plan to upload a lot, please!'
+		echo '[tags]'
+		echo 'private'
+		echo 'editable'
+		echo 'deletable'
+		echo 'direct'
+		echo '[config]'
+		echo 'optional|imgur_client_id|Your Imgur API client ID. Your secret key is not needed, yay!'
+		;;
+	esac
+}
+
+function clyp {
+	case $1 in
+	check_eligibility)
+		[[ $ap_mime =~ 'audio/x-wav'|'audio/mpeg'|'audio/ogg'|'audio/x-aiff'|'audio/x-m4a' ]] && \
+			check_size 5000000
+		;;
+	upload)
+		clyp_json=$(curl -#fF "audioFile=@\"$ap_path\"" -H 'X-Client-Type: WebAlfa' \
+			https://upload.clyp.it/upload) || return 1
+		clyp_link=$(json_parse "$clyp_json" 'Url')
+		clyp_mp3_direct_link=$(json_parse "$clyp_json" 'SecureMp3Url')
+		echo >&2
+		echo "Link: $clyp_link"
+		echo "Direct: $clyp_mp3_direct_link"
+		echo
+		;;
+	get_info)
+		echo '[name]'
+		echo 'clyp.it'
+		echo '[description]'
+		echo 'Mediocre audio host. Not sure why I added it; there is limited selection in audio hosts. Links expire after 24 hours.'
+		echo '[tags]'
+		echo 'direct'
+		;;
+	esac
+}
+
+function streamable {
+	case $1 in
+	check_eligibility)
+		ap_is_video || ap_is_gif || return 1
+		check_size 10000000000 || return 1
+		;;
+	upload)
+		# shellcheck disable=2154
+		streamable_json=$(curl -#fu "$streamable_email:$streamable_password" -F "file=@$ap_path" https://api.streamable.com/upload) || return 1
+		streamable_shortcode=$(json_parse "$streamable_json" 'shortcode')
+		echo >&2
+		echo "Link: https://streamable.com/$streamable_shortcode"
+		echo
+		;;
+	get_info)
+		echo '[name]'
+		echo 'Streamable'
+		echo '[description]'
+		echo 'Video host. Very popular, transcodes for all platforms. Requires authentication (user/password, not API key).'
+		echo '[tags]'
+		echo 'private'
+		echo 'permanent'
+		echo '[config]'
+		echo 'required|streamable_email|Account email address.'
+		echo 'required|streamable_password|Account password.'
+		;;
+	esac
+}
+
+function sendvid {
+	case $1 in
+	check_eligibility)
+		ap_is_video && check_size 1000000000
+		;;
+	upload)
+		# Sendvid won't upload videos with certain file extensions, but will still encode them
+		# and function properly if uploaded as a .mp4
+		# Maybe time for them to switch to mime type checking?
+		sendvid_json=$(curl -#fF "video=@$ap_path;filename=${ap_human_name%.*}.mp4" http://sendvid.com/api/v1/videos) || return 1
+		sendvid_pub=$(json_parse "$sendvid_json" 'slug')
+		sendvid_priv=$(json_parse "$sendvid_json" 'secret')
+		echo >&2
+		echo "Link: https://sendvid.com/$sendvid_pub"
+		echo "Delete/Edit: https://sendvid.com/$sendvid_pub?secret=$sendvid_priv"
+		echo
+		;;
+	get_info)
+		echo '[name]'
+		echo 'Sendvid'
+		echo '[description]'
+		echo 'Video host. Transcodes for all platforms.'
+		echo '[tags]'
+		echo 'private'
+		echo 'permanent'
+		echo 'editable'
+		echo 'deletable'
+		;;
+	esac
+}
+
+function gfycat {
+	case $1 in
+	check_eligibility)
+		ap_is_video || ap_is_gif
+		;;
+	upload)
+		# CHANGE NOTICE: There used to be a gfycat_duplicates variable which skipped waiting for encoding
+		# at the price of not deduplicating on gfycat's end. However, it seems that this sometimes results
+		# in URLs which take a *very* long time to encode, even for very short videos. It seems polling status
+		# might actually speed up the encoding process? I'm not sure. Either way, that's not configurable anymore.
+
+		# this is one of the more complex ones
+		# get the key/name of the gfy
+		gfy_init_json=$(curl -sfXPOST https://api.gfycat.com/v1/gfycats) || {
+			echo 'Getting gfycat key did not return HTTP 200!' >&2
+			return 1;
+		}
+		gfy_name=$(json_parse "$gfy_init_json" 'gfyname')
+		# the file being uploaded must have the same name as the key
+		# since i don't know how to set it using curl options, I'm
+		# just using a symbolic link with the correct name.
+		ln -s "$ap_path" "$ap_tmpdir/$gfy_name"
+		curl_file_upload 'PUT' "$ap_tmpdir/$gfy_name" 'https://filedrop.gfycat.com' > /dev/null || return 1
+		rm -f "$ap_tmpdir/$gfy_name"
+		# We have to wait for encoding (unlike with streamable) because
+		# during encoding, if it has the same hash as another gfy, it
+		# returns the (different) link to the original gfy, and the new
+		# one won't work. It's possible to override this to upload with
+		# the new URL regardless, but i don't need to use up extra space
+		# on the gfycat servers.
+		echo 'Waiting for remote encoding to complete...' >&2
+		while true
+		do
+			sleep 4
+			gfy_status=$(curl -fs "https://api.gfycat.com/v1/gfycats/fetch/status/$gfy_name") || {
+				echo "${ap_ERROR}Status check request did not return HTTP 200!" >&2
+				echo "Your file might end up here anyway: https://gfycat.com/$gfy_name${ap_RESET}" >&2
+				return 1;
+			}
+			[[ $gfy_status == *complete* ]] && break
+		done
+		[[ $gfy_status == *gfyName* ]] && \
+			gfy_final_name=$(json_parse "$gfy_status" 'gfyName') || \
+			gfy_final_name=$(json_parse "$gfy_status" 'gfyname')
+		echo >&2
+		echo "Link: https://gfycat.com/$gfy_final_name"
+		echo "Direct: https://thumbs.gfycat.com/$gfy_final_name-size_restricted.gif"
+		echo
+		;;
+	get_info)
+		echo '[name]'
+		echo 'Gfycat'
+		echo '[description]'
+		echo 'Video/Gif host. Started out as a gif-to-mp4 kind of thing, so it strips out audio and truncates videos to 15 seconds. Otherwise great!'
+		echo '[tags]'
+		echo 'private'
+		echo 'permanent'
+		echo 'direct'
+		;;
+	esac
+}
+
+function docdroid {
+	case $1 in
+	check_eligibility)
+		[[ $ap_mime =~ 'application/pdf'|'application/msword'|'application/vnd.openxmlformats-officedocument'|'application/vnd.ms'|'application/vnd.oasis.opendocument'|'text/rtf' ]]
+		;;
+	upload)
+		# shellcheck disable=2154
+		docdroid_json=$(curl -H "Authorization: Bearer $docdroid_access_token" -#fF "file=@$ap_path" https://docdroid.net/api/document)
+		docdroid_id=$(json_parse "$docdroid_json" 'id')
+		docdroid_filename=$(json_parse "$docdroid_json" 'filename')
+		echo >&2
+		echo "Link: http://docdro.id/$docdroid_id"
+		echo "Direct: https://www.docdroid.net/file/download/$docdroid_id/$docdroid_filename"
+		echo
+		;;
+	get_info)
+		echo '[name]'
+		echo 'Docdroid'
+		echo '[description]'
+		echo 'Weird document host, not much of an advantage over any generic direct host. Requires authentication.'
+		echo '[tags]'
+		echo 'private'
+		echo 'permanent'
+		echo '[config]'
+		echo 'required|docdroid_access_token|Your Docdroid API key. Must have upload scope enabled.'
+	esac
+}
+
+function dmca_gripe {
+	case $1 in
+	check_eligibility)
+		check_size 1025000000
+		;;
+	upload)
+		dmca_gripe_json=$(curl_form_upload 'files[]' 'https://dmca.gripe/api/upload') || return 1
+		dmca_gripe_json=$(tr -d \\n <<< "$dmca_gripe_json")
+		dmca_gripe_link=$(json_parse "$dmca_gripe_json" 'url')
+		echo >&2
+		echo "Direct: $dmca_gripe_link"
+		echo
+		;;
+	get_info)
+		echo '[name]'
+		echo 'Dmca.gripe'
+		echo '[description]'
+		echo 'A generic file hosting site powered by github.com/pomf/pomf.'
+		echo '[tags]'
+		echo 'private'
+		echo 'permanent'
+		echo 'direct'
+	esac
+}
+
+#################
+## END PLUGINS ##
+## BEGIN CORE ###
+#################
+
+# HOOKS
+
+function ap_copy_hook {
+	# -m isn't POSIX :(
+	ap_copy_me=$(grep -E "${ap_copy_regex:-.}" <<< "$ap_last_stdout" | head -n 1)
+	ap_copy_me="${ap_copy_me##*: }"
+	if $ap_mac
+	then
+		pbcopy <<< "$ap_copy_me"
+	elif command -v xsel >/dev/null
+	then
+		echo -n "$ap_copy_me" | xsel -ib
+	elif command -v xclip >/dev/null
+	then
+		echo -n "$ap_copy_me" | xclip -selection clipboard
+	else
+		echo "${ap_WARNING}WARNING: no suitable program to copy text was found on your system. Please report a bug!${ap_RESET}"
+	fi
+}
+
+function ap_notify_hook {
+	local notification_title='Anypaste upload complete.'
+	# for shellcheck 2155
+	local notification_text
+	if [[ $ap_hook_policy == greedy ]]
+	then
+		notification_text="Uploaded: '$ap_human_name'."
+	else
+		notification_text=$(
+			echo -n 'Uploaded:'
+			printf " '%s'" "${ap_ok_uls[@]}"
+			echo -n '.'
+		)
+	fi
+	if $ap_mac
+	then
+		# hahahaha motherfuckers
+		# say "$notification_text"
+		osascript -e "display notification \"$notification_text\" with title \"$notification_title\""
+	else
+		command -v notify-send >/dev/null && notify-send -a anypaste -t 8000 "$notification_title" "$notification_text" || \
+			echo "${ap_WARNING}WARNING: Install notify-send if you want --notify to work.${ap_RESET}"
+	fi
+}
+
+# FUNCTIONS
+
+# @param optionally, a file extension.
+function ap_mktemp {
+	mktemp -p "$ap_tmpdir" "anypaste.XXXXXXXXXX$1"
+}
+
+function ap_color_vars {
+	ap_RESET=$'\033[0m'
+	ap_ERROR=$'\033[31m'
+	ap_SUCCESS=$'\033[32m'
+	ap_WARNING=$'\033[33m'
+	ap_NOTE=$'\033[36m'
+}
+
+# note: make sure the plugin exists first (i.e, run it after filter_plugins)
+# @param $1: Name of the plugin
+# @param $2: Name of the section
+# @exit: 1 if that section does not exist, 0 if it does
+# @return $ap_get_section_return: the raw section contents
+# we use indirection/variable variables instead of Bash's built-in associative arrays
+# because they aren't supported on Bash 3, which Mac still uses iirc due to its license.
+# Associative arrays are used in a previous commit, which can be used if Mac ever changes
+# In theory, we could use a hash function with a normal array, but AAAAHGH
+# Variable names are ap_sections_pluginname__sectionname
+function ap_get_section {
+	local requested_key get_info_tmpfile
+	requested_key="ap_sections_$1__$2"
+	if [[ -z ${!requested_key} ]]
+	then
+		# http://mywiki.wooledge.org/BashFAQ/024
+		# in other words, we can't use the loop in a pipeline like we "should" because
+		# it will start a subshell, and we won't be able to get the variables out
+		# however, we *can* use file redirection. Srsly?
+		local section
+		local buffer
+		local current_key
+		get_info_tmpfile=$(ap_mktemp)
+		"$1" get_info > "$get_info_tmpfile"
+		# we need a "fake" section at the end so that it flushes the final buffer
+		echo '[dummy]' >> "$get_info_tmpfile"
+		while IFS= read -r line
+		do
+			# skip empty lines
+			[[ -z $line ]] && continue
+
+			# parse section headers
+			if [[ $line =~ ^\[.*\]$ ]]
+			then
+				current_key="ap_sections_$1__$section"
+				# greycat describes how to properly assign multiline values to an indirect reference
+				# here: https://mywiki.wooledge.org/BashFAQ/006
+				# since there's no security risk, I kind've just want to use eval for simplicity, but NAH
+				# here strings append a newline automatically
+				IFS= read -d '' -r "$current_key" <<< "${buffer%%$'\n'}"
+				buffer=
+				section="${line//[\[\]]/}"
+				continue
+			fi
+
+			# section body
+			buffer="${buffer}${line}
+"
+		done < "$get_info_tmpfile"
+	fi
+	ap_get_section_return=${!requested_key}
+	[[ -n ${!requested_key} ]] && return 0 || return 1
+}
+
+# Y is always default. Word your questions better. Be positive!
+# args: message
+function ap_i_yn {
+	echo -n "$1 [Y/n] " >&2
+	read -r ap_attempt
+	[[ "$ap_attempt" != 'n' && "$ap_attempt" != 'N' ]]
+}
+
+# @param ap_search_plugins_arg: array of available plugins
+# @param $1: search term
+# @return ap_search_plugins_return: Array of plugins containing search term
+function ap_search_plugins {
+	# If the plugin is the exact name of a command, we can use it even if not in config
+	ap_search_plugins_return=()
+	for ap_plugin in "${ap_search_plugins_arg[@]}"
+	do
+		[[ $ap_plugin == *$1* ]] && ap_search_plugins_return+=("$ap_plugin")
+	done
+}
+
+# @param ap_i_select_plugin_arg available plugins, filtered as much as possible
+# @return ap_i_select_plugin_return single plugin as selected by user
+function ap_i_select_plugin {
+	# fail if no plugins
+	[[ ${#ap_i_select_plugin_arg[@]} -eq 0 ]] && return 1
+	if [[ ${#ap_i_select_plugin_arg[@]} -eq 1 ]]
+	then
+		echo "Only one compatible plugin was found: $ap_i_select_plugin_arg" >&2
+		ap_i_select_plugin_return="$ap_i_select_plugin_arg"
+		return
+	fi
+	echo -n 'The following plugins were found:' >&2
+	printf " '%s'" "${ap_i_select_plugin_arg[@]}" >&2
+	echo >&2
+	# keep asking for search terms until we find something
+	while true
+	do
+		echo >&2
+		echo 'Enter the (partial) name of a plugin, or nothing for automatic selection' >&2
+		read -r ap_search_term
+		if [[ -z $ap_search_term ]]
+		then
+			ap_i_select_plugin_return="$ap_i_select_plugin_arg"
+			break
+		fi
+		ap_search_plugins_arg=("${ap_i_select_plugin_arg[@]}")
+		ap_search_plugins "$ap_search_term"
+		if [[ ${#ap_search_plugins_return[@]} -gt 1 ]]
+		then
+			echo -n "${ap_WARNING}Multiple plugins matched that search:" >&2
+			printf " '%s'" "${ap_search_plugins_return[@]}" >&2
+			echo -n "${ap_RESET}" >&2
+		elif [[ ${#ap_search_plugins_return[@]} == 0 ]]
+		then
+			echo "${ap_WARNING}No plugins matched that search, try again.${ap_RESET}" >&2
+		else
+			ap_i_select_plugin_return="$ap_search_plugins_return"
+			break
+		fi
+	done
+}
+
+# @param $1: char to repeat
+# @param $2: number of times to repeat it
+# @return $ap_repeat_char_return: repeated string
+function ap_repeat_char {
+	ap_repeat_char_return=
+	for ((i=0; i<$2; i++))
+	do
+		ap_repeat_char_return="${ap_repeat_char_return}$1"
+	done
+}
+
+# sets variables related to table printing
+# ap_list_[ncs] are the top, middle, and bottom of items
+function ap_list_init {
+	local hr_body
+	ap_width=$(tput cols)
+	[[ $ap_width -lt 80 ]] && ap_width=80
+	[[ $ap_width -gt 140 ]] && ap_width=140
+	if $ap_unicode
+	then
+		ap_list_h_char='─'
+		ap_list_v_char='│'
+	else
+		ap_list_h_char='-'
+		ap_list_v_char='|'
+	fi
+	# we can't use the printf %.0s trick because it doesn't work when the character is '-'
+	ap_repeat_char "$ap_list_h_char" $((ap_width-2))
+	hr_body="$ap_repeat_char_return"
+	if $ap_unicode
+	then
+		ap_list_n="┌${hr_body}┐"
+		ap_list_c="├${hr_body}┤"
+		ap_list_s="└${hr_body}┘"
+	else
+		ap_list_n="/$hr_body\\"
+		ap_list_c="|$hr_body|"
+		ap_list_s="\\$hr_body/"
+	fi
+}
+
+# prints text, properly wrapping and all
+# @param $1: text to be put inside
+function ap_list_text {
+	local pad_str pad_size text_width line
+	pad_size=1
+	ap_repeat_char ' ' "$pad_size"
+	pad_str="$ap_repeat_char_return"
+	text_width=$((ap_width-2-pad_size*2))
+
+	echo -n "${1%$'\n'}"$'\n' | fold -w "$text_width" | while IFS= read -r line
+	do
+		if [[ ${#line} -lt $text_width ]]
+		then
+			ap_repeat_char ' ' $((text_width-${#line}))
+			line="${line}${ap_repeat_char_return}"
+		fi
+		echo "${ap_list_v_char}${pad_str}${line}${pad_str}${ap_list_v_char}"
+	done
+}
+
+# @param $ap_list_arg: see ap_list
+# @param $1: whether to do "raw" output or not.
+function ap_list_inner {
+	local tags config_parts line
+	ap_list_init
+	for ap_plugin in "${ap_list_arg[@]}"
+	do
+		# no && here, get_info might fail
+		if $1
+		then
+			"$ap_plugin" get_info
+			echo
+			continue
+		fi
+		echo "$ap_list_n"
+		ap_get_section "$ap_plugin" 'name'
+		ap_list_text "$ap_get_section_return"
+		echo "$ap_list_c"
+		ap_get_section "$ap_plugin" 'description'
+		ap_list_text "Description:
+$ap_get_section_return"
+
+		ap_get_section "$ap_plugin" 'tags'
+		if [[ -n $ap_get_section_return ]]
+		then
+			echo "$ap_list_c"
+			tags=$(echo -n "$ap_get_section_return" | tr '
+' ',')
+			# make sure to apply trailing newline that was removed above
+			ap_list_text "Tags: ${tags%%,}"
+		fi
+
+		ap_get_section "$ap_plugin" 'config'
+		if [[ -n "$ap_get_section_return" ]]
+		then
+			echo "$ap_list_c"
+			ap_list_text "Configuration options:"
+			# conveniently, required recommended optional is reverse alphabetical order
+			echo -n "$ap_get_section_return" | sort -srt '|' -k 1,1 | while read -r line
+			do
+				# [0]=opt/rec/req [1]=name [2]=description
+				IFS='|' read -ra config_parts <<< "$line"
+				ap_list_text "(${config_parts[0]}) ${config_parts[1]}: ${config_parts[2]}"
+			done
+		fi
+
+		echo "$ap_list_s"
+		echo
+	done
+}
+# @param $ap_list_arg: Array of plugin names to list
+function ap_list {
+	if [[ -t 1 ]]
+	then
+		ap_list_inner 'false' | ${PAGER:-less}
+	else
+		ap_list_inner 'true'
+	fi
+}
+
+function run_hooks {
+	for i in "${ap_hooks[@]}"
+	do
+		$i
+	done
+}
+
+# @param $ap_plugin: name of plugin
+# @param $ap_hook_policy
+function upload_plugin {
+	local plugin_exit_code stdout_cache_tmpfile
+	echo "Attempting to upload with plugin '$ap_plugin'" >&2
+	# TODO: if we ever unit test things, make sure we fall back if a plugin fails
+	stdout_cache_tmpfile=$(ap_mktemp)
+	$ap_plugin upload | tee "$stdout_cache_tmpfile"
+	plugin_exit_code=${PIPESTATUS[0]}
+	if [[ $plugin_exit_code == 0 ]]
+	then
+		ap_last_stdout=$(<"$stdout_cache_tmpfile")
+		# shellcheck disable=2154
+		[[ $ap_hook_policy == greedy ]] && run_hooks
+		echo "${ap_SUCCESS}Upload complete.${ap_RESET}" >&2
+	else
+		echo "${ap_ERROR}Plugin failed with error code $plugin_exit_code${ap_RESET}" >&2
+		return 1
+	fi
+}
+
+# LOOP THROUGH PLUGINS
+
+# @param $ap_local_plugins: List of plugins to filter
+# @return $ap_local_plugins: Filtered plugins based on file compatibility
+function ap_filter_local_plugins {
+	local line config_parts config_var_name
+	ap_filter_plugins_return=()
+	for ap_plugin in "${ap_local_plugins[@]}"
+	do
+		command -v "$ap_plugin" > /dev/null || { echo "${ap_WARNING}WARNING: Plugin $ap_plugin could not be found! You may need to check your config file.${ap_RESET}" >&2 && continue; }
+		"$ap_plugin" check_eligibility || continue
+		if ap_get_section "$ap_plugin" 'config'
+		then
+			while read -r line
+			do
+				IFS='|' read -ra config_parts <<< "$line"
+				config_var_name="${config_parts[1]}"
+				if [[ -n $line && -z ${!config_var_name} ]]
+				then
+					case "${config_parts[0]}" in
+					"required")
+						echo "${ap_WARNING}Missing required config option for '$ap_plugin': '$config_var_name'" >&2
+						echo "Run 'anypaste -p $ap_plugin -l' to see more information about this plugin.${ap_RESET}" >&2
+						# aaaahhahah
+						continue 2
+						;;
+					"recommended")
+						echo "Missing recommended config option for '$ap_plugin': '$config_var_name' -- continuing anyway" >&2
+						echo "Run 'anypaste -p $ap_plugin -l' to see more information about this plugin." >&2
+						;;
+					esac
+				fi
+			done <<< "$ap_get_section_return"
+		fi
+		ap_filter_plugins_return+=("$ap_plugin")
+	done
+	ap_local_plugins=("${ap_filter_plugins_return[@]}")
+}
+
+# filters ap_global_plugins in-place based on CLI options
+# @param $ap_global_plugins: Unfiltered plugin list
+# @param $ap_p: user-specified plugins search string
+# @param $ap_t: comma-separated list of required tags
+# @return $ap_global_plugins
+function ap_filter_global_plugins {
+	if [[ -n $ap_p ]]
+	then
+		ap_search_plugins_arg=("${ap_global_plugins[@]}")
+		ap_search_plugins "$ap_p"
+		ap_global_plugins=("${ap_search_plugins_return[@]}")
+	fi
+	if [[ -n $ap_t ]]
+	then
+		IFS=',' read -ra ap_tags <<< "$ap_t"
+		for ap_plugin_index in "${!ap_global_plugins[@]}"
+		do
+			ap_get_section "${ap_global_plugins[$ap_plugin_index]}" 'tags'
+			for ap_tag in "${ap_tags[@]}"
+			do
+				[[ $ap_get_section_return == *$ap_tag* ]] || unset "ap_global_plugins[$ap_plugin_index]"
+			done
+		done
+		# unsparsify, for good luck
+		# TODO: maybe remove
+		ap_global_plugins=("${ap_global_plugins[@]}")
+	fi
+}
+
+# @params: ALL cli options
+# @params: ALL file-specific environment variables
+# @param: ap_local_plugins: list of plugins filtered by global stuff already
+function upload_loop {
+	echo "${ap_NOTE}Current file: $ap_user_path${ap_RESET}" >&2
+	if $ap_i
+	then
+		# INTERACTIVE
+		ap_i_yn 'Determine compatible plugins automatically?' && \
+			ap_filter_local_plugins
+		# keep looping and selecting plugins, removing the previously attempted plugin each time, until we succeed
+		# or there are none left
+		while true
+		do
+			ap_i_select_plugin_arg=("${ap_local_plugins[@]}")
+			ap_i_select_plugin || return 1
+			ap_plugin="$ap_i_select_plugin_return"
+			ap_i_yn "Attempt to upload with plugin '$ap_plugin'?" >&2 || continue
+			upload_plugin && break
+			# we have to use unset to remove the selected one, but it only
+			# takes an index :(
+			for i in "${!ap_local_plugins[@]}"
+			do
+				if [[ ${ap_local_plugins[$i]} == "$ap_plugin" ]]
+				then
+					unset "ap_local_plugins[$i]"
+					ap_local_plugins=("${ap_local_plugins[@]}")
+					break
+				fi
+			done
+		done
+	else
+		# NON-INTERACTIVE
+		$ap_f || ap_filter_local_plugins
+		if $ap_list
+		then
+			ap_list_arg=("${ap_local_plugins[@]}")
+			ap_list
+			return
+		fi
+		for ap_plugin in "${ap_local_plugins[@]}"
+		do
+			upload_plugin && return
+		done
+		echo "${ap_ERROR}No compatible plugins found, or all compatible plugins failed.${ap_RESET}" >&2
+		return 1
+	fi
+}
+
+# @param $1 relative path to a file
+# @return ap_rel_to_abs absolute path to the same file
+function ap_rel_to_abs {
+	# we use the prefix and local because we don't want to conflict with the built
+	# in function names
+	local ap_dirname ap_basename
+	ap_dirname=$(dirname "$1")
+	ap_basename=$(basename "$1")
+	# I'm not convinced we need the || cases here, but shellcheck is.
+	pushd "$ap_dirname" >/dev/null || return 1
+	ap_rel_to_abs_return="$PWD/$ap_basename"
+	popd >/dev/null || return 1
+}
+
+# @param $ap_path full path to file
+# @return $ap_file_info $ap_mime $ap_ffprobe $ap_human_name $ap_size see docs
+function ap_collect_file_metadata {
+	# shellcheck disable=2034
+	ap_file_info=$(file "$ap_path")
+	ap_mime=$(file --mime-type --brief "$ap_path")
+	if command -v ffprobe >/dev/null
+	then
+		ap_ffprobe=$(ffprobe -show_streams -show_format <"$ap_path" 2>&1) || ap_ffprobe=
+	else
+		ap_ffprobe=
+		echo 'NOTE: Ffprobe/ffmpeg is not installed. Compatibility checks for audio/video may be inaccurate.' >&2
+	fi
+	ap_human_name=${ap_n:-$(basename "$ap_path")}
+	ap_size=$(wc -c < "$ap_path")
+}
+
+function ap_failed_ul {
+	ap_fail_uls+=("$ap_user_path")
+}
+# @param $ap_upload_files_arg: List of "user paths" to files to be uploaded (may be relative)
+# @return $ap_ok_uls: Array of successfully uploaded user paths
+# @return $ap_fail_uls: Array of failed upload user paths
+function ap_upload_files {
+	local found_stdin='false'
+	for ap_user_path in "${ap_upload_files_arg[@]}"
+	do
+		# HANDLE WEIRD FILES
+
+		# STDIN
+		if [[ $ap_user_path == '-' ]]
+		then
+			if $found_stdin
+			then
+				echo "${ap_ERROR}You specified stdin more than once!" >&2
+				echo "All but the first will be ignored.${ap_RESET}" >&2
+				ap_failed_ul
+				continue
+			fi
+			if [[ -t 0 ]]
+			then
+				echo "${ap_ERROR}Stdin specified, but stdin is a terminal!${ap_RESET}" >&2
+				continue
+			fi
+			ap_path=$(ap_mktemp)
+			cat > "$ap_path"
+			found_stdin='true'
+		# NOT READABLE
+		elif [[ ! -r "$ap_user_path" ]]
+		then
+			echo "${ap_ERROR}$ap_user_path is not readable!" >&2
+			echo "Make sure it exists and you have proper permissions for it.${ap_RESET}" >&2
+			ap_exit_code=101
+			ap_failed_ul
+			continue
+		# IS A DIRECTORY
+		elif [[ -d "$ap_user_path" ]]
+		then
+			echo "$ap_user_path is a directory, creating tarball..." >&2
+			ap_path=$(ap_mktemp .tar.gz)
+			tar czf "$ap_path" -C "$ap_user_path" .
+		# NOTHING SPECIAL
+		else
+			ap_rel_to_abs "$ap_user_path"
+			ap_path=$ap_rel_to_abs_return
+		fi
+		ap_local_plugins=("${ap_global_plugins[@]}")
+		ap_collect_file_metadata
+		if upload_loop
+		then
+			ap_ok_uls+=("$ap_user_path")
+		else
+			ap_exit_code=100
+			ap_failed_ul
+
+		fi
+	done
+}
+
+# @param $ap_cfg: path to config file
+function ap_create_config {
+	cat > "$ap_cfg" << 'CFG'
+# List of plugins
+# If there are multiple compatible plugins, precedence is determined
+# by which one is listed first in this array
+# You'll need to uncomment (remove # at beginning of line) first
+# ap_plugins=(
+# 'sendvid' 'streamable' 'gfycat' # Videos/Gifs
+# 'tinyimg' 'imgur' 'vgyme' # Images
+# 'clyp' # Audio
+# 'hastebin' 'ixio' # Text
+# 'docdroid' # Documents
+# 'dmca_gripe' 'transfersh' 'fileio' # Generic
+# )
+
+# Make sure to use export `boop=whatever` for plugin settings, not just `boop=whatever`
+# Otherwise plugins won't be able to see your variables.
+
+# SETTINGS FOR DEFAULT PLUGINS
+# remember to uncomment them for them to work
+
+# Set both of these to a real account to enable the streamable plugin
+# export streamable_email=mark@example.com
+# export streamable_password=hunter2
+# Create a docdroid.net account, go to settings, and create an API access token
+# export docdroid_access_token=928doebknb80fd38rduroenaudhoenkb283d8pf7230upf8rekb92
+CFG
+	echo "Created configuration file at $ap_cfg" >&2
+	echo 'It does nothing by default, edit it to make it cool!' >&2
+}
+
+# @param $ap_ok_uls: array of successful upload human names
+# @param $ap_fail_uls: array of failed upload human names
+function ap_summary {
+	# SUCCESSES
+	echo -n "${ap_SUCCESS}Sucessfully uploaded:" >&2
+	if [[ ${#ap_ok_uls[@]} -gt 0 ]]
+	then
+		printf " '%s'" "${ap_ok_uls[@]}" >&2
+		[[ $ap_hook_policy != greedy ]] && run_hooks
+	else
+		echo -n ' None' >&2
+	fi
+
+	echo "${ap_RESET}" >&2
+
+	# FAILURES
+	if [[ ${#ap_fail_uls[@]} -gt 0 ]]
+	then
+		echo -n "${ap_ERROR}Failed to upload:" >&2
+		printf " '%s'" "${ap_fail_uls[@]}" >&2
+		echo "${ap_RESET}" >&2
+		[[ ${#ap_ok_uls[@]} -gt 0 ]] && ((ap_exit_code+=100))
+	fi
+}
+
+# @param $ap_args: array of command line arguments
+# @return $ap_args: list of remaining cli arguments after removing options
+# @return: lots of individual variables
+function ap_parse_args {
+	# janky long option finder, because we can't use GNU getopt. Fuck mac. Wait, did I already say that?
+	for i in "${!ap_args[@]}"
+	do
+		ap_found_long_opt=true
+		case "${ap_args[$i]}" in
+			'--help')
+				ap_help='true'
+				;;
+			'--version')
+				ap_version='true'
+				;;
+			'--copy') ap_copy='true';;
+			'--notify') ap_notify='true';;
+			'--list') ap_list='true';;
+			'--list-raw')
+				ap_list='true'
+				;;
+			*) ap_found_long_opt='false';;
+		esac
+		$ap_found_long_opt && unset "ap_args[$i]"
+	done
+
+	# This is necessary to make the pseudo-shift with OPTIND work later
+	ap_args=("${ap_args[@]}")
+
+	# the - is so that it ignores long options without error
+	# Shellcheck actually checks specifically for getopts options in the case. How cool is that?
+	# shellcheck disable=2213
+	while getopts 'C-vlxfhsip:c:n:t:' ap_opt "${ap_args[@]}"
+	do
+		# shellcheck disable=2220
+		case $ap_opt in
+		h)
+			ap_help='true'
+			;;
+		i)
+			ap_i='true'
+			;;
+		p)
+			ap_p="$OPTARG"
+			;;
+		f)
+			ap_f='true'
+			;;
+		c)
+			ap_cfg="$OPTARG"
+			;;
+		C)
+			ap_C='true';
+			;;
+		t)
+			ap_t="$OPTARG"
+			;;
+		l)
+			ap_list='true'
+			;;
+		v)
+			ap_version='true'
+			;;
+		n)
+			ap_n="$OPTARG"
+			;;
+		s)
+			exec 2>/dev/null
+			;;
+		x)
+			ap_copy='true'
+			;;
+		esac
+	done
+
+	ap_args=("${ap_args[@]:$((OPTIND-1))}")
+}
+
+# @return $ap_cfg: path to config file (or where it should be)
+function ap_get_config_path {
+	if $ap_mac
+	then
+		# fuck mac users, they deserve random config files in their home directory because there's nowhere defined to put them
+		ap_cfg="$HOME/.anypaste.conf"
+	else
+		[[ -n "$XDG_CONFIG_HOME" ]] && ap_cfg="$XDG_CONFIG_HOME/anypaste.conf" || ap_cfg="$HOME/.config/anypaste.conf"
+	fi
+}
+
+# shellcheck disable=2016
+ap_help_text='
+Usage: anypaste [-ifh] [-p plugin] [-c config_file_path] [file1 [file2 ...]]
+
+Upload `file`s or stdin to an automatically selected hosting sites.
+You can specify `-` as a file to read from stdin. If no files are
+listed, it will automatically attempt to use stdin.
+
+See https://anypaste.xyz/ for detailed documentation.
+
+OPTIONS:
+
+ -i          Enable interactive mode. Will prompt for important options.
+             Combining this with options intended for non-interactive
+             use (e.g, -p) has undefined behavior. If you are reading
+             your file from stdin, -i might not work properly.
+ -p          Specify a plugin instead of automatic selection. Uses fuzzy
+             matching (e.g, `gfy` search will match `gfycat` plugin).
+             Only searches compatible plugins by default.
+ -t          Specify required "tags" for plugins, comma separated. You
+             can use -l to see what tags plugins have.
+ -n          Specify the name that will be displayed on the site. Not
+             universally supported. Defaults to file basename.
+ -l, --list  List all installed plugins, and some metadata about each.
+             This works in combination with other filtering things; for
+             example you can do `anypaste -l myfile.png` to list plugins
+             compatible with myfile.png. Will echo raw get_info output
+             from each plugin if stdout is not a terminal, cannot be
+             overridden :(
+ -s          Silence everything but links (equivalent to 2>/dev/null)
+ -c          Use the specified configuration file instead of the default
+             one located at $XDG_CONFIG_HOME/anypaste.conf
+ -C          Create a default configuration file. This is how you should
+             initialize a config file if you want to use one.
+ -f          Do not check plugin compatibility. Without -p, it uses the
+             first listed plugin in the config file. Primary meant for
+             use with -p
+ -x, --copy  Copy the link to the clipboard after upload is complete.
+ --notify    Send a desktop notification (GUI) after upload.
+ -v          Display Anypaste version
+ -h, --help  Display this help text.
+
+Plugins may support additional options not listed here.
+'
+
+function ap_main_inner {
+	ap_args=("$@")
+	ap_exit_code=0
+	# DEFAULT EVERYTHING
+	ap_i='false'
+	ap_f='false'
+	ap_C='false'
+	ap_p=""
+	ap_cfg=""
+	ap_copy='false'
+	ap_notify='false'
+	ap_list='false'
+	ap_help='false'
+	ap_version='false'
+	ap_plugins=(
+		'sendvid' 'streamable' 'gfycat' 'tinyimg' 'imgur' 'vgyme' 'clyp' 'hastebin' 'ixio' 'docdroid' 'dmca_gripe' 'transfersh' 'fileio'
+	)
+	ap_hooks=()
+	ap_hook_policy='lazy'
+	ap_unicode='true'
+	ap_color='true'
+
+	ap_parse_args
+	$ap_list && exec 2>/dev/null
+	$ap_help && echo "$ap_help_text" && return
+	$ap_version && echo "$ap_version_text" && return
+
+	[[ -z $ap_cfg ]] && ap_get_config_path
+	$ap_C && ap_create_config && return
+
+	PATH="$PATH:$HOME/.anypaste-plugins"
+
+	# LOAD AND CHECK CONFIGURATION
+
+	# this could fail if no config file, hence why 2> /dev/null
+	# shellcheck disable=1090
+	source "$ap_cfg" 2> /dev/null
+
+	$ap_color && ap_color_vars
+
+	[[ ${#ap_plugins[@]} == 0 ]] && echo "${ap_ERROR}No plugins listed in config!${ap_RESET}" && return 100
+
+	$ap_copy && ap_hooks+=('ap_copy_hook')
+	$ap_notify && ap_hooks+=('ap_notify_hook')
+
+	# Filter plugins by cli options
+	ap_global_plugins=("${ap_plugins[@]}")
+	ap_filter_global_plugins
+
+	# NO FILES SPECIFIED
+	if [[ ${#ap_args[@]} == 0 ]]
+	then
+		if $ap_list
+		then
+			ap_list_arg=("${ap_global_plugins[@]}")
+			ap_list
+			return
+		fi
+		if [[ -t 0 ]]
+		then
+			echo "${ap_ERROR}ERROR: No files specified, and stdin is a terminal${ap_RESET}" >&2
+			# we put this to stderr despite putting help text on stdout when
+			# -h or --help is passed because a program might not expect it here
+			echo "$ap_help_text" >&2
+			return 102
+		fi
+		ap_args=('-')
+	fi
+
+	ap_ok_uls=()
+	ap_fail_uls=()
+	ap_upload_files_arg=("${ap_args[@]}")
+	ap_upload_files
+
+	ap_summary
+	echo 'All files processed. Have a nice day!' >&2
+	return $ap_exit_code
+}
+function ap_main {
+	local exit_code
+	ap_main_inner "$@"
+	exit_code="$?"
+	rm -f "$ap_tmpdir/anypaste.*"
+	return "$exit_code"
+}
+
+# shellcheck disable=2154
+if [[ -z $ap_test ]]
+then
+	ap_main "$@"
+	exit "$?"
+fi
+
+# END CORE
