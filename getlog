@@ -11,7 +11,7 @@ F_LOG "getlog script started"
 cat $LOG | $FYAD --title="$YTITLE - DEBUGLOG" --width=1000 --height=800 --wrap --text-info --button="Upload/Paste this log":99 --button=Close:0 
 
 if [ $? -eq 99 ];then
-    for pastes in dpaste haste ix transfer; do
+    for pastes in haste ix transfer; do
         PASTEURL=$($APASTE -s -p $pastes $LOG | grep Link)
         PASTEURL=${PASTEURL/Link: /}
         echo "${PASTEURL}" | grep -q http
