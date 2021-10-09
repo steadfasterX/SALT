@@ -8,7 +8,8 @@ FUNCS="${0%/*}/salt.func"
 source $FUNCS
 
 F_LOG "Reboot button script started"
-$FYAD --title="$YTITLE - REBOOT" --image="$SICONS/warning_64x64.png" --width=400 --text '\n  Do you want to really reboot your device now?' --button=Yes:0 --button=No:1
-[ $? -eq 0 ] && F_LOG "REBOOT INITIATED by USER!" && $PYTHONBIN ${LAFPATH}/lglaf.py -c '!CTRL RSET'
+$FYAD --title="$YTITLE - REBOOT" --image="$SICONS/warning_64x64.png" --width=400 --text '\n  Do you want to really reboot your device now?' --button=Reboot:0 --button=Cancel:1 --button="EDL/QDL":9
+ANS=$?
+[ $ANS -eq 0 ] && F_LOG "NORMAL REBOOT INITIATED by USER!" && $PYTHONBIN ${LAFPATH}/lglaf.py -c '!CTRL RSET'
+[ $ANS -eq 9 ] && F_LOG "REBOOT TO EDL INITIATED by USER!" && $PYTHONBIN ${LAFPATH}/lglaf.py -c '!CTRL AATD'
 F_LOG "Reboot button script ended"
-

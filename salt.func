@@ -445,7 +445,7 @@ F_CDARB(){ F_LOG "$FUNCNAME: started"
     DEVARBEMPTY=0
     PDARB=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --list | egrep "($PARB)" | head -n 1 | cut -d ":" -f1)
     F_LOG "$FUNCNAME: ARB partition seems to be: $PDARB"
-    DEVARB=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump - $PDARB 2>> $LOG| strings | egrep "[0-9] SW_ID" |cut -d " " -f 2 | head -n 1 | sed -E 's/([0-9]{6,6})([0-9]{2,2}).*/\2/g;s/^0//g')
+    DEVARB=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump - $PDARB 2>> $LOG| strings | egrep "[0-9] SW_ID" |cut -d " " -f 2 | head -n 1 | sed -E 's/([0-9]{7,7})([0-9]{2,2}).*/\2/g;s/^0//g')
     
     [ -z "$DEVARB" ] && DEVARB="0" && DEVARBEMPTY=1 && F_LOG "EMPTY ARB DETECTED:\n$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump /tmp/${PDARB}.err $PDARB && strings /tmp/${PDARB}.err | grep -C 1 SW_ID 2>&1)" && F_LOG "Please send this log and the $PDARB dump in /tmp/${PDARB}.err" && F_LOG "$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list --debug 2>&1)" && F_LOG "$(lsusb -v)"
     [ "$DEVARB" == "zero" ] && DEVARB=0 && F_LOG "ARB valid and 0"
@@ -885,7 +885,7 @@ F_SHELL(){ F_LOG "$FUNCNAME: started"
     F_CHKDEVCON
     if [ $? -eq 0 ];then
         F_ELOG "device connected... Opening shell now!"
-        xterm -e "cd $LAFPATH && echo -e '\n*****************\nTYPE the word exit TO CLOSE THIS WINDOW\n*********************\n\n'; $PYTHONBIN $LAFPATH/lglaf.py ${CROPT}"
+        xterm -e "cd $LAFPATH && echo -e '\n*****************\nTYPE the word exit TO CLOSE THIS WINDOW\n*********************\n\n'; $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} --rawshell"
     fi
     F_LOG "$FUNCNAME: ended"
 }; export -f F_SHELL
