@@ -3,7 +3,7 @@
 #
 # SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
 #
-# Copyright (C): 2017-2019, steadfasterX <steadfastX|boun.cr>
+# Copyright (C): 2017-2021, steadfasterX <steadfastX|boun.cr>
 #
 # LG KDZ MANAGER 
 # 

@@ -2,7 +2,7 @@
 ## @file			salt.func
 ## @brief			The heart of SALT - all global functions
 ## @author			steadfasterX <steadfasterX -AT- gmail -DOT- com>
-## @date                        2017-2019
+## @date                        2017-2021
 ## @copyright			LGPL v3
 ## @details                     SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
 ##
@@ -446,6 +446,10 @@ F_CDARB(){ F_LOG "$FUNCNAME: started"
     PDARB=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --list | egrep "($PARB)" | head -n 1 | cut -d ":" -f1)
     F_LOG "$FUNCNAME: ARB partition seems to be: $PDARB"
     DEVARB=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump - $PDARB 2>> $LOG| strings | egrep "[0-9] SW_ID" |cut -d " " -f 2 | head -n 1 | sed -E 's/([0-9]{7,7})([0-9]{2,2}).*/\2/g;s/^0//g')
+    # normalize ARB
+    case $DEVARB in
+        [1-9]0) DETARB=$DEVARB; DEVARB=${DEVARB/0/} ; F_LOG "$FUNCNAME: normalized ARB from $DETARB to $DEVARB" ;;
+    esac
     
     [ -z "$DEVARB" ] && DEVARB="0" && DEVARBEMPTY=1 && F_LOG "EMPTY ARB DETECTED:\n$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump /tmp/${PDARB}.err $PDARB && strings /tmp/${PDARB}.err | grep -C 1 SW_ID 2>&1)" && F_LOG "Please send this log and the $PDARB dump in /tmp/${PDARB}.err" && F_LOG "$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --list --debug 2>&1)" && F_LOG "$(lsusb -v)"
     [ "$DEVARB" == "zero" ] && DEVARB=0 && F_LOG "ARB valid and 0"
@@ -512,7 +516,12 @@ F_CKARB(){ F_LOG "$FUNCNAME: started"
         F_MSGE 700 "Missing required file to check for ARB\n  (checked this filename: $ARBFILE)!"
         echo "arb-detect-error"
     else
-        KDZARB=$(strings "$ARBFILE" | egrep "[0-9] SW_ID" |cut -d " " -f 2 | cut -d "0" -f 8 |tr -d "0")
+        KDZARB=$(strings "$ARBFILE" | egrep "[0-9] SW_ID" |cut -d " " -f 2 | head -n 1 | sed -E 's/([0-9]{7,7})([0-9]{2,2}).*/\2/g;s/^0//g')
+        # normalize ARB
+        case $KDZARB in
+            [1-9]0) DETARB=$KDZARB; KDZARB=${KDZARB/0/} ; F_LOG "$FUNCNAME: normalized ARB from $DETARB to $KDZARB" ;;
+        esac
+
         [ -z "$KDZARB" ] && KDZARB=0
         F_LOG "KDZARB=$KDZARB"
         echo $KDZARB
@@ -583,7 +592,7 @@ F_VERIFYDARB(){
     [ -z "$KARB" -o -z "$DARB" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  Device ARB or file-based ARB cannot be checked! ABORTED!!"
     # verify ARB
     [ "$KARB" -eq "${DARB/:*}" ] && ARBOK=1 && ARBINC=0 && F_LOG "$FUNCNAME: ARB is equal between files and device"
-    [ "$KARB" -gt "${DARB/:*}" ] && ARBOK=1 && ARBINC=1 && F_MSGW 800 "Depending on the files you flash (e.g. bootloader) your ARB will be increased!\n\nThat means you can <b>never</b> rollback to a previous versions once flashed!\n\nRead more about ARB here:\n\n<a href='https://bit.do/antirollg4'>ARB explained</a>" >> /dev/null 2>&1
+    [ "$KARB" -gt "${DARB/:*}" ] && ARBOK=1 && ARBINC=1 && F_MSGW 800 "\n!!! WARNING !!!\n\nChosen files have a higher ARB level then your current device. Depending on the files you flash (e.g. bootloader) your ARB will be increased!\n\nThat means you can <b>never</b> rollback to a previous versions once flashed!\n\nRead more about ARB here:\n\n<a href='https://bit.do/antirollg4'>ARB explained</a>" >> /dev/null 2>&1
     [ "$KARB" -lt "${DARB/:*}" ] && ARBOK=0 && ARBINC=0 && F_MSGE 800 "The ARB of the files you are trying to flash is LOWER then your device!!! ABORTED!\n\nRead more about ARB here:\n\n<a href='https://bit.do/antirollg4'>ARB explained</a>" && F_EXIT "$FUNCNAME too low ARB" 3
     # a bulletproof method to avoid issues with any of the above (e.g. when KARB or DARB are not digits etc)
     [ "$ARBOK" -ne 1 ] && F_MSGE 500 "Issues regarding determining ARB! ABORTED!" && F_EXIT "$FUNCNAME: ARB check failed" 4
@@ -591,7 +600,7 @@ F_VERIFYDARB(){
     # manual ARB verification by the user
     if [ -z "${CHKMRES/*:}" ] || [ -z "${CHKMRES/:*}" ]|| [ "${CHKMRES/:*}" == "unknown" ] || [ "${CHKMRES/*:}" != "${CHKMRES/:*}" ];then
         F_LOG "$FUNCNAME: file and device model does not match!!!"
-        F_MSGW 800 "WARNING: <b><span color='#ff0000'>file and device model does not match!</span></b>\nDevice model:\t${CHKMRES/:*}\nFiles are for:\t\t${CHKMRES/*:}\n\nARB of your device compared with the files\nDevice:\t${DARB/:*}\nFiles:\t$KARB\n\nYou can doublecheck some known ARB <a href='https://bit.do/antirollg4'>here</a>\n\nDo you really want to continue and so FLASHing now?" "--button=Continue-may-HARDBRICK:99"
+        F_MSGW 800 "<b><span color='#ff0000'>!!! WARNING !!! File and device model does not match!</span></b>\n\nDevice model:\t\t${CHKMRES/:*}\nFiles are for:\t\t${CHKMRES/*:}\n\nARB of your device compared with the files\nDevice:\t${DARB/:*}\nFiles:\t$KARB\n\nYou can doublecheck some known ARB <a href='https://bit.do/antirollg4'>here</a>\n\nDo you really want to continue and so FLASHing now?" "--button=Continue-may-HARDBRICK:99"
     else
         F_LOG "$FUNCNAME: file and device model does match"
         F_MSGOK 800 "<b>file and device</b> information match\nDevice model:\t${CHKMRES/:*}\nFiles are for:\t\t${CHKMRES/*:}\n\nARB of your device compared with the files\nDevice:\t${DARB/:*}\nFiles:\t$KARB\nYou can doublecheck some known ARB <a href='http://bit.do/antirollg4'>here</a>\n\n  Do you really want to continue and so FLASHing now?" "--button=Continue:99"
