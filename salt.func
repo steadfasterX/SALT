@@ -2169,6 +2169,10 @@ F_DOUSU(){ F_LOG "$FUNCNAME: started with this args: $@"
     shopt -s extglob
 
     case $UMOD in
+        *H818*) 
+           F_ELOG "$FUNCNAME: device model $UMOD is not (fully) working with this method!"
+           F_MSGE 900 "  Your device <b>$UMOD</b> is not (fully) supported by this method!\n\n  Read the UsU thread for details but at least ensure you understand that when unlocking a h818 this way the touchscreen will stop working!!!!\n\n  There is NO WAY BACK !! YOU WILL BRICK YOUR DEVICE ONCE AND FOREVER !!!!!\n\n  I'M NOT JOKING!"   
+        ;;
         ${USUVALIDS}) F_LOG "$FUNCNAME: Valid UsU model found ($UMOD)"
         ;;
         *) F_ELOG "$FUNCNAME: device model $UMOD is not working with this method!"
