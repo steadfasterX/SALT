@@ -3,9 +3,9 @@
 #
 # SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
 #
-# Copyright (C): 2017-2019, steadfasterX <steadfasterX [AT] gmail [DOT] com>
+# Copyright (C): 2017-2022, steadfasterX <steadfasterX [AT] gmail [DOT] com>
 #
-# Main program for SALT
+# Starter for SALT
 #
 ##################################################################################
 
@@ -135,12 +135,12 @@ F_MAIN(){
                 LGUSUA=$(echo "${i}"|cut -d ":" -f2)
                 USUMODEL=$(echo "${i}"|cut -d ":" -f3)
                 export LGUSU="no"
-                [ $LGUSUA == 1 ] && export LGUSU="yes"
+                [ "$LGUSUA" == "1" ] && export LGUSU="yes"
                 ;;
                 arb)
                 DEVARBVAL=$(echo ${i}| cut -d ":" -f 2)
                 DEVARBEMPT=$(echo ${i}| cut -d ":" -f 3)
-                if [ $DEVARBEMPT -eq 0 ];then
+                if [ "$DEVARBEMPT" == "0" ];then
                     DEVARB=$DEVARBVAL
                 else
                     DEVARB="ARB_unknown"

@@ -3,7 +3,7 @@
 #
 # SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
 #
-# Copyright (C): 2017-2019, steadfasterX <steadfastX|boun.cr>
+# Copyright (C): 2017-2022, steadfasterX <steadfastX|boun.cr>
 #
 # LG KDZ MANAGER 
 # 
@@ -22,7 +22,7 @@ source $FUNCS
 F_LOG "KDZMGR started.."
 
 F_HELP(){
-    echo -e "\nCopyright (C) 2017-2019: steadfasterX <steadfastX | boun.cr>"
+    echo -e "\nCopyright (C) 2017-$(date +%Y): steadfasterX <steadfastX | boun.cr>"
     echo -e "LICENSE: LGPLv2 (https://www.gnu.org/licenses/old-licenses/lgpl-2.0.txt)\n"
     echo -e "\nUsage:\n----------------------------\n"
     echo -e "\tactions (one or both):"
@@ -136,9 +136,9 @@ FK_LISTPARTS(){
 # extract a KDZ file
 FK_EXTRACTKDZ(){
     if [ "$BATCH" -eq 1 ];then
-        $PYTHONBINLEGACY ${KDZTOOLS}/unkdz -f "$FULLKDZ" -x -d "${KDZDIR}/extractedkdz" 2>>$LOG
+        $PYTHONBIN ${KDZTOOLS}/unkdz -f "$FULLKDZ" -x -d "${KDZDIR}/extractedkdz" 2>>$LOG
     else
-        $PYTHONBINLEGACY ${KDZTOOLS}/unkdz -f "$FULLKDZ" -x -d "${KDZDIR}/extractedkdz"
+        $PYTHONBIN ${KDZTOOLS}/unkdz -f "$FULLKDZ" -x -d "${KDZDIR}/extractedkdz"
     fi
 }
 
@@ -160,7 +160,7 @@ FK_EXTRACTPARTS(){
 if [ $LISTMODE -eq 1 ];then
     BATCH=1
     FK_EXTRACTKDZ 2>&1 >>$LOG
-    FK_LISTPARTS 2>>$LOG | sort -u -t : -k 2 | sort -t : -k 3| egrep -v "(unallocated)"
+    FK_LISTPARTS 2>>$LOG | sort -u -t : -k 2 | sort -t : -k 3| $EGREPBIN -v "(unallocated)"
 else
     # extract KDZ and DZ
     if [ $EXTRACT -eq 1 ];then
@@ -182,7 +182,7 @@ else
             [ $DEBUG -eq 0 ] && rm -fv "${KDZDIR}/extractedkdz/*.dz"
         else
             echo "TESTMODE only:"
-            echo "CMD: $PYTHONBINLEGACY ${KDZTOOLS}/unkdz -f $FULLKDZ -x -d ${KDZDIR}/extractedkdz"
+            echo "CMD: $PYTHONBIN ${KDZTOOLS}/unkdz -f $FULLKDZ -x -d ${KDZDIR}/extractedkdz"
             echo "CMD: $PYTHONBIN ${KDZTOOLS}/undz -s -f ${KDZDIR}/extractedkdz/*.dz -d ${KDZDIR}/extracteddz"
         fi
     
@@ -193,10 +193,10 @@ else
     if [ $FLASHING -eq 1 ];then
         # authenticate once
         if [ $TESTMODE -eq 0 ];then
-            sudo python2 ${LAFPATH}/auth.py
+            sudo $PYTHONBIN ${LAFPATH}/lglaf.py --skip-hello --showproto
         else
             echo "TESTMODE only:"
-            echo "CMD: sudo python2 ${LAFPATH}/auth.py"
+            echo "CMD: sudo $PYTHONBIN ${LAFPATH}/lglaf.py --skip-hello --showproto"
         fi
         # check if we want to leave out userdata (default)
         # gpt will be handled in a different manner (not ready yet)
@@ -207,16 +207,16 @@ else
         fi
         
         # flash
-        for part in $(find "$IMGPATH" -type f -maxdepth 0 -name *.image|egrep -vi "($GREPOUT)");do
+        for part in $(find "$IMGPATH" -maxdepth f -type 0 -name *.image | $EGREPBIN -vi "($GREPOUT)");do
             RMPATH="${part##*/}"
             REMPART="${RMPATH/\.image/}"
             echo -e "... flashing: $part to ${REMPART}"
             # redirecting the misleading error output (sorry dirty workaround atm..)
             if [ $TESTMODE -eq 0 ];then
-                sudo python2 ${LAFPATH}/partitions.py --restore "$part" $REMPART 2>/dev/null
+                sudo $PYTHONBIN ${LAFPATH}/partitions.py --restore "$part" $REMPART 2>/dev/null
             else
                 echo "TESTMODE only:"
-                echo "CMD: sudo python2 ${LAFPATH}/partitions.py --restore $part $REMPART"
+                echo "CMD: sudo $PYTHONBIN ${LAFPATH}/partitions.py --restore $part $REMPART"
             fi
         done
     fi
