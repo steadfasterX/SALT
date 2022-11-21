@@ -47,9 +47,9 @@ esac
 
 # there is no need to change these as they get auto set by the VERSION var
 if [ "${VERSION/*:}" == "TESTING" ];then
-    export VCHK=https://raw.githubusercontent.com/steadfasterX/SALT/develop/salt.vars
+    export VCHK="https://raw.githubusercontent.com/steadfasterX/SALT/develop/salt.vars"
 else
-    export VCHK=https://raw.githubusercontent.com/steadfasterX/SALT/master/salt.vars
+    export VCHK="https://raw.githubusercontent.com/steadfasterX/SALT/master/salt.vars"
 fi
 
 ######################################################################################
@@ -958,8 +958,9 @@ F_UPDATE(){ F_LOG "$FUNCNAME: started"
         test ${PIPESTATUS[0]} -eq 0 && echo "${CNT}:100"
     done | $FYAD --title="$YTITLE - UPDATING" --text="\n  <b>Be patient while SALT freshen up...</b>\n  (if a progress bar do NOT get to 100% a manual update is required)\n\n" --width 800 --multi-progress --bar="SALT codebase":norm --bar="LGLAF codebase":norm --bar="kdztools codebase":norm --button=Close
 
-    F_MSGW 600 "You HAVE TO restart SALT now before the changes become active." "--fixed"
+    F_MSGOK 600 "Will close SALT now due to the update taken!\nJust re-open SALT afterwards."
     F_LOG "$FUNCNAME: ended"
+    F_EXIT "After-Update-End" 0 full
 }; export -f F_UPDATE
 
 # identify a git branch
