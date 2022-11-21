@@ -2,7 +2,7 @@
 ## @file			salt.func
 ## @brief			The heart of SALT - all global functions
 ## @author			steadfasterX <steadfasterX -AT- gmail -DOT- com>
-## @date                        2017-2021
+## @date                        2017-2022
 ## @copyright			LGPL v3
 ## @details                     SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
 ##
@@ -47,20 +47,8 @@ esac
 
 # there is no need to change these as they get auto set by the VERSION var
 if [ "${VERSION/*:}" == "TESTING" ];then
-    export BRSALT=develop
-    export BRKDZ=develop
-    export BRLAF="develop|g4-develop"
-    export BROSALT=master
-    export BROKDZ=master
-    export BROLAF=g4-stable
     export VCHK=https://raw.githubusercontent.com/steadfasterX/SALT/develop/salt.vars
 else
-    export BRSALT=master
-    export BRKDZ=master
-    export BRLAF=g4-stable
-    export BROSALT=develop
-    export BROKDZ=develop
-    export BROLAF="develop|g4-develop"
     export VCHK=https://raw.githubusercontent.com/steadfasterX/SALT/master/salt.vars
 fi
 
@@ -216,7 +204,7 @@ F_GETINFO(){ F_LOG "$FUNCNAME: started"
 
     $FYAD --title="$YTITLE - COLLECTING" --text "\n  Collecting device information..." --width=400 --timeout=25 --timeout-indicator=right --no-buttons &
     PBPP=$!
- 
+
     IARB=$(F_CDARB)
     F_LOG "$FUNCNAME: ARB $IARB"
     USU=$(F_CKUSU)
@@ -226,13 +214,17 @@ F_GETINFO(){ F_LOG "$FUNCNAME: started"
     LAFVER=$(F_CHKLAFV)
     F_LOG "$FUNCNAME: LAFVER $LAFVER"
 
+    # reconnecting too fast will cause timeouts
+    sleep 1
+ 
     echo "usu:${USU}" \
       && echo "romcomp:$ROMCOMP" \
       && echo "arb:${IARB}" \
       && echo "lafver:$LAFVER" \
       && $PYTHONBIN $LAFPATH/lglaf.py ${CROPT} -c '!INFO GPRO \x08\x0b\0\0' --rawshell \
        | $PYTHONBIN $LAFPATH/scripts/parse-props.py - \
-       | egrep "(device_sw_version|model_name|secure_device|laf_sw_version|device_factory_version|target_country|battery_level|imei|target_operator|serial)" | tr "\n" " " | tr -d "'" 
+       | $EGREPBIN "(device_sw_version|model_name|secure_device|laf_sw_version|device_factory_version|target_country|battery_level|imei|target_operator|serial)" | tr "\n" " " | tr -d "'" 
+
     F_LOG "$FUNCNAME: $(kill $PBPP)"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_GETINFO
@@ -272,7 +264,7 @@ F_KDZARB(){  F_LOG "$FUNCNAME: started with $@"
     F_LOG "$FUNCNAME: cleanup.."
     find "$LGTARGET" -type f -maxdepth 1 -name 'sbl*' -or -name 'xbl*' -exec rm -vf {}\\; >> $LOG 2>&1
     IRES=$($KDZMGR --batch --list -x "$LGKDZ" -d "$LGTARGET" 2>&1)
-    ARBSLICE=$(echo "$IRES" |egrep "sbl|xbl"|head -n1|cut -d ":" -f 1)
+    ARBSLICE=$(echo "$IRES" |$EGREPBIN "sbl|xbl"|head -n1|cut -d ":" -f 1)
     if [ -z "$ARBSLICE" ];then
         F_LOG "$FUNCNAME: no ARB or slice found >$ARBSLICE< .. skipping ARB detection .."
         echo "arb-detect-error"
@@ -328,9 +320,9 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
 
     # build the extract list based on the UsU state
     case "$LGUSU" in
-        yes) IRESAUTO=$(echo -e "$IRESDATA" | egrep -iv "($AUTONOEXTRACTUSU)")
+        yes) IRESAUTO=$(echo -e "$IRESDATA" | $EGREPBIN -iv "($AUTONOEXTRACTUSU)")
         ;;
-        no|no_device_found) IRESAUTO=$(echo -e "$IRESDATA" | egrep -iv "($AUTONOEXTRACT)")
+        no|no_device_found) IRESAUTO=$(echo -e "$IRESDATA" | $EGREPBIN -iv "($AUTONOEXTRACT)")
         ;;
         *) kill $tail_pid
            rm /tmp/${FUNCNAME}_l
@@ -443,9 +435,9 @@ F_CDARB(){ F_LOG "$FUNCNAME: started"
     # returns: <ARB>:<detection-success>
 
     DEVARBEMPTY=0
-    PDARB=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --list | egrep "($PARB)" | head -n 1 | cut -d ":" -f1)
+    PDARB=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --list | $EGREPBIN "($PARB)" | head -n 1 | cut -d ":" -f1)
     F_LOG "$FUNCNAME: ARB partition seems to be: $PDARB"
-    DEVARB=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump - $PDARB 2>> $LOG| strings | egrep "[0-9] SW_ID" |cut -d " " -f 2 | head -n 1 | sed -E 's/([0-9]{7,7})([0-9]{2,2}).*/\2/g;s/^0//g')
+    DEVARB=$($PYTHONBIN $LAFPATH/partitions.py ${CROPT} --batch --dump - $PDARB 2>> $LOG| strings | $EGREPBIN "[0-9] SW_ID" |cut -d " " -f 2 | head -n 1 | sed -E 's/([0-9]{7,7})([0-9]{2,2}).*/\2/g;s/^0//g')
     # normalize ARB
     case $DEVARB in
         [1-9]0) DETARB=$DEVARB; DEVARB=${DEVARB/0/} ; F_LOG "$FUNCNAME: normalized ARB from $DETARB to $DEVARB" ;;
@@ -516,7 +508,7 @@ F_CKARB(){ F_LOG "$FUNCNAME: started"
         F_MSGE 700 "Missing required file to check for ARB\n  (checked this filename: $ARBFILE)!"
         echo "arb-detect-error"
     else
-        KDZARB=$(strings "$ARBFILE" | egrep "[0-9] SW_ID" |cut -d " " -f 2 | head -n 1 | sed -E 's/([0-9]{7,7})([0-9]{2,2}).*/\2/g;s/^0//g')
+        KDZARB=$(strings "$ARBFILE" | $EGREPBIN "[0-9] SW_ID" |cut -d " " -f 2 | head -n 1 | sed -E 's/([0-9]{7,7})([0-9]{2,2}).*/\2/g;s/^0//g')
         # normalize ARB
         case $KDZARB in
             [1-9]0) DETARB=$KDZARB; KDZARB=${KDZARB/0/} ; F_LOG "$FUNCNAME: normalized ARB from $DETARB to $KDZARB" ;;
@@ -545,7 +537,7 @@ F_CHKMODEL(){ F_LOG "$FUNCNAME: started"
            model_name) LGMODEL=${i/*:/};;
         esac
     done
-    KDZMODEL=$(dd if=$KFILE bs=512 count=10000 2>&1| strings | egrep -m1 -o '(LGLS[0-9]{3})|(LGVS[0-9]{3})|(LG-[H|F][0-9]{3})')
+    KDZMODEL=$(dd if=$KFILE bs=512 count=10000 2>&1| strings | $EGREPBIN -m1 -o '(LGLS[0-9]{3})|(LGVS[0-9]{3})|(LG-[H|F][0-9]{3})')
     if [ -z "$KDZMODEL" ] ;then
         RES="${LGMODEL}:unknown"
     else
@@ -697,10 +689,10 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
     # create a list of *.image files
     if [ "$LGUSU" == "yes" ] && [ "$LGUSUOVERRIDE" == "false" -o "$LGUSUOVERRIDE" == "FALSE" ];then
       F_LOG "$FUNCNAME: UsU detected so will not display UsU relevant files (USUOVERRIDE=$LGUSUOVERRIDE)"
-      IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name '*.mbn' | tr " " "_" |egrep -vi "($FLASHIGNOREUSU)");do echo "${ifile##*/}";done | tr "\n" " ")
+      IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name '*.mbn' | tr " " "_" |$EGREPBIN -vi "($FLASHIGNOREUSU)");do echo "${ifile##*/}";done | tr "\n" " ")
     else
       F_LOG "$FUNCNAME: will display all files (USUOVERRIDE=$LGUSUOVERRIDE)"
-      IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name '*.mbn' | tr " " "_" |egrep -vi "($FLASHIGNORE)");do echo "${ifile##*/}";done | tr "\n" " ")
+      IMGFILES=$(for ifile in $(find "$IMGDIR" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name '*.mbn' | tr " " "_" |$EGREPBIN -vi "($FLASHIGNORE)");do echo "${ifile##*/}";done | tr "\n" " ")
     fi
     F_LOG "$FUNCNAME: image files: $IMGFILES"
 
@@ -802,7 +794,7 @@ F_FLASHPART(){ F_LOG "$FUNCNAME: started"
 
     F_LOG "choosen partitions: $CHOOSENP -> $CHCOUNT"
 
-    BLWARN=$(echo "$CHOOSENP"|tr " " "\n" | egrep -c "(bootloader|dangerous)" )
+    BLWARN=$(echo "$CHOOSENP"|tr " " "\n" | $EGREPBIN -c "(bootloader|dangerous)" )
     if [ "$BLWARN" -gt 0 ];then
       RET=$(F_MSGW 600 "You have choosen\n\n\t<b>$BLWARN</b>\n\nfiles marked as bootloader or/and dangerous.\nFlashing those should only be done when you know what you do!" "--button=I-think-I-know-what-I-do:88")
       [ "$RET" != "88" ] && F_ERR $FUNCNAME 3 "Aborted by user"
@@ -933,18 +925,27 @@ F_UPDATE(){ F_LOG "$FUNCNAME: started"
 
     # let the user switch between stable and develop
     AA=$($FYAD --title="$YTITLE - SETUP" --item-separator='|' --text "\n  Here you can choose between stable and development branches of SALT and its backends" --form \
-            --field="  SALT branch\t":CBE "$BRSALT|$BROSALT" \
-            --field="  kdztools branch\t":CBE "$BRKDZ|$BROKDZ" \
-            --field="  lglaf branch\t":CBE "$BRLAF|$BROLAF"\
-            --button=Update:0 --button=Cancel:1 \
+            --field="  Target mode\t":CB "$SALTMODES" \
+            --button=Switch/Update:0 --button=Cancel:1 \
          )
 
     [ $? -ne 0 ] && F_LOG "Aborted on user request" && F_EXIT $FUNCNAME 4
 
-    BRSALT=$(echo "$AA"| cut -d "|" -f 1)
-    BRKDZ=$(echo "$AA"| cut -d "|" -f 2)
-    BRLAF=$(echo "$AA"| cut -d "|" -f 3)
+    AAP=$(echo "$AA" | cut -d "|" -f 1)
 
+    case $AAP in
+        TESTING)
+            BRSALT="$BR_T_SALT"
+            BRKDZ="$BR_T_KDZ"
+            BRLAF="$BR_T_LAF"
+        ;;
+        *)
+            BRSALT="$BR_S_SALT"
+            BRKDZ="$BR_S_KDZ"
+            BRLAF="$BR_S_LAF"
+        ;;
+    esac
+        
     CNT=0
     for u in ${SALTPATH}:$BRSALT ${LAFPATH}:$BRLAF ${KDZTOOLS}:$BRKDZ; do 
         CNT=$((CNT+1))
@@ -957,7 +958,7 @@ F_UPDATE(){ F_LOG "$FUNCNAME: started"
         test ${PIPESTATUS[0]} -eq 0 && echo "${CNT}:100"
     done | $FYAD --title="$YTITLE - UPDATING" --text="\n  <b>Be patient while SALT freshen up...</b>\n  (if a progress bar do NOT get to 100% a manual update is required)\n\n" --width 800 --multi-progress --bar="SALT codebase":norm --bar="LGLAF codebase":norm --bar="kdztools codebase":norm --button=Close
 
-    F_MSGW 600 "You must restart SALT if you have updated or changed the <b>SALT</b> branch before the changes become active." "--fixed"
+    F_MSGW 600 "You HAVE TO restart SALT now before the changes become active." "--fixed"
     F_LOG "$FUNCNAME: ended"
 }; export -f F_UPDATE
 
@@ -1155,7 +1156,7 @@ F_BACKUP(){ F_LOG "$FUNCNAME: started with these arguments: $@"
             F_LOG "$FUNCNAME: BSIZES: $BSIZES"
 
             for size in $BSIZES;do
-                # $($PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --list --batch | egrep "($SORTEDP)" | cut -d ":" -f6 | $TRBIN "\n" " ");do
+                # $($PYTHONBIN ${LAFPATH}/partitions.py ${CROPT} --list --batch | $EGREPBIN "($SORTEDP)" | cut -d ":" -f6 | $TRBIN "\n" " ");do
                 MSZ="${size/*_}"
                 NSZ="${size/_*}"
                 case $MSZ in
@@ -1266,15 +1267,15 @@ F_VERIFYBAK(){ F_LOG "$FUNCNAME: started"
     DIRFILES=$(for v in $(find "$VDIR" -maxdepth 1 -type f -name '*.bin' -or -name '*.img' -or -name '*.image' -or -name 'mmcblk0p*' -or -name '*.mbn' | tr " " ","); do echo "$v";done)
 
     F_LOG "$FUNCNAME: detected files: $DIRFILES"
-    CHCOUNT=$(echo "$DIRFILES" | egrep -c '^.+')
-    F_LOG "$(echo \"$DIRFILES\" | egrep -c '^.+')"
+    CHCOUNT=$(echo "$DIRFILES" | $EGREPBIN -c '^.+')
+    F_LOG "$(echo \"$DIRFILES\" | $EGREPBIN -c '^.+')"
     F_LOG "detected files: $DIRFILES -> $CHCOUNT"
 
     [ $CHCOUNT -lt 1 ] && F_MSGE 400 "$FUNCNAME: No valid image files found\n(valid are: bin, img, image, mbn, mmcblk0p*)!" && F_EXIT "$FUNCNAME: exited" 3
 
 
     SORTEDF=$(echo "$DIRFILES" |tr " " "\n" | sort | tr "\n" " " )
-    CHCOUNT=$(echo "$SORTEDF" |tr " " "\n" |egrep -c '^.+')
+    CHCOUNT=$(echo "$SORTEDF" |tr " " "\n" |$EGREPBIN -c '^.+')
 
     F_ELOG "sorted partitions: $SORTEDF -> $CHCOUNT"
 
@@ -1674,7 +1675,7 @@ F_LISTPARTS(){ F_LOG "$FUNCNAME: started"
 
     IRES=$(F_GETPARTS)
 
-    for files in $IRES;do echo -e "$files" | egrep -vi "(true|false)" ;done | $FYAD --height=800 --width=1000 --title="$YTITLE - PARTITIONS" --text "\n  Your partitions:\n" --list \
+    for files in $IRES;do echo -e "$files" | $EGREPBIN -vi "(true|false)" ;done | $FYAD --height=800 --width=1000 --title="$YTITLE - PARTITIONS" --text "\n  Your partitions:\n" --list \
             --column="Partition":TXT \
             --column="#" \
             --column="Start sector" \
