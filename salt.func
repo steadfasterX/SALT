@@ -46,7 +46,7 @@ esac
 ######################################################################################
 
 # there is no need to change these as they get auto set by the VERSION var
-if [ "${VERSION/*:}" == "TESTING" ];then
+if [ "${VERSION/*:}" == "STREAM" ];then
     export VCHK="https://raw.githubusercontent.com/steadfasterX/SALT/develop/salt.vars"
 else
     export VCHK="https://raw.githubusercontent.com/steadfasterX/SALT/master/salt.vars"
