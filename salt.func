@@ -2,7 +2,7 @@
 ## @file			salt.func
 ## @brief			The heart of SALT - all global functions
 ## @author			steadfasterX <steadfasterX -AT- gmail -DOT- com>
-## @date                        2017-2022
+## @date                        2017-2023
 ## @copyright			LGPL v3
 ## @details                     SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
 ##
@@ -2101,9 +2101,7 @@ F_CHKLAFV(){ F_LOG "$FUNCNAME: started with this args: $@"
     MAXV="$1"
     BRLAF=$(F_CHKBRNCH "$LAFPATH")
 
-    LAFPROT="--proto"
-    [ "$BRLAF" == "develop" ] && LAFPROT="--showproto" && F_LOG "$FUNCNAME: on branch $BRLAF so using the new proto arg"
-    LAFV=$($PYTHONBIN $LAFPATH/lglaf.py $LAFARGS ${CROPT} $LAFPROT --rawshell)
+    LAFV=$($PYTHONBIN $LAFPATH/lglaf.py $LAFARGS ${CROPT} --showproto --rawshell)
     if [ $? -ne 0 ]||[ -z "$LAFV" ]||[ "$LAFV" -lt 1000001 -o "$LAFV" -gt 2000000 ];then
         F_LOG "$FUNCNAME: Unexpected error while retrieving LAF protocol version ($LAFV)"
         echo "unknown"
