@@ -2099,7 +2099,6 @@ F_CHKLAFV(){ F_LOG "$FUNCNAME: started with this args: $@"
     # 1 => compare the detection with a max allowed version
 
     MAXV="$1"
-    BRLAF=$(F_CHKBRNCH "$LAFPATH")
 
     LAFV=$($PYTHONBIN $LAFPATH/lglaf.py $LAFARGS ${CROPT} --showproto --rawshell)
     if [ $? -ne 0 ]||[ -z "$LAFV" ]||[ "$LAFV" -lt 1000001 -o "$LAFV" -gt 2000000 ];then
