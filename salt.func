@@ -956,7 +956,7 @@ F_UPDATE(){ F_LOG "$FUNCNAME: started"
         F_LOG "$($GIT checkout ${u/*:} 2>&1 || $GIT config --global --add safe.directory ${u/:*} 2>&1)"
         $GIT pull 2>&1 | tee -a $LOG | sed "s/^/${CNT}:#/g"
         test ${PIPESTATUS[0]} -eq 0 && echo "${CNT}:100"
-    done | $FYAD --title="$YTITLE - UPDATING" --text="\n  <b>Be patient while SALT freshen up...</b>\n  (if a progress bar do NOT get to 100% a manual update is required)\n\n" --width 800 --multi-progress --bar="SALT codebase":norm --bar="LGLAF codebase":norm --bar="kdztools codebase":norm --button=Close
+    done | $FYAD --title="$YTITLE - UPDATING" --text="\n  <b>Be patient while SALT freshen up...</b>\n  (if a progress bar does NOT reach 100% a manual update is required)\n\n" --width 800 --progress --bar="SALT codebase":norm --bar="LGLAF codebase":norm --bar="kdztools codebase":norm --button=Close
 
     F_MSGW 600 "You HAVE TO restart SALT now before the changes become active." "--fixed"
     F_LOG "$FUNCNAME: ended"
