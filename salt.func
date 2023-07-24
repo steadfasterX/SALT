@@ -1920,7 +1920,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     # give feedback to the impatient users
     FLPBAR=/tmp/flbbar
     echo 10> $FLPBAR
-    tail -f $FLPBAR | $FYAD --image="$SICONS/salt_logo_64x64.png" --title="$YTITLE - FLASHING" --text="\n  Fasten your seat belt!\n  SALT is flashing UsU ...\n" --width=500 --progress --progress-text="activating UsU ..." --no-buttons --auto-close &
+    tail -f $FLPBAR | $FYAD --image="$SICONS/salt_logo_64x64.png" --title="$YTITLE - FLASHING" --text="\n  Fasten your seat belt!\n  SALT is flashing UsU ...\n" --width=500 --progress --progress-text="activating UsU ..." --no-buttons & 
     PROGY=$!
     
     # verify writing in general (before actually writing to REAL aboot!!)
@@ -1932,7 +1932,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
         $PYTHONBIN $LAFPATH/partitions.py $LAFARGS ${CROPT} --restore "$USUDIRECT" abootbak --batch 1>> $FLPBAR 2>> $LOG
     else
         F_LOG '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0'
-        $PYTHONBIN $LAFPATH/lglaf.py $LAFARGS ${CROPT} --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0' --rawshell 2>&1 | $TEEBIN -a $LOG
+        $PYTHONBIN $LAFPATH/lglaf.py $LAFARGS ${CROPT} -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=248832 bs=512\0' --rawshell 2>&1 | $TEEBIN -a $LOG
     fi
     echo "#verifying pre-check ..." >> $FLPBAR
     F_DUMPPART abootbak "$USUTMPDIR/after"
@@ -1968,14 +1968,14 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
     if [ "$FLTYPE" == "direct" ];then
         F_LOG 'flashing aboot and laf directly...'
         echo "#flashing UsU unlock ..." >> $FLPBAR
-        $PYTHONBIN $LAFPATH/partitions.py $LAFARGS ${CROPT} --debug --restore "$USUDIRECT" aboot --batch 1>> $FLPBAR 2>> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py $LAFARGS ${CROPT} --restore "$USUDIRECT" aboot --batch 1>> $FLPBAR 2>> $LOG
         echo "#flashing UsU laf ..." >> $FLPBAR
         F_LOG "flashing laf from $DLMDIRECT ..."
-        $PYTHONBIN $LAFPATH/partitions.py $LAFARGS ${CROPT} --debug --restore "$DLMDIRECT" laf --batch 1>> $FLPBAR 2>> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py $LAFARGS ${CROPT} --restore "$DLMDIRECT" laf --batch 1>> $FLPBAR 2>> $LOG
 
         echo "#flashing UsU rawres ..." >> $FLPBAR
         F_LOG "flashing rawres from $RRDIRECT ..."
-        $PYTHONBIN $LAFPATH/partitions.py $LAFARGS ${CROPT} --debug --restore "$RRDIRECT" raw_resources --batch 1>> $FLPBAR 2>> $LOG
+        $PYTHONBIN $LAFPATH/partitions.py $LAFARGS ${CROPT} --restore "$RRDIRECT" raw_resources --batch 1>> $FLPBAR 2>> $LOG
     else
         # we have no progress indicator when flashing from the device storage so we need to pulsate..
         kill $PROGY
@@ -1983,10 +1983,10 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
         PROGY=$!
         F_LOG "flashing aboot from $USUSRC..."
         echo "#flashing UsU unlock ..." >> $FLPBAR
-        $PYTHONBIN $LAFPATH/lglaf.py $LAFARGS ${CROPT} --debug -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0' --rawshell 2>&1 | $TEEBIN -a $LOG
+        $PYTHONBIN $LAFPATH/lglaf.py $LAFARGS ${CROPT} -c '!EXEC  dd if='$USUSRC' of=/dev/block/mmcblk0 seek=237568 bs=512\0' --rawshell 2>&1 | $TEEBIN -a $LOG
         echo "#flashing UsU laf ..." >> $FLPBAR
         F_LOG "flashing laf from $DLMSRC ..."
-        $PYTHONBIN $LAFPATH/lglaf.py $LAFARGS ${CROPT} --debug -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek=393216 bs=512\0' --rawshell 2>&1 | $TEEBIN -a $LOG
+        $PYTHONBIN $LAFPATH/lglaf.py $LAFARGS ${CROPT} -c '!EXEC  dd if='$DLMSRC' of=/dev/block/mmcblk0 seek=393216 bs=512\0' --rawshell 2>&1 | $TEEBIN -a $LOG
 
         RRSEEKSTART=$($PYTHONBIN $LAFPATH/partitions.py $LAFARGS ${CROPT} --list --batch |grep "raw_resources:" |cut -d ":" -f 3)
         F_LOG "FUNCNAME: raw resources from partition listing:"
@@ -1997,7 +1997,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
         else
             echo "#flashing UsU rawres ..." >> $FLPBAR
             F_LOG "flashing rawres from $RRSRC with seekstart: $RRSEEKSTART ..."
-            $PYTHONBIN $LAFPATH/lglaf.py $LAFARGS ${CROPT} --debug -c '!EXEC  dd if='$RRSRC' of=/dev/block/mmcblk0 seek='$RRSEEKSTART' bs=512\0' --rawshell 2>&1 | $TEEBIN -a $LOG
+            $PYTHONBIN $LAFPATH/lglaf.py $LAFARGS ${CROPT} -c '!EXEC  dd if='$RRSRC' of=/dev/block/mmcblk0 seek='$RRSEEKSTART' bs=512\0' --rawshell 2>&1 | $TEEBIN -a $LOG
         fi
     fi
     # verify real flashing
@@ -2039,7 +2039,7 @@ F_USUFLASH(){ F_LOG "$FUNCNAME: started with this args: $@"
                 F_MSGE 600 "Aborted by user"
             fi
         fi
-        F_MSGOK 800 "   <b>CONGRATULATIONS!</b>\n\n   You're now secureboot off / unlocked!\n\n   Have fun and enjoy your unleashed phone :) !\n\n   <b>Whats next?</b>\n\n   Follow the guide at <a href='https://bit.do/unlockG4'>https://bit.do/unlockG4</a>\n\n   Basic steps are:\n\t- flash TWRP in fastboot\n\t- flash UsU baseband twrp package in TWRP\n\t- flash your custom ROM\n\n   <b><span color='#ff0000'>If you skip flashing the UsU baseband twrp package you will very likely bootloop!</span></b>" '--show-uri'
+        F_MSGOK 800 "   <b>CONGRATULATIONS!</b>\n\n   You're now secureboot off / unlocked!\n\n   Have fun and enjoy your unleashed phone :) !\n\n   <b>Whats next?</b>\n\n   Follow the rest of the guide at <a href='https://forum.xda-developers.com/t/unlock-unofficial-g4-unlock-any-lg-g4-device-with-usu.3760451/'>XDA</a>\n\n   Basic steps are:\n\t- flash TWRP in fastboot\n\t- flash an UsU compatible ROM in TWRP\n\t- enjoy\n\n   <b><span color='#ff0000'>The UsU baseband twrp package is required on non-UsU ROMs only!</span></b>" '--show-uri'
         $FYAD --title="$YTITLE - Log upload" --width=700 --text "\n\n   Please upload your SALT logfile <b>NOW</b> to ensure important information will not get lost!\n   Click this button and then Upload:\n" \
             --form \
             --field="Upload SALT debug log!$SICONS/log_16x16.png":FBTN "$SALTPATH/getlog" \
