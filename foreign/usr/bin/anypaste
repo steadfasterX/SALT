@@ -5,11 +5,11 @@
 # Homepage at anypaste.xyz
 
 # shellcheck disable=2128
+# shellcheck disable=2064
 
-export ap_version ap_mac ap_path ap_human_name ap_mime ap_size ap_plugin ap_last_stdout
-ap_version_text='Anypaste 1.1.2'
+export ap_version ap_mac ap_path ap_human_name ap_human_name_escaped ap_mime ap_size ap_plugin ap_last_stdout
+ap_version_text='Anypaste 1.1.6'
 [[ $OSTYPE == darwin* ]] && ap_mac='true' || ap_mac='false'
-ap_tmpdir=${TMPDIR:-/tmp}
 shopt -s extglob
 
 # BEGIN PLUGINS
@@ -25,18 +25,32 @@ function check_size {
 }
 
 function curl_form_upload {
-	curl -#fF "$1=@\"$ap_path\";type=$ap_mime" "$2" || { echo "${ap_ERROR}ERROR: Upload request did not return HTTP 200!${ap_RESET}" >&2 && return 1; }
+	local main_field
+	main_field=$1
+	shift
+	curl -#fF "$main_field=@\"$ap_path\";type=$ap_mime" -A "$ap_ua" "$@" || { echo "${ap_ERROR}ERROR: Upload request did not return HTTP 200!${ap_RESET}" >&2 && return 1; }
 }
 
 function curl_file_upload {
-	curl "-X$1" -#fT "$2" "$3" || { echo "${ap_ERROR}ERROR: Upload request did not return HTTP 200!${ap_RESET}" >&2 && return 1; }
+	# curl supports globby stuff in -T, so we must escape.
+	local t_arg
+	t_arg=$2
+	# I've officially broken emacs indentation
+	t_arg=${t_arg//[/\\[}
+	t_arg=${t_arg//]/\\]}
+	t_arg=${t_arg//{/\\{}
+	t_arg=${t_arg//\}/\\\}} # honestly no idea how bash parses this right
+	curl "-X$1" -#fT "$t_arg" -A "$ap_ua" "$3" || { echo "${ap_ERROR}ERROR: Upload request did not return HTTP 200!${ap_RESET}" >&2 && return 1; }
+}
+
+function curl_get {
+	curl -fsA "$ap_ua" "$1" || { echo "${ap_ERROR}ERROR: GET request did not return HTTP 200!${ap_RESET}" >&2 && return 1; }
 }
 
 # string json, string key -> string value
 # make sure shopt -s extglob is on before using
 # not standards compliant in any way shape or form, is designed specifically to work around strange
-# cases present in anypaste plugins, mainly if the whole json is wrapped in a string so all
-# actual strings inside of the json are escaped, eg: "{\"hello\":\"world\"}", see test.sh for more
+# cases present in anypaste plugins
 function json_parse {
 	local infernal_agony
 	infernal_agony="$1"
@@ -48,6 +62,8 @@ function json_parse {
 		# remove initial quote
 		infernal_agony=${infernal_agony:1}
 		infernal_agony=${infernal_agony%%\"*}
+		# remove backslashes escaping things such as forward slashes. This breaks if there's a literal backslash because it gets completely removed, but I don't think that's a problem for us...
+		infernal_agony=${infernal_agony//\\/}
 	else
 		# it can only be a number or a boolean, so it can't contain special characters at this point
 		infernal_agony=${infernal_agony%%[ ,\}]*}
@@ -55,20 +71,28 @@ function json_parse {
 	echo "$infernal_agony"
 }
 
-# @param ALL env vars about a path
-# @return $ap_find_extension_return the "ideal" file extension, will be the real extension
-# if it has one, or otherwise will try to determine based on metadata
-function ap_find_extension {
-	local format_name_line
-	# ffmpeg provides the best file extensions
-	if [[ -n $ap_ffprobe && $ap_ffprobe == *probe_score=100* ]]
-	then
-		format_name_line=$(grep 'format_name=' <<< "$ap_ffprobe")
-		ap_find_extension_return=${format_name_line##*=}
-	else
-		# attempt to use actual file extension, if it has one, otherwise null
-		[[ $ap_path == */+([^/]).+([^/]) ]] && ap_find_extension_return=${ap_path##*.} || ap_find_extension_return=
-	fi
+# string -> url-encoded string
+# param unencoded string
+# @return $ap_url_encode_return the encoded string
+# from https://stackoverflow.com/a/10660730
+ap_url_encode() {
+	local strlen=${#1}
+	ap_url_encode_return=''
+	local pos c o
+
+	for (( pos=0 ; pos<strlen ; pos++ ))
+	do
+		c=${1:$pos:1}
+		case "$c" in
+			[-_.~a-zA-Z0-9])
+				o=$c
+				;;
+			*)
+				printf -v o '%%%02x' "'$c"
+				;;
+		esac
+		ap_url_encode_return+=$o
+	done
 }
 
 # @return exit code is 0 if input is a video (NOT a motion JPEG or animated GIF)
@@ -119,25 +143,97 @@ function ixio {
 	esac
 }
 
+function pdefault {
+	case $1 in
+	check_eligibility)
+		[[ $ap_mime == text/* ]] # TODO: size?
+		;;
+	upload)
+		# using curl's @ instead of < causes a problem
+		pdefault_link=$(curl -#A "$ap_ua" -o /dev/null -sw '%{redirect_url}' -F "code=<$ap_path" https://p.defau.lt/submit.php) || return 1
+		echo >&2
+		echo "Link: $pdefault_link"
+		echo
+		;;
+	get_info)
+		echo '[name]'
+		echo 'p.defau.lt'
+		echo '[description]'
+		echo 'Austere plain-text hosting site. The links might /seem/ direct, but they are actually html.'
+		echo '[tags]'
+		echo 'permanent'
+		echo 'private'
+		;;
+	esac
+}
+
+function paste2 {
+	case $1 in
+	check_eligibility)
+		[[ $ap_mime == text/* ]] # TODO: size?
+		;;
+	upload)
+		paste2_link=$(curl -#A "$ap_ua" -o /dev/null -sw '%{redirect_url}' -F "code=<$ap_path" -F description= -F lang=text -F parent= https://paste2.org) || return 1
+		echo >&2
+		echo "Link: $paste2_link"
+		echo
+		;;
+	get_info)
+		echo '[name]'
+		echo 'Paste2'
+		echo '[description]'
+		echo 'Simple plain-text hosting site.'
+		echo '[tags]'
+		echo 'permanent'
+		echo 'private'
+		;;
+	esac
+}
+
+function pastie {
+	case $1 in
+	check_eligibility)
+		[[ $ap_mime == text/* ]] # TODO: size?
+		;;
+	upload)
+		pastie_link=$(curl -#A "$ap_ua" -o /dev/null -sw '%{redirect_url}' --data 'language=plaintext' --data-urlencode "content@$ap_path" http://pastie.org/pastes/create) || return 1
+		echo 'Reminder: Pastie uploads are deleted 24 hours after upload!' >&2
+		echo >&2
+		echo "Link: $pastie_link"
+		echo "Direct: $pastie_link/raw"
+		echo
+		;;
+	get_info)
+		echo '[name]'
+		echo 'Pastie'
+		echo '[description]'
+		echo 'Simple plain-text hosting site.'
+		echo '[tags]'
+		echo 'private'
+		echo 'direct'
+		;;
+	esac
+}
+
 function hastebin {
 	case $1 in
 	check_eligibility)
 		[[ $ap_mime == text/* ]] && check_size 400000
 		;;
 	upload)
-		hastebin_json=$(curl_file_upload 'POST' "$ap_path" 'https://hastebin.com/documents') || return 1
+		hastebin_json=$(curl_file_upload 'POST' "$ap_path" 'https://hastebin.skyra.pw/documents') || return 1
 		hastebin_id=$(json_parse "$hastebin_json" 'key')
 		echo 'Reminder: hastebin.com uploads are deleted 30 days after their last view!' >&2
 		echo >&2
-		echo "Link: https://hastebin.com/$hastebin_id"
-		echo "Direct: https://hastebin.com/raw/$hastebin_id"
+		echo "Link: https://hastebin.skyra.pw/$hastebin_id"
+		echo "Direct: https://hastebin.skyra.pw/raw/$hastebin_id"
 		echo
 		;;
 	get_info)
 		echo '[name]'
 		echo 'Hastebin'
 		echo '[description]'
-		echo 'Plain-text host with syntax highlighting and forking.'
+		echo 'Plain-text host with syntax highlighting and forking. The original hastebin.com was changed, so we use hastebin.skyra.pw'
 		echo '[tags]'
 		echo 'private'
 		echo 'direct'
@@ -176,7 +272,8 @@ function transfersh {
 		check_size 10000000000
 		;;
 	upload)
-		transfersh_link=$(curl_file_upload 'PUT' "$ap_path" "https://transfer.sh/$ap_human_name") || return 1
+		transfersh_host=${transfersh_host:-https://transfer.sh}
+		transfersh_link=$(curl_file_upload 'PUT' "$ap_path" "$transfersh_host/$ap_human_name_escaped") || return 1
 		echo 'Reminder: transfer.sh uploads are deleted after 14 days!' >&2
 		echo 'Transfer.sh links are *not* direct if you use a browser, but they can be curled!' >&2;
 		echo >&2
@@ -190,62 +287,138 @@ function transfersh {
 		echo 'Generic-file host with a popular, official CLI client. No ads.'
 		echo '[tags]'
 		echo 'private'
+		echo '[config]'
+		echo 'optional|transfersh_host|Protocol, domain name, and host of a transfer.sh site (default: https://transfer.sh)'
 		;;
 	esac
 }
 
-function vgyme {
+function keepsh {
 	case $1 in
 	check_eligibility)
-		# This is literally the worst possible way to design how the quotes should be used in a regex
-		[[ $ap_mime =~ 'image/jpeg'|'image/png'|'image/gif'|'image/x-ms-bmp' ]] && check_size 20000000
+		check_size 500000000
 		;;
 	upload)
-		vgyme_json=$(curl_form_upload 'file' 'https://vgy.me/upload') || return 1
-		vgyme_link=$(json_parse "$vgyme_json" 'url')
-		vgyme_direct=$(json_parse "$vgyme_json" 'image')
-		vgyme_delete=$(json_parse "$vgyme_json" 'delete')
+		# ua spoof required
+		local ap_ua_save=$ap_ua
+		ap_ua='curl 7.64.0'
+		keepsh_link=$(curl_file_upload PUT "$ap_path" "https://free.keep.sh") || return 1
+		ap_ua=$ap_ua_save
+		echo 'Reminder: keep.sh uploads are deleted after 24 hours!' >&2
+		echo "Keep.sh's direct links cannot be curled, but work elsewhere."
 		echo >&2
-		echo "Link: $vgyme_link"
-		echo "Direct: $vgyme_direct"
-		echo "Delete: $vgyme_delete"
+		echo "Link: $keepsh_link"
+		echo "Direct: $keepsh_link/download"
 		echo
 		;;
 	get_info)
 		echo '[name]'
-		echo 'vgy.me'
+		echo 'keep.sh'
 		echo '[description]'
-		echo 'Image host, supports direct links and some editing.'
+		echo 'Generic file host that officially supports curl. Free edition.'
 		echo '[tags]'
 		echo 'private'
-		echo 'editable'
+		echo 'direct'
 		echo 'deletable'
+		;;
+	esac
+}
+
+function gofile {
+	case $1 in
+	check_eligibility)
+		# unlimited file size, whatcha think of that?
+		;;
+	upload)
+		gofile_server_json=$(curl_get https://apiv2.gofile.io/getServer) || return 1
+		gofile_server=$(json_parse "$gofile_server_json" server)
+		if [[ -n "$gofile_token" ]]
+		then
+			gofile_upload_json=$(curl_form_upload file -F "token=$gofile_token" "https://${gofile_server}.gofile.io/uploadFile") || return 1
+		else
+			gofile_upload_json=$(curl_form_upload file "https://${gofile_server}.gofile.io/uploadFile") || return 1
+		fi
+		gofile_link=$(json_parse "$gofile_upload_json" downloadPage)
+		gofile_direct=$(json_parse "$gofile_upload_json" directLink)
+		[[ -z "$gofile_donor_p" ]] && echo 'Reminder: Gofile uploads are deleted after 10 days of inactivity.' >&2
+		echo >&2
+		echo "Link: $gofile_link"
+		[[ -n "$gofile_donor_p" ]] && echo "Direct: $gofile_direct"
+		echo
+		;;
+	get_info)
+		echo '[name]'
+		echo 'Gofile'
+		echo '[description]'
+		echo 'Generic file host with official API and /unlimited/ upload size. Has a paid plan with permanent storage and direct links.'
+		echo '[tags]'
+		echo 'private'
+		[[ -n "$gofile_token" ]] && echo 'deletable'
+		[[ -n "$gofile_donor_p" ]] && echo 'permanent'
+		[[ -n "$gofile_donor_p" ]] && echo 'direct'
+		echo '[config]'
+		echo 'optional|gofile_token|API token from "my profile" page. Allows editing or deleting uploaded files. If you are a donor, this will make direct links work and make uploads be permanent.'
+		echo 'optional|gofile_donor_p|Set to a nonempty string to print out direct links, which will work only if you have a paid gofile account.'
+	esac
+}
+
+function bayfiles {
+	case $1 in
+	check_eligibility)
+		check_size 20000000000
+		;;
+	upload)
+		bayfiles_json=$(curl_form_upload file https://api.bayfiles.com/upload) || return 1
+		bayfiles_link=$(json_parse "$bayfiles_json" short)
+		bayfiles_direct=$(curl_get "$bayfiles_link" | grep -oE 'https://cdn-[0-9]+\.bayfiles\.com/.+?[^\\]">') || return 1
+		bayfiles_direct=${bayfiles_direct%'"'>}
+		echo >&2
+		echo "Link: $bayfiles_link"
+		echo "Direct: $bayfiles_direct"
+		echo
+		;;
+	get_info)
+		echo '[name]'
+		echo 'Bayfiles'
+		echo '[description]'
+		echo 'Generic file hosting site which used to be associated with the pirate bay?'
+		echo '[tags]'
+		echo 'private'
+		echo 'permanent'
 		echo 'direct'
 		;;
 	esac
 }
 
-function tinyimg {
+function pixhost {
 	case $1 in
 	check_eligibility)
-		[[ $ap_mime == image/* ]] && check_size 10000000
+		[[ $ap_mime == image/@(png|gif|jpeg) ]] && check_size 10000000
 		;;
 	upload)
-		tinyimg_json=$(curl_form_upload 'qqfile' 'https://tinyimg.io/upload') || return 1
-		tinyimg_filename=$(json_parse "$tinyimg_json" 'uploadName')
+		pixhost_json=$(curl_form_upload img https://api.pixhost.to/images -F content_type=0 -F max_th_size=500) || return 1
+		pixhost_link_slashed=$(json_parse "$pixhost_json" show_url)
+		pixhost_thumbnail_slashed=$(json_parse "$pixhost_json" th_url)
+		# they escape their slashes, monsters!
+		pixhost_link=${pixhost_link_slashed//\\/}
+		pixhost_thumbnail=${pixhost_thumbnail_slashed//\\/}
+		# it's possible to get the actual direct image URL instead of the thumbnail, but they
+		# clearly don't want hotlinking so I'll respect that.
+		echo ''
 		echo >&2
-		echo "Direct: https://tinyimg.io/i/$tinyimg_filename"
+		echo "Link: $pixhost_link"
+		echo "Direct: $pixhost_thumbnail"
 		echo
 		;;
 	get_info)
 		echo '[name]'
-		echo 'Tinyimg'
+		echo 'Pixhost'
 		echo '[description]'
-		echo 'Image host, super simple, direct links only.'
+		echo 'Simple image host with official API. Direct links are scaled-down thumbnails.'
 		echo '[tags]'
 		echo 'private'
-		echo 'direct'
-		;;
+		echo 'permanent'
+		echo 'direct' # idk if it really counts
 	esac
 }
 
@@ -257,6 +430,7 @@ function imgur {
 	upload)
 		imgur_json=$(curl -#fF "image=@\"$ap_path\"" -F "name=\"$ap_human_name\"" \
 			-H "Authorization: Client-ID ${imgur_client_id:-c7e65b324a5ebe8}" \
+			-A "$ap_ua" \
 			'https://api.imgur.com/3/image') || return 1
 		imgur_json=${imgur_json//\\/}
 		imgur_id=$(json_parse "$imgur_json" 'id')
@@ -285,33 +459,6 @@ function imgur {
 	esac
 }
 
-function clyp {
-	case $1 in
-	check_eligibility)
-		[[ $ap_mime =~ 'audio/x-wav'|'audio/mpeg'|'audio/ogg'|'audio/x-aiff'|'audio/x-m4a' ]] && \
-			check_size 5000000
-		;;
-	upload)
-		clyp_json=$(curl -#fF "audioFile=@\"$ap_path\"" -H 'X-Client-Type: WebAlfa' \
-			https://upload.clyp.it/upload) || return 1
-		clyp_link=$(json_parse "$clyp_json" 'Url')
-		clyp_mp3_direct_link=$(json_parse "$clyp_json" 'SecureMp3Url')
-		echo >&2
-		echo "Link: $clyp_link"
-		echo "Direct: $clyp_mp3_direct_link"
-		echo
-		;;
-	get_info)
-		echo '[name]'
-		echo 'clyp.it'
-		echo '[description]'
-		echo 'Mediocre audio host. Not sure why I added it; there is limited selection in audio hosts. Links expire after 24 hours.'
-		echo '[tags]'
-		echo 'direct'
-		;;
-	esac
-}
-
 function streamable {
 	case $1 in
 	check_eligibility)
@@ -320,7 +467,7 @@ function streamable {
 		;;
 	upload)
 		# shellcheck disable=2154
-		streamable_json=$(curl -#fu "$streamable_email:$streamable_password" -F "file=@$ap_path" https://api.streamable.com/upload) || return 1
+		streamable_json=$(curl -#fu "$streamable_email:$streamable_password" -F "file=@$ap_path" -A "$ap_ua" https://api.streamable.com/upload) || return 1
 		streamable_shortcode=$(json_parse "$streamable_json" 'shortcode')
 		echo >&2
 		echo "Link: https://streamable.com/$streamable_shortcode"
@@ -350,7 +497,7 @@ function sendvid {
 		# Sendvid won't upload videos with certain file extensions, but will still encode them
 		# and function properly if uploaded as a .mp4
 		# Maybe time for them to switch to mime type checking?
-		sendvid_json=$(curl -#fF "video=@$ap_path;filename=${ap_human_name%.*}.mp4" http://sendvid.com/api/v1/videos) || return 1
+		sendvid_json=$(curl -#fF "video=@\"$ap_path\";filename=${ap_human_name%.*}.mp4" -A "$ap_ua" https://sendvid.com/api/v1/videos) || return 1
 		sendvid_pub=$(json_parse "$sendvid_json" 'slug')
 		sendvid_priv=$(json_parse "$sendvid_json" 'secret')
 		echo >&2
@@ -385,7 +532,7 @@ function gfycat {
 
 		# this is one of the more complex ones
 		# get the key/name of the gfy
-		gfy_init_json=$(curl -sfXPOST https://api.gfycat.com/v1/gfycats) || {
+		gfy_init_json=$(curl -sfXPOST -A "$ap_ua" https://api.gfycat.com/v1/gfycats) || {
 			echo 'Getting gfycat key did not return HTTP 200!' >&2
 			return 1;
 		}
@@ -393,9 +540,13 @@ function gfycat {
 		# the file being uploaded must have the same name as the key
 		# since i don't know how to set it using curl options, I'm
 		# just using a symbolic link with the correct name.
-		ln -s "$ap_path" "$ap_tmpdir/$gfy_name"
-		curl_file_upload 'PUT' "$ap_tmpdir/$gfy_name" 'https://filedrop.gfycat.com' > /dev/null || return 1
-		rm -f "$ap_tmpdir/$gfy_name"
+
+		# quoting is mostly safe here -- no quote characters in gfy names or TMPDIR
+		gfycat_tmpdir=${TMPDIR:-/tmp}
+		trap "rm -f '$gfycat_tmpdir/$gfy_name'" EXIT
+		ln -s "$ap_path" "$gfycat_tmpdir/$gfy_name"
+		curl_file_upload 'PUT' "$gfycat_tmpdir/$gfy_name" 'https://filedrop.gfycat.com' > /dev/null || return 1
+		rm -f "$gfycat_tmpdir/$gfy_name"
 		# We have to wait for encoding (unlike with streamable) because
 		# during encoding, if it has the same hash as another gfy, it
 		# returns the (different) link to the original gfy, and the new
@@ -406,7 +557,7 @@ function gfycat {
 		while true
 		do
 			sleep 4
-			gfy_status=$(curl -fs "https://api.gfycat.com/v1/gfycats/fetch/status/$gfy_name") || {
+			gfy_status=$(curl -fs -A "$ap_ua" "https://api.gfycat.com/v1/gfycats/fetch/status/$gfy_name") || {
 				echo "${ap_ERROR}Status check request did not return HTTP 200!" >&2
 				echo "Your file might end up here anyway: https://gfycat.com/$gfy_name${ap_RESET}" >&2
 				return 1;
@@ -441,7 +592,7 @@ function docdroid {
 		;;
 	upload)
 		# shellcheck disable=2154
-		docdroid_json=$(curl -H "Authorization: Bearer $docdroid_access_token" -#fF "file=@$ap_path" https://docdroid.net/api/document)
+		docdroid_json=$(curl -H "Authorization: Bearer $docdroid_access_token" -#fF "file=@$ap_path" -A "$ap_ua" https://docdroid.net/api/document)
 		docdroid_id=$(json_parse "$docdroid_json" 'id')
 		docdroid_filename=$(json_parse "$docdroid_json" 'filename')
 		echo >&2
@@ -462,28 +613,73 @@ function docdroid {
 	esac
 }
 
-function dmca_gripe {
+function filemail {
 	case $1 in
 	check_eligibility)
-		check_size 1025000000
+		# 50GB??? I'll believe it when I see it...
+		check_size 50000000000
 		;;
 	upload)
-		dmca_gripe_json=$(curl_form_upload 'files[]' 'https://dmca.gripe/api/upload') || return 1
-		dmca_gripe_json=$(tr -d \\n <<< "$dmca_gripe_json")
-		dmca_gripe_link=$(json_parse "$dmca_gripe_json" 'url')
+		local id key transfer_global_url transfer_base_url init chunk_count complete link direct
+		filemail_chunk_size=${filemail_chunk_size:-5242880}
+		filemail_job_count=${filemail_job_count:-4}
+
+		chunk_count=$(( ap_size / filemail_chunk_size ))
+		(( ap_size % filemail_chunk_size != 0)) && (( chunk_count++ ))
+		init=$(curl -sf --data 'sourcedetails=plupload(html5)+%40+https%3A%2F%2Fwww.filemail.com%2F&days=7&confirmation=true' -A "$ap_ua" 'https://www.filemail.com/api/transfer/initialize')
+		if [[ $? -eq 22 ]]
+		then
+			echo >&2
+			echo "${ap_ERROR}Filemail initialization failed!" >&2
+			echo "More likely than not, you exceeded your daily limit of two uploads per IP.$ap_RESET" >&2
+			echo >&2
+			return 1
+		fi
+		id=$(json_parse "$init" 'transferid')
+		key=$(json_parse "$init" 'transferkey')
+		transfer_base_url=$(json_parse "$init" 'transferurl')
+		# Other required fields are per-chunk and set in chunk loop
+		transfer_global_url="$transfer_base_url?transferid=$id&transferkey=$key&runtime=html5&chunksize=$filemail_chunk_size&thefilename=$ap_human_name_escaped&totalsize=$ap_size&chunks=$chunk_count&retry=0"
 		echo >&2
-		echo "Direct: $dmca_gripe_link"
+		# shellcheck disable=2154
+		seq 0 $(( chunk_count - 1 )) | xargs -L1 -P "$filemail_job_count" bash -c "
+			chunk_tmp_file=\$(mktemp -t 'anypaste.XXXXXXXXXX')
+			trap \"rm -f '\$chunk_tmp_file'\" EXIT
+			echo -ne \"\\rUploading chunk \$(( \$1 + 1 )) of $chunk_count.\" >&2
+			tail -c \"+\$(( $filemail_chunk_size * \$1 ))\" < '$ap_path' | head -c $filemail_chunk_size > \"\$chunk_tmp_file\"
+			transfer_local_url='$transfer_global_url&chunk='\$1
+			curl -sf --data-binary \"@\$chunk_tmp_file\" -H 'Content-Type: application/octet-stream' \"\$transfer_local_url\" -A \"\$ap_ua\" || { echo Chunk upload failed!; exit 255; }
+			rm -f \"$chunk_tmp_file\"
+		" filemail_upload_worker
+		# shellcheck disable=2181
+		if (( $? != 0 ))
+		then
+			echo 'Some chunk uploads failed.'
+			return 1
+		fi
+		echo >&2
+		echo 'Finishing upload.' >&2
+		complete=$(curl -sfXPOST --data "transferid=$id&transferkey=$key&failed=false" -A "$ap_ua" 'https://www.filemail.com/api/transfer/complete')
+		link=$(json_parse "$complete" 'downloadurl')
+		# file_key includes filekey= at beginning
+		get_data=$(curl -sfXPOST --data "transferid=$id&skipreg=false&checkhashes=true&filesLimit=3000" -A "$ap_ua" "https://www.filemail.com/api/transfer/get")
+		direct=$(json_parse "$get_data" 'downloadurl')
+		echo >&2
+		echo "Link: $link"
+		echo "Direct: $direct"
 		echo
 		;;
 	get_info)
 		echo '[name]'
-		echo 'Dmca.gripe'
+		echo 'Filemail'
 		echo '[description]'
-		echo 'A generic file hosting site powered by github.com/pomf/pomf.'
+		echo 'A generic file host supporting up to 50GB files (!!). There is a two upload-per-IP-per-day limit, however, and all uploads are deleted after one week. This plugin supports parallel chunk uploading, just like the official HTML5 client.'
 		echo '[tags]'
 		echo 'private'
-		echo 'permanent'
 		echo 'direct'
+		echo '[config]'
+		echo 'optional|filemail_job_count|The maximum number of chunk uploads to perform in parallel. Defaults to 4.'
+		echo 'optional|filemail_chunk_size|The maximum chunk size. Defaults to 5242880 and probably should not be changed.'
 	esac
 }
 
@@ -540,8 +736,13 @@ function ap_notify_hook {
 # FUNCTIONS
 
 # @param optionally, a file extension.
+# If this ever gets changed, make the change inside the filemail pluin xargs too.
 function ap_mktemp {
-	mktemp -p "$ap_tmpdir" "anypaste.XXXXXXXXXX$1"
+	local result
+	result=$(mktemp -t "anypaste.XXXXXXXXXX$1")
+	# quoting is safe as long as tmpdir has no quotes
+	trap "rm -f '$result'" EXIT
+	echo "$result"
 }
 
 function ap_color_vars {
@@ -962,6 +1163,8 @@ function ap_collect_file_metadata {
 		echo 'NOTE: Ffprobe/ffmpeg is not installed. Compatibility checks for audio/video may be inaccurate.' >&2
 	fi
 	ap_human_name=${ap_n:-$(basename "$ap_path")}
+	ap_url_encode "$ap_human_name"
+	ap_human_name_escaped=$ap_url_encode_return
 	ap_size=$(wc -c < "$ap_path")
 }
 
@@ -1036,11 +1239,11 @@ function ap_create_config {
 # You'll need to uncomment (remove # at beginning of line) first
 # ap_plugins=(
 # 'sendvid' 'streamable' 'gfycat' # Videos/Gifs
-# 'tinyimg' 'imgur' 'vgyme' # Images
-# 'clyp' # Audio
-# 'hastebin' 'ixio' # Text
+# 'imgur' 'pixhost' # Images
+# # Audio
+# 'ixio' 'pdefault' 'hastebin' 'pastie' 'paste2' # Text
 # 'docdroid' # Documents
-# 'dmca_gripe' 'transfersh' 'fileio' # Generic
+# 'bayfiles' 'keepsh' 'gofile' 'transfersh' 'filemail' 'fileio' # Generic
 # )
 
 # Make sure to use export `boop=whatever` for plugin settings, not just `boop=whatever`
@@ -1185,40 +1388,40 @@ See https://anypaste.xyz/ for detailed documentation.
 
 OPTIONS:
 
- -i          Enable interactive mode. Will prompt for important options.
-             Combining this with options intended for non-interactive
-             use (e.g, -p) has undefined behavior. If you are reading
-             your file from stdin, -i might not work properly.
- -p          Specify a plugin instead of automatic selection. Uses fuzzy
-             matching (e.g, `gfy` search will match `gfycat` plugin).
-             Only searches compatible plugins by default.
- -t          Specify required "tags" for plugins, comma separated. You
-             can use -l to see what tags plugins have.
- -n          Specify the name that will be displayed on the site. Not
-             universally supported. Defaults to file basename.
- -l, --list  List all installed plugins, and some metadata about each.
-             This works in combination with other filtering things; for
-             example you can do `anypaste -l myfile.png` to list plugins
-             compatible with myfile.png. Will echo raw get_info output
-             from each plugin if stdout is not a terminal, cannot be
-             overridden :(
- -s          Silence everything but links (equivalent to 2>/dev/null)
- -c          Use the specified configuration file instead of the default
-             one located at $XDG_CONFIG_HOME/anypaste.conf
- -C          Create a default configuration file. This is how you should
-             initialize a config file if you want to use one.
- -f          Do not check plugin compatibility. Without -p, it uses the
-             first listed plugin in the config file. Primary meant for
-             use with -p
- -x, --copy  Copy the link to the clipboard after upload is complete.
- --notify    Send a desktop notification (GUI) after upload.
- -v          Display Anypaste version
- -h, --help  Display this help text.
+ -i			 Enable interactive mode. Will prompt for important options.
+			 Combining this with options intended for non-interactive
+			 use (e.g, -p) has undefined behavior. If you are reading
+			 your file from stdin, -i might not work properly.
+ -p			 Specify a plugin instead of automatic selection. Uses fuzzy
+			 matching (e.g, `gfy` search will match `gfycat` plugin).
+			 Only searches compatible plugins by default.
+ -t			 Specify required "tags" for plugins, comma separated. You
+			 can use -l to see what tags plugins have.
+ -n			 Specify the name that will be displayed on the site. Not
+			 universally supported. Defaults to file basename.
+ -l, --list	 List all installed plugins, and some metadata about each.
+			 This works in combination with other filtering things; for
+			 example you can do `anypaste -l myfile.png` to list plugins
+			 compatible with myfile.png. Will echo raw get_info output
+			 from each plugin if stdout is not a terminal, cannot be
+			 overridden :(
+ -s			 Silence everything but links (equivalent to 2>/dev/null)
+ -c			 Use the specified configuration file instead of the default
+			 one located at $XDG_CONFIG_HOME/anypaste.conf
+ -C			 Create a default configuration file. This is how you should
+			 initialize a config file if you want to use one.
+ -f			 Do not check plugin compatibility. Without -p, it uses the
+			 first listed plugin in the config file. Primary meant for
+			 use with -p
+ -x, --copy	 Copy the link to the clipboard after upload is complete.
+ --notify	 Send a desktop notification (GUI) after upload.
+ -v			 Display Anypaste version
+ -h, --help	 Display this help text.
 
 Plugins may support additional options not listed here.
 '
 
-function ap_main_inner {
+function ap_main {
 	ap_args=("$@")
 	ap_exit_code=0
 	# DEFAULT EVERYTHING
@@ -1233,17 +1436,19 @@ function ap_main_inner {
 	ap_help='false'
 	ap_version='false'
 	ap_plugins=(
-		'sendvid' 'streamable' 'gfycat' 'tinyimg' 'imgur' 'vgyme' 'clyp' 'hastebin' 'ixio' 'docdroid' 'dmca_gripe' 'transfersh' 'fileio'
+		'sendvid' 'streamable' 'gfycat' 'imgur' 'pixhost' 'ixio' 'pdefault' 'hastebin' 'pastie' 'paste2' 'docdroid' 'bayfiles' 'keepsh' 'gofile' 'transfersh' 'filemail' 'fileio'
 	)
 	ap_hooks=()
 	ap_hook_policy='lazy'
 	ap_unicode='true'
 	ap_color='true'
+	ap_ua=$ap_version_text
 
 	ap_parse_args
 	$ap_list && exec 2>/dev/null
 	$ap_help && echo "$ap_help_text" && return
 	$ap_version && echo "$ap_version_text" && return
+	[[ $TMPDIR == *\'* ]] && echo 'Please no single quotes in TMPDIR!' && return 1
 
 	[[ -z $ap_cfg ]] && ap_get_config_path
 	$ap_C && ap_create_config && return
@@ -1295,13 +1500,6 @@ function ap_main_inner {
 	ap_summary
 	echo 'All files processed. Have a nice day!' >&2
 	return $ap_exit_code
-}
-function ap_main {
-	local exit_code
-	ap_main_inner "$@"
-	exit_code="$?"
-	rm -f "$ap_tmpdir/anypaste.*"
-	return "$exit_code"
 }
 
 # shellcheck disable=2154
