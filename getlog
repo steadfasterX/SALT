@@ -1,6 +1,13 @@
 #!/bin/bash
 ################################################################################
- 
+# SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
+#
+# Copyright (C): 2017-2023, steadfasterX <steadfastX|boun.cr>
+#
+# Log upload wrapper for SALT
+#
+################################################################################
+
 VARS="${0%/*}/salt.vars"
 source $VARS
 
@@ -17,7 +24,10 @@ if [ $? -eq 99 ];then
         echo "${PASTEURL}" | grep -q http
         PASTEERR=$?
         if [ $PASTEERR -eq 0 ];then
-            F_MSGOK 700 "Log uploaded successfully!\n\nPlease share this link:\n\n<a href=\"${PASTEURL}\">${PASTEURL}</a>\n(right click, copy link address)\n"
+            $FYAD --title="$YTITLE - DEBUGLOG" --width=800 --height=350 --image="$SICONS/ok_64x64.png" --text "\n\nLog uploaded successfully!\n\n" \
+                --form --columns=2 \
+                --field=" Copy the following Paste service link for sharing it":TXT "\n ${PASTEURL}"\
+                --button=Close
             break
         else
             F_MSGE 800 "Error in module '$pastes' $PASTEURL while uploading logfile..\nClick EXIT for trying next paste service...\n\n"

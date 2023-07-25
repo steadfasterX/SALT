@@ -1,5 +1,12 @@
 #!/bin/bash
 ##################################################################################
+# SALT - [S]teadfasterX [A]ll-in-one [L]G [T]ool
+#
+# Copyright (C): 2017-2023, steadfasterX <steadfastX|boun.cr>
+#
+# install Desktop starter for SALT
+#
+##################################################################################
 
 HERE="$(pwd)"
 
@@ -14,7 +21,7 @@ echo "$@" | grep -ql help
 if [ $? -eq 0 ];then
     cat <<_EOFH
 
-    This installer is part of SALT (https://bit.do/SALTatXDA)
+    This installer is part of SALT (https://forum.xda-developers.com/t/tool-locked-unlocked-salt-the-lg-up-revolution-begins.3717864/)
 
 
     Usage info
@@ -80,7 +87,7 @@ case $ANS in
     ;;
     2)
     cat >/tmp/salt_sudo << _EOFSU
-# SALT (https://bit.do/SALTatXDA)
+# SALT (https://forum.xda-developers.com/t/tool-locked-unlocked-salt-the-lg-up-revolution-begins.3717864/)
 $REALUSER     ALL=(ALL) NOPASSWD: ${HERE}/salt *
 _EOFSU
     echo -e "... sudo syntax check:"

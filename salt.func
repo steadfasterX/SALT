@@ -342,7 +342,7 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
             if [ "$BTNRET" == 66 ];then
               FCHOOSENP=$(for slice in $IRESSORTED;do if [ "${slice/*:/}" == "data" ];then echo -e "true:$slice"; else echo -e "false:$slice";fi | tr ':' '\n' ;done \
                         | $FYAD --height=800 --width=1000 --title="$YTITLE - EXTRACT" \
-                        --text "\n  This KDZ has an <a href='https://bit.do/antirollg4'>ARB</a> of:  <span color='#ff0000' size='large'><b>$KDZARB</b></span>\n\n  Select partition(s) to EXTRACT:\n"\
+                        --text "\n  This KDZ has an <a href='https://forum.xda-developers.com/t/closed-unlock-poc-ls991-h81x-vs986-f500-unofficial-unlock-poc.3648288/#post-73206763'>ARB</a> of:  <span color='#ff0000' size='large'><b>$KDZARB</b></span>\n\n  Select partition(s) to EXTRACT:\n"\
                         --list --checklist \
                         --column="Selection":CHK \
                         --column="#" \
@@ -359,7 +359,7 @@ F_EXTRACTKDZ(){ F_LOG "$FUNCNAME: started with $@"
                 if [ "$BTNRET" == 77 ];then
                   FCHOOSENP=$(for slice in $IRESSORTED;do if [ "${slice/*:/}" == "data" ];then echo -e "false:$slice"; else echo -e "false:$slice";fi | tr ':' '\n' ;done \
                             | $FYAD --height=800 --width=1000 --title="$YTITLE - EXTRACT" \
-                            --text "\n  This KDZ has an <a href='https://bit.do/antirollg4'>ARB</a> of:  <span color='#ff0000' size='large'><b>$KDZARB</b></span>\n\n  Select partition(s) to EXTRACT:\n"\
+                            --text "\n  This KDZ has an <a href='https://forum.xda-developers.com/t/closed-unlock-poc-ls991-h81x-vs986-f500-unofficial-unlock-poc.3648288/#post-73206763'>ARB</a> of:  <span color='#ff0000' size='large'><b>$KDZARB</b></span>\n\n  Select partition(s) to EXTRACT:\n"\
                             --list --checklist \
                             --column="Selection":CHK \
                             --column="#" \
@@ -584,18 +584,18 @@ F_VERIFYDARB(){
     [ -z "$KARB" -o -z "$DARB" ] && F_ERR $FUNCNAME 3 "\n  ERROR!\n\n  Device ARB or file-based ARB cannot be checked! ABORTED!!"
     # verify ARB
     [ "$KARB" -eq "${DARB/:*}" ] && ARBOK=1 && ARBINC=0 && F_LOG "$FUNCNAME: ARB is equal between files and device"
-    [ "$KARB" -gt "${DARB/:*}" ] && ARBOK=1 && ARBINC=1 && F_MSGW 800 "\n!!! WARNING !!!\n\nChosen files have a higher ARB level then your current device. Depending on the files you flash (e.g. bootloader) your ARB will be increased!\n\nThat means you can <b>never</b> rollback to a previous versions once flashed!\n\nRead more about ARB here:\n\n<a href='https://bit.do/antirollg4'>ARB explained</a>" >> /dev/null 2>&1
-    [ "$KARB" -lt "${DARB/:*}" ] && ARBOK=0 && ARBINC=0 && F_MSGE 800 "The ARB of the files you are trying to flash is LOWER then your device!!! ABORTED!\n\nRead more about ARB here:\n\n<a href='https://bit.do/antirollg4'>ARB explained</a>" && F_EXIT "$FUNCNAME too low ARB" 3
+    [ "$KARB" -gt "${DARB/:*}" ] && ARBOK=1 && ARBINC=1 && F_MSGW 800 "\n!!! WARNING !!!\n\nChosen files have a higher ARB level then your current device. Depending on the files you flash (e.g. bootloader) your ARB will be increased!\n\nThat means you can <b>never</b> rollback to a previous versions once flashed!\n\nRead more about ARB here:\n\n<a href='https://forum.xda-developers.com/t/closed-unlock-poc-ls991-h81x-vs986-f500-unofficial-unlock-poc.3648288/#post-73206763'>ARB explained</a>" >> /dev/null 2>&1
+    [ "$KARB" -lt "${DARB/:*}" ] && ARBOK=0 && ARBINC=0 && F_MSGE 800 "The ARB of the files you are trying to flash is LOWER then your device!!! ABORTED!\n\nRead more about ARB here:\n\n<a href='https://forum.xda-developers.com/t/closed-unlock-poc-ls991-h81x-vs986-f500-unofficial-unlock-poc.3648288/#post-73206763'>ARB explained</a>" && F_EXIT "$FUNCNAME too low ARB" 3
     # a bulletproof method to avoid issues with any of the above (e.g. when KARB or DARB are not digits etc)
     [ "$ARBOK" -ne 1 ] && F_MSGE 500 "Issues regarding determining ARB! ABORTED!" && F_EXIT "$FUNCNAME: ARB check failed" 4
 
     # manual ARB verification by the user
     if [ -z "${CHKMRES/*:}" ] || [ -z "${CHKMRES/:*}" ]|| [ "${CHKMRES/:*}" == "unknown" ] || [ "${CHKMRES/*:}" != "${CHKMRES/:*}" ];then
         F_LOG "$FUNCNAME: file and device model does not match!!!"
-        F_MSGW 800 "<b><span color='#ff0000'>!!! WARNING !!! File and device model does not match!</span></b>\n\nDevice model:\t\t${CHKMRES/:*}\nFiles are for:\t\t${CHKMRES/*:}\n\nARB of your device compared with the files\nDevice:\t${DARB/:*}\nFiles:\t$KARB\n\nYou can doublecheck some known ARB <a href='https://bit.do/antirollg4'>here</a>\n\nDo you really want to continue and so FLASHing now?" "--button=Continue-may-HARDBRICK:99"
+        F_MSGW 800 "<b><span color='#ff0000'>!!! WARNING !!! File and device model does not match!</span></b>\n\nDevice model:\t\t${CHKMRES/:*}\nFiles are for:\t\t${CHKMRES/*:}\n\nARB of your device compared with the files\nDevice:\t${DARB/:*}\nFiles:\t$KARB\n\nYou can doublecheck some known ARB <a href='https://forum.xda-developers.com/t/closed-unlock-poc-ls991-h81x-vs986-f500-unofficial-unlock-poc.3648288/#post-73206763'>here</a>\n\nDo you really want to continue and so FLASHing now?" "--button=Continue-may-HARDBRICK:99"
     else
         F_LOG "$FUNCNAME: file and device model does match"
-        F_MSGOK 800 "<b>file and device</b> information match\nDevice model:\t${CHKMRES/:*}\nFiles are for:\t\t${CHKMRES/*:}\n\nARB of your device compared with the files\nDevice:\t${DARB/:*}\nFiles:\t$KARB\nYou can doublecheck some known ARB <a href='http://bit.do/antirollg4'>here</a>\n\n  Do you really want to continue and so FLASHing now?" "--button=Continue:99"
+        F_MSGOK 800 "<b>file and device</b> information match\nDevice model:\t${CHKMRES/:*}\nFiles are for:\t\t${CHKMRES/*:}\n\nARB of your device compared with the files\nDevice:\t${DARB/:*}\nFiles:\t$KARB\nYou can doublecheck some known ARB <a href='https://forum.xda-developers.com/t/closed-unlock-poc-ls991-h81x-vs986-f500-unofficial-unlock-poc.3648288/#post-73206763'>here</a>\n\n  Do you really want to continue and so FLASHing now?" "--button=Continue:99"
     fi
 }; export -f F_VERIFYDARB
 
