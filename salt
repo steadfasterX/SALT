@@ -212,7 +212,7 @@ F_MAIN(){
         case $LGMODEL in
             ${LGG4})
                 F_LOG "$FUNCNAME: starting G4 menu"
-                $FYAD --title="$YTITLE" --width=1100 --height=620 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://bit.do/SALTatXDA'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
+                $FYAD --title="$YTITLE" --width=1100 --height=620 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://forum.xda-developers.com/t/tool-locked-unlocked-salt-the-lg-up-revolution-begins.3717864/'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
                 --form --columns=2 \
                 --field="  Device model":RO $LGMODEL \
                 --field="  Firmware (laf)":RO $LGSWV \
@@ -237,7 +237,7 @@ F_MAIN(){
             ;;
             *)
             F_LOG "$FUNCNAME: starting non-G4 menu"
-            $FYAD --title="$YTITLE" --width=1100 --height=620 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://bit.do/SALTatXDA'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
+            $FYAD --title="$YTITLE" --width=1100 --height=620 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://forum.xda-developers.com/t/tool-locked-unlocked-salt-the-lg-up-revolution-begins.3717864/'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
                 --form --columns=2 \
                 --field="  Device model":RO $LGMODEL \
                 --field="  Firmware (laf)":RO $LGSWV \
@@ -263,7 +263,7 @@ F_MAIN(){
         # when started with --experimental (will be removed one day)
         if [ $EXPERIMENTAL -eq 1 ]||[ $FLASHMENU -eq 1 ];then
             F_LOG "$FUNCNAME: starting experimental menu"
-            $FYAD --title="$YTITLE" --width=1100 --height=620 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://bit.do/SALTatXDA'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
+            $FYAD --title="$YTITLE" --width=1100 --height=620 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://forum.xda-developers.com/t/tool-locked-unlocked-salt-the-lg-up-revolution-begins.3717864/'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
               --form --columns=2 \
               --field="  Device model":RO $LGMODEL \
               --field="  Firmware (laf)":RO $LGSWV \
