@@ -934,7 +934,7 @@ F_UPDATE(){ F_LOG "$FUNCNAME: started"
     AAP=$(echo "$AA" | cut -d "|" -f 1)
 
     case $AAP in
-        TESTING)
+        STREAM)
             BRSALT="$BR_T_SALT"
             BRKDZ="$BR_T_KDZ"
             BRLAF="$BR_T_LAF"
