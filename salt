@@ -96,7 +96,9 @@ fi
 
 # collect some sys info
 F_LOG "OS: $(cat /etc/*-release)"
-F_LOG "OS (lsb): $(lsb_release -a)"
+if [ $(which lsb_release 2>&1 /dev/null) ]; then
+        F_LOG "OS (lsb): $(lsb_release -a)"
+fi
 F_LOG "yad: $(yad --version)"
 F_LOG "summary:\n $(hostnamectl status |grep -v ID)\n"
 
