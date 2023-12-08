@@ -205,7 +205,7 @@ F_MAIN(){
             F_LOG "Flashing functionality disabled bc: DEVCON = $DEVCON (no device found and skipped pressed)"
             FLASHMENU=0
     fi
-        
+
     # main SALT screen depends on experimental flag .. and LAF version .. and model
     if [ $FLASHMENU -eq 0 ]&&[ $EXPERIMENTAL -ne 1 ];then
         shopt -s extglob
@@ -215,20 +215,15 @@ F_MAIN(){
                 $FYAD --title="$YTITLE" --width=1100 --height=620 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://forum.xda-developers.com/t/tool-locked-unlocked-salt-the-lg-up-revolution-begins.3717864/'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
                 --form --columns=2 \
                 --field="  Device model":RO $LGMODEL \
-                --field="  Firmware (laf)":RO $LGSWV \
-                --field="  Firmware (system)":RO "$LGFACV" \
-                --field="  Carrier":RO "$LGOPER" \
-                --field="  Country":RO "$LGCOUNTRY"\
-                --field="  UsU":RO $LGUSU \
-                --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
-                --field="  Current CR mode":RO $CRMODE \
-                --field="  GPT compatibility":RO $ROMCOMP \
+                --field="  Device+Version (by LAFd)":RO $LGSWV \
+                --field="  Last STOCK version":RO "$LGFACV" \
                 --field="  LAF protocol":RO $LAFVER \
+                --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
                 --field="  Battery level":RO $LGBATT \
                 --field="  <span color=\'#ff0000\'>AntiRollBack</span>":RO $DEVARB \
                 --field="  IMEI" $LGIMEI \
                 --field="  Serial":RO $LGSERIAL \
-                --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c 'F_ADVMENU $LGMODEL'" \
+                --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c 'F_ADVMENU $LGMODEL $ROMCOMP $LGOPER $LGCOUNTRY $LGUSU'" \
                 true \
                 --buttons-layout=spread \
                 --button="!$SICONS/update_48x48.png!Updating SALT (kdztools, lglaf, SALT)":"bash -c F_UPDATE" \
@@ -240,18 +235,15 @@ F_MAIN(){
             $FYAD --title="$YTITLE" --width=1100 --height=620 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://forum.xda-developers.com/t/tool-locked-unlocked-salt-the-lg-up-revolution-begins.3717864/'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
                 --form --columns=2 \
                 --field="  Device model":RO $LGMODEL \
-                --field="  Firmware (laf)":RO $LGSWV \
-                --field="  Firmware (system)":RO "$LGFACV" \
-                --field="  Carrier":RO "$LGOPER" \
-                --field="  Country":RO "$LGCOUNTRY"\
-                --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
-                --field="  Current CR mode":RO $CRMODE \
+                --field="  Device+Version (by LAFd)":RO $LGSWV \
+                --field="  Last STOCK version":RO "$LGFACV" \
                 --field="  LAF protocol":RO $LAFVER \
+                --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
                 --field="  Battery level":RO $LGBATT \
                 --field="  <span color=\'#ff0000\'>AntiRollBack</span>":RO $DEVARB \
                 --field="  IMEI" $LGIMEI \
                 --field="  Serial":RO $LGSERIAL \
-                --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c 'F_ADVMENU $LGMODEL'" \
+                --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c 'F_ADVMENU $LGMODEL $ROMCOMP $LGOPER $LGCOUNTRY $LGUSU'" \
                 true \
                 --buttons-layout=spread \
                 --button="!$SICONS/update_48x48.png!Updating SALT (kdztools, lglaf, SALT)":"bash -c F_UPDATE" \
@@ -266,25 +258,20 @@ F_MAIN(){
             $FYAD --title="$YTITLE" --width=1100 --height=620 --scroll --image="$SICONS/salt_logo_128x128.png" --text "\n  <b>$TFULLNAME</b>\n  SALT is a replacement for the windows software LGUP (plus MANY more features!) and brought to you by <b>steadfasterX</b>\n  <a href='https://forum.xda-developers.com/t/tool-locked-unlocked-salt-the-lg-up-revolution-begins.3717864/'>(click here to open the official SALT thread)</a>\n\n  <b>The following comes directly from your device:</b>\n  (<i>\"no_device_found\"</i> if no device connected)\n" \
               --form --columns=2 \
               --field="  Device model":RO $LGMODEL \
-              --field="  Firmware (laf)":RO $LGSWV \
-              --field="  Firmware (system)":RO "$LGFACV" \
-              --field="  Carrier":RO "$LGOPER" \
-              --field="  Country":RO "$LGCOUNTRY" \
-              --field="  UsU":RO $LGUSU \
-              --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
-              --field="  Current CR mode":RO $CRMODE \
-              --field="  GPT compatibility":RO $ROMCOMP \
+              --field="  Device+Version (by LAFd)":RO $LGSWV \
+              --field="  Last STOCK version":RO "$LGFACV" \
               --field="  LAF protocol":RO $LAFVER \
+              --field="  <span color='#ff0000'>REBOOT your device</span>":FBTN "$SALTPATH/reboot" \
               --field="  Battery level":RO $LGBATT \
               --field="  <span color='#ff0000'>AntiRollBack</span>":RO $DEVARB \
               --field="  IMEI" $LGIMEI \
               --field="  Serial":RO $LGSERIAL \
-              --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c 'F_ADVMENU $LGMODEL'" \
+              --field="  ADVANCED Menu!$SICONS/advanced_16x16.png!This contains tools not for the average user!":FBTN "bash -c 'F_ADVMENU $LGMODEL $ROMCOMP $LGOPER $LGCOUNTRY $LGUSU'" \
               true \
               --buttons-layout=spread \
               --button="!$SICONS/update_48x48.png!Updating SALT (kdztools, lglaf, SALT)":"bash -c F_UPDATE" \
               --button="  Backup!$SICONS/backup.png!Make a full or basic backup while in download mode":"bash -c F_BACKUP" \
-              --button="Extract!$SICONS/extract_48x48.png!Extract a KDZ file. If you want to flash choose Extract+Flash instead":"bash -c F_STARTKDZ" \
+              --button="Extract KDZ!$SICONS/extract_48x48.png!Extract a KDZ file. If you want to flash choose Extract+Flash instead":"bash -c F_STARTKDZ" \
               --button="Flash (folder)!$SICONS/flash_48x48.png!This will flash one or multiple partitions from any folder (e.g. from a previous backup)":"bash -c F_FLASHPART"\
               --button=" Flash (kdz)!$SICONS/flashkdz_70x48.png!Extract and Flash like LGUP would do":"bash -c F_STARTKDZFL" 
         else
